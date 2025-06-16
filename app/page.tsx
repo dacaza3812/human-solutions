@@ -108,7 +108,7 @@ export default function SolucionesHumanas() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600">Humanas</span>
             </h2>
             <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed">
-              Asesoría personalizada para resolver problemas financieros, familiares y amorosos
+              Asesoría personalizada para resolver problemas financieros y personales
             </p>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-green-100">
               <p className="text-lg text-gray-700 mb-6">
@@ -228,7 +228,7 @@ export default function SolucionesHumanas() {
                   <FileText className="w-8 h-8 text-white" />
                 </div>
                 <h4 className="text-xl font-bold text-gray-800 mb-4">Cuestionario</h4>
-                <p className="text-gray-600 mb-4">Recibe y completa un cuestionario personalizado según tu situación</p>
+                <p className="text-gray-600 mb-4">Recibe y completa un cuestionario </p>
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                   <p className="text-sm text-blue-700">Evaluación detallada de tu situación actual</p>
                 </div>
@@ -239,9 +239,12 @@ export default function SolucionesHumanas() {
                   <CheckCircle className="w-8 h-8 text-white" />
                 </div>
                 <h4 className="text-xl font-bold text-gray-800 mb-4">Análisis y Consejos</h4>
-                <p className="text-gray-600 mb-4">Obtén un análisis detallado y consejos específicos para tu caso</p>
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                  <p className="text-sm text-purple-700">Plan de acción personalizado</p>
+                <p className="text-gray-600 mb-4">Obtén consejos específicos para ti</p>
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 py-6 py-6 py-6 py-0 py-5 py-8 py-5 py-3.5 py-0">
+                  <p className="text-sm text-purple-700">Plan de acción personalizado específicamente para ti
+
+
+</p>
                 </div>
               </div>
             </div>
