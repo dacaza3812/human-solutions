@@ -4,8 +4,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Soluciones Humanas - Asesoría Personalizada",
-  description: "Asesoría personalizada para resolver problemas financieros, familiares y amorosos",
+  title: "Fox Lawyer - Asesoría Legal Personalizada",
+  description: "Asesoría legal personalizada para resolver problemas financieros, familiares y amorosos",
   generator: "v0.dev",
 }
 
