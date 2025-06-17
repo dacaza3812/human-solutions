@@ -111,10 +111,10 @@ export default function Dashboard() {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer">
               <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
               <h1 className="text-xl font-bold text-foreground">Fox Lawyer Dashboard</h1>
-            </div>
+            </Link>
           </div>
 
           <div className="flex items-center space-x-4">

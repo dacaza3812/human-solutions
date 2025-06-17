@@ -204,7 +204,9 @@ export default function SolucionesHumanas() {
               <div className="flex items-center space-x-3">
                 <ThemeToggle />
                 <Button
-                  className="hidden md:inline-flex border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-white"
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:inline-flex border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
                   onClick={() => router.push("/dashboard")}
                 >
                   Dashboard
