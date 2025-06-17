@@ -510,7 +510,7 @@ export default function SolucionesHumanas() {
                 <div className="p-6 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-2">Ingresos mensuales estimados</p>
-                    <p className="text-4xl font-bold text-emerald-400">${monthlyEarnings.toLocaleString()} MXN</p>
+                    <p className="text-4xl font-bold text-emerald-400">${monthlyEarnings.toLocaleString()} USD</p>
                     <p className="text-xs text-muted-foreground">
                       Basado en {referrals} referidos directos + red indirecta estimada
                     </p>
