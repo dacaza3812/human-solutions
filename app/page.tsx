@@ -249,7 +249,7 @@ export default function SolucionesHumanas() {
                 ))}
 
                 {/* Separador */}
-                <div className="border-t border-border/40 pt-6 mt-6">
+                {/*<div className="border-t border-border/40 pt-6 mt-6">
                   <button
                     className="text-lg font-medium text-emerald-400 hover:text-emerald-300 transition-colors w-full text-left"
                     onClick={() => {
@@ -259,7 +259,7 @@ export default function SolucionesHumanas() {
                   >
                     Dashboard
                   </button>
-                </div>
+                </div>*/}
               </nav>
             </div>
             <div className="p-6 border-t border-border/40">
