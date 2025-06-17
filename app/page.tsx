@@ -30,12 +30,12 @@ import {
   Lock,
   BarChart3,
   ArrowRight,
+  X,
 } from "lucide-react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useRouter } from "next/navigation"
 
 export default function SolucionesHumanas() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [referrals, setReferrals] = useState(1)
   const [monthlyEarnings, setMonthlyEarnings] = useState(25)
 
@@ -213,32 +213,71 @@ export default function SolucionesHumanas() {
                 </Button>
               </div>
 
-              {/* Mobile Menu */}
-              <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[300px]">
-                  <div className="flex flex-col space-y-4 mt-8">
-                    {navigation.map((item) => (
-                      <a
-                        key={item.name}
-                        href={item.href}
-                        className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        {item.name}
-                      </a>
-                    ))}
-                  </div>
-                </SheetContent>
-              </Sheet>
+              {/* Mobile Menu Button */}
+              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
+                <Menu className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-background md:hidden">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-4 border-b border-border/40">
+              <div className="flex items-center space-x-2">
+                <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
+                <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <nav className="flex flex-col space-y-6">
+                {navigation.map((item) => (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    className="text-lg font-medium text-foreground hover:text-emerald-400 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </a>
+                ))}
+
+                {/* Separador */}
+                <div className="border-t border-border/40 pt-6 mt-6">
+                  <button
+                    className="text-lg font-medium text-emerald-400 hover:text-emerald-300 transition-colors w-full text-left"
+                    onClick={() => {
+                      router.push("/dashboard")
+                      setMobileMenuOpen(false)
+                    }}
+                  >
+                    Dashboard
+                  </button>
+                </div>
+              </nav>
+            </div>
+            <div className="p-6 border-t border-border/40">
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white font-medium"
+                onClick={() => {
+                  router.push("/dashboard")
+                  setMobileMenuOpen(false)
+                }}
+              >
+                Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section id="inicio" className="py-24 px-4">
