@@ -70,14 +70,56 @@ function DashboardContent() {
     if (profile?.account_type === "client" && profile.id) {
       fetchReferralStats()
     }
-  }, [profile])
+  }, [profile, referralCode])
 
   const fetchReferralStats = async () => {
     try {
-      // Use the new SQL function to get referral stats
-      const { data, error } = await supabase.rpc("get_referral_stats", {
-        user_referral_code: referralCode,
-      })
+      // First try using the SQL function
+      let data, error
+
+      try {
+        const result = await supabase.rpc("get_referral_stats_by_id", {
+          user_profile_id: profile?.id,
+        })
+        data = result.data
+        error = result.error
+      } catch (funcError) {
+        console.log("Function not available, using fallback method")
+        // Fallback: Query referrals table directly
+        const { data: referralsData, error: referralsError } = await supabase
+          .from("referrals")
+          .select("*")
+          .eq("referrer_id", profile?.id)
+
+        if (referralsError) {
+          console.error("Error fetching referrals:", referralsError)
+          return
+        }
+
+        // Calculate stats manually
+        const totalReferrals = referralsData?.length || 0
+        const activeReferrals = referralsData?.filter((r) => r.status === "active").length || 0
+        const totalEarnings = referralsData?.reduce((sum, r) => sum + (r.commission_earned || 0), 0) || 0
+
+        const currentMonth = new Date()
+        currentMonth.setDate(1)
+        currentMonth.setHours(0, 0, 0, 0)
+
+        const monthlyEarnings =
+          referralsData
+            ?.filter((r) => new Date(r.created_at) >= currentMonth)
+            .reduce((sum, r) => sum + (r.commission_earned || 0), 0) || 0
+
+        data = [
+          {
+            total_referrals: totalReferrals,
+            active_referrals: activeReferrals,
+            total_earnings: totalEarnings,
+            monthly_earnings: monthlyEarnings,
+          },
+        ]
+        error = null
+      }
 
       if (error) {
         console.error("Error fetching referral stats:", error)
@@ -395,7 +437,7 @@ function DashboardContent() {
               </div>
             </div>
 
-            <nav className="flex-1 px-4 space-y-2">
+            <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
               {sidebarItems.map((item) => (
                 <button
                   key={item.id}
