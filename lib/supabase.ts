@@ -13,15 +13,6 @@ export interface UserProfile {
   last_name?: string
   phone?: string
   account_type?: "client" | "advisor"
-  referral_code?: string
-  referred_by?: string
   created_at: string
   updated_at: string
-}
-
-export interface ReferralStats {
-  total_referrals: number
-  active_referrals: number
-  total_earnings: number
-  monthly_earnings: number
 }

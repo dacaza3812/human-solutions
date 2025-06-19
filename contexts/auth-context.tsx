@@ -12,12 +12,7 @@ interface AuthContextType {
   profile: UserProfile | null
   session: Session | null
   loading: boolean
-  signUp: (
-    email: string,
-    password: string,
-    userData: Partial<UserProfile>,
-    referralCode?: string,
-  ) => Promise<{ error: any }>
+  signUp: (email: string, password: string, userData: Partial<UserProfile>) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
@@ -84,80 +79,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string, userData: Partial<UserProfile>, referralCode?: string) => {
+  const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
     try {
-      // Prepare metadata
-      const metadata: any = {
-        first_name: userData.first_name || "",
-        last_name: userData.last_name || "",
-        phone: userData.phone || "",
-        account_type: userData.account_type || "client",
-      }
-
-      // Only add referral_code if it exists and is not empty
-      if (referralCode && referralCode.trim() !== "") {
-        metadata.referral_code = referralCode.trim()
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: "https://foxlawyer.vercel.app/dashboard",
-          data: metadata,
+          data: {
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            phone: userData.phone,
+            account_type: userData.account_type,
+          },
         },
       })
 
-      if (error) {
-        console.error("Signup error:", error)
-        return { error }
-      }
+      if (error) return { error }
 
-      // Wait a bit for the trigger to complete
-      if (data.user && !data.user.email_confirmed_at) {
-        // For unconfirmed users, we might need to create the profile manually
-        // This is a fallback in case the trigger doesn't work
-        setTimeout(async () => {
-          try {
-            const { error: profileError } = await supabase.from("profiles").upsert(
-              [
-                {
-                  id: data.user!.id,
-                  email: data.user!.email,
-                  first_name: userData.first_name || "",
-                  last_name: userData.last_name || "",
-                  phone: userData.phone || "",
-                  account_type: userData.account_type || "client",
-                  referred_by: referralCode && referralCode.trim() !== "" ? referralCode.trim() : null,
-                },
-              ],
-              { onConflict: "id" },
-            )
+      // Create profile record
+      if (data.user) {
+        const { error: profileError } = await supabase.from("profiles").insert([
+          {
+            id: data.user.id,
+            email: data.user.email,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            phone: userData.phone,
+            account_type: userData.account_type,
+          },
+        ])
 
-            if (profileError) {
-              console.error("Error creating profile fallback:", profileError)
-            }
-
-            // Create referral relationship if applicable
-            if (referralCode && referralCode.trim() !== "" && data.user) {
-              const { error: referralError } = await supabase.rpc("create_referral_relationship", {
-                referrer_code: referralCode.trim(),
-                referred_user_id: data.user.id,
-              })
-
-              if (referralError) {
-                console.error("Error creating referral relationship:", referralError)
-              }
-            }
-          } catch (err) {
-            console.error("Error in profile creation fallback:", err)
-          }
-        }, 1000)
+        if (profileError) {
+          console.error("Error creating profile:", profileError)
+        }
       }
 
       return { error: null }
     } catch (error) {
-      console.error("Unexpected signup error:", error)
       return { error }
     }
   }
@@ -181,13 +139,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    router.push("/") // Changed redirection to the main page
+    router.push("/login")
   }
 
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://foxlawyer.vercel.app/reset-password",
+        redirectTo: `${window.location.origin}/reset-password`,
       })
       return { error }
     } catch (error) {
