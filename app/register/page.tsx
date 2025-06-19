@@ -7,10 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Phone, AlertCircle, CheckCircle } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Phone, AlertCircle, CheckCircle, Gift } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
@@ -28,9 +28,19 @@ export default function Register() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [referralCode, setReferralCode] = useState("")
 
   const { signUp, user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Check for referral code in URL
+  useEffect(() => {
+    const refCode = searchParams.get("ref")
+    if (refCode) {
+      setReferralCode(refCode)
+    }
+  }, [searchParams])
 
   // Redirect if already logged in
   useEffect(() => {
@@ -80,12 +90,17 @@ export default function Register() {
     setLoading(true)
 
     try {
-      const { error } = await signUp(formData.email, formData.password, {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        phone: formData.phone,
-        account_type: formData.accountType,
-      })
+      const { error } = await signUp(
+        formData.email,
+        formData.password,
+        {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          account_type: formData.accountType,
+        },
+        referralCode || undefined,
+      )
 
       if (error) {
         setError(error.message || "Error al crear la cuenta")
@@ -111,6 +126,11 @@ export default function Register() {
             <CardDescription>
               Hemos enviado un correo de confirmación a {formData.email}. Por favor, verifica tu correo para activar tu
               cuenta.
+              {referralCode && (
+                <div className="mt-2 p-2 bg-emerald-500/10 rounded-lg">
+                  <p className="text-sm text-emerald-400">¡Te registraste con un código de referido!</p>
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -143,7 +163,15 @@ export default function Register() {
         <Card className="border-border/40 shadow-lg">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-foreground">Crear Cuenta</CardTitle>
-            <CardDescription>Únete a nuestra plataforma de asesoría legal</CardDescription>
+            <CardDescription>
+              Únete a nuestra plataforma de asesoría legal
+              {referralCode && (
+                <div className="mt-2 flex items-center justify-center space-x-2 text-emerald-400">
+                  <Gift className="w-4 h-4" />
+                  <span className="text-sm">Invitado por un referido</span>
+                </div>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {error && (
@@ -154,6 +182,16 @@ export default function Register() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Referral Code Display */}
+              {referralCode && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Gift className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm text-emerald-400">Código de referido: {referralCode}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Account Type Selection */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Tipo de Cuenta</Label>
