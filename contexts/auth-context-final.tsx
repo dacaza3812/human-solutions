@@ -98,6 +98,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[AUTH] Profile fetched successfully:", {
         id: data.id,
         email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
         referral_code: data.referral_code,
         referred_by: data.referred_by,
       })
@@ -121,21 +124,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[AUTH] User data:", userData)
       console.log("[AUTH] Referral code:", referralCode || "None")
 
-      // Preparar metadatos
+      // Preparar metadatos - asegurar que los campos vacíos se envíen como strings vacíos
       const metadata: any = {
-        first_name: userData.first_name || "",
-        last_name: userData.last_name || "",
-        phone: userData.phone || "",
+        first_name: userData.first_name?.trim() || "",
+        last_name: userData.last_name?.trim() || "",
+        phone: userData.phone?.trim() || "", // Incluir teléfono (puede estar vacío)
         account_type: userData.account_type || "client",
       }
 
-      // Agregar código de referido si existe
+      // Agregar código de referido SOLO si existe y no está vacío
       if (referralCode && referralCode.trim() !== "") {
         metadata.referral_code = referralCode.trim()
         console.log("[AUTH] Including referral code in metadata:", referralCode.trim())
       }
 
-      console.log("[AUTH] Final metadata:", metadata)
+      console.log("[AUTH] Final metadata to send:", metadata)
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -194,9 +197,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log("[AUTH] Supabase signOut successful. Clearing local state.")
-      setSession(null) // Explicitly clear session state
-      setUser(null) // Explicitly clear user state
-      setProfile(null) // Explicitly clear profile state
+      setSession(null)
+      setUser(null)
+      setProfile(null)
 
       // Verify session after signOut
       const {
@@ -206,7 +209,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("[AUTH] Redirecting to home page.")
       router.push("/")
-      // router.refresh() // Optional: force a full page refresh if issues persist with cached content
     } catch (error) {
       console.error("[AUTH] Unexpected error during signOut:", error)
       alert("Ocurrió un error inesperado al cerrar sesión.")
