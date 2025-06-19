@@ -31,6 +31,11 @@ import {
   BarChart3,
   ArrowRight,
   X,
+  MessageCircleQuestion,
+  CircleDashed,
+  FacebookIcon,
+  InstagramIcon,
+  TwitterIcon
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -297,12 +302,11 @@ export default function SolucionesHumanas() {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
-              Transforma tu vida en un <span className="text-emerald-400">fin de semana</span>
+              Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
             </h1>
 
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada. Comienza tu proyecto con asesoría financiera,
-              familiar y profesional, consultas instantáneas, análisis en tiempo real, y seguimiento personalizado.
+              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la privacidad y confidencialidad del cliente
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -464,21 +468,32 @@ export default function SolucionesHumanas() {
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-lg border border-blue-500/20 bg-blue-500/5">
-                    <h4 className="font-semibold text-blue-400 mb-2">Comisión Indirecta - 25%</h4>
-                    <p className="text-sm text-muted-foreground mb-2">$12.50 USD por cada referido de tus referidos</p>
-                    <div className="flex items-center text-xs text-blue-400">
-                      <Users className="w-3 h-3 mr-1" />
-                      Construye tu red de manera sostenible
-                    </div>
-                  </div>
+                  
 
-                  <div className="p-4 rounded-lg border border-purple-500/20 bg-purple-500/5">
+                  <div className="p-4 h-80 rounded-lg border border-purple-500/20 bg-purple-500/5">
                     <h4 className="font-semibold text-purple-400 mb-2">Bonos de Liderazgo</h4>
                     <p className="text-sm text-muted-foreground mb-2">Incentivos adicionales por volumen y mentorías</p>
                     <div className="flex items-center text-xs text-purple-400">
                       <Award className="w-3 h-3 mr-1" />
                       Hasta $500 USD adicionales mensuales
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2 mt-2">¡Potencia tu impacto y multiplica tus ingresos con nuestro programa Bonos de Liderazgo ! Diseñado para aquellos que no solo destacan por su desempeño individual.</p>
+                    
+                    <div className="flex items-center text-xs text-purple-400">
+                      <MessageCircleQuestion className="w-3 h-3 mr-1" />
+                      ¿Qué ofrece?
+                    </div>
+                    <div className="flex items-center text-xs text-muted-foreground mt-2 ml-2">
+                      <CircleDashed className="w-3 h-3 mr-1 text-purple-400" />
+                      Bonos por volumen
+                    </div>
+                    <div className="flex items-center text-xs text-muted-foreground mt-2 ml-2">
+                      <CircleDashed className="w-3 h-3 mr-1 text-purple-400" />
+                      Bonos por mentoría
+                    </div>
+                    <div className="flex items-center text-xs text-muted-foreground mt-2 ml-2">
+                      <CircleDashed className="w-3 h-3 mr-1 text-purple-400" />
+                      Reconocimiento mensual
                     </div>
                   </div>
                 </div>
@@ -512,13 +527,13 @@ export default function SolucionesHumanas() {
                     <p className="text-sm text-muted-foreground mb-2">Ingresos mensuales estimados</p>
                     <p className="text-4xl font-bold text-emerald-400">${monthlyEarnings.toLocaleString()} USD</p>
                     <p className="text-xs text-muted-foreground">
-                      Basado en {referrals} referidos directos + red indirecta estimada
+                      Basado en {referrals} referidos directos 
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs text-muted-foreground">
-                  <p>• Cálculos incluyen comisiones directas e indirectas</p>
+                  <p>• Cálculos incluyen comisiones directas</p>
                   <p>• Resultados pueden variar según desempeño</p>
                   <p>• No incluye bonos de liderazgo adicionales</p>
                 </div>
@@ -666,13 +681,23 @@ export default function SolucionesHumanas() {
                 </div>
 
                 <div>
-                  <Label htmlFor="service">Área de Interés</Label>
+                  <Label htmlFor="service">Importancia</Label>
                   <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
                     <option value="">Selecciona un área</option>
                     <option value="financial">Asesoría Financiera</option>
                     <option value="family">Relaciones Familiares</option>
                     <option value="love">Relaciones Amorosas</option>
                     <option value="advisor">Quiero ser Asesor</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label htmlFor="service">Área de Interés</Label>
+                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
+                    <option value="">Selecciona el nivel de priodidad</option>
+                    <option value="lov">Baja</option>
+                    <option value="mid">Media</option>
+                    <option value="high">Alta</option>
                   </select>
                 </div>
 
@@ -768,13 +793,13 @@ export default function SolucionesHumanas() {
               <h5 className="font-semibold mb-4 text-foreground">Síguenos</h5>
               <div className="flex space-x-3">
                 <Button size="sm" variant="outline" className="w-10 h-10 p-0">
-                  <span className="text-xs">FB</span>
+                  <FacebookIcon />
                 </Button>
                 <Button size="sm" variant="outline" className="w-10 h-10 p-0">
-                  <span className="text-xs">IG</span>
+                  <InstagramIcon />
                 </Button>
                 <Button size="sm" variant="outline" className="w-10 h-10 p-0">
-                  <span className="text-xs">TW</span>
+                  <TwitterIcon/>
                 </Button>
               </div>
             </div>
