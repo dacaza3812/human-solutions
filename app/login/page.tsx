@@ -1,16 +1,18 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Eye, EyeOff, ArrowLeft, Mail, Lock } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase" // Declare the supabase variable
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
@@ -19,11 +21,102 @@ export default function Login() {
     password: "",
     rememberMe: false,
   })
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [resetEmailSent, setResetEmailSent] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { signIn, resetPassword, user } = useAuth()
+  const router = useRouter()
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard")
+    }
+  }, [user, router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Aquí iría la lógica de autenticación
-    console.log("Login attempt:", formData)
+    setError("")
+    setLoading(true)
+
+    try {
+      const { error } = await signIn(formData.email, formData.password)
+
+      if (error) {
+        setError(error.message || "Error al iniciar sesión")
+      }
+    } catch (err) {
+      setError("Error inesperado. Por favor, intenta de nuevo.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResetPassword = async () => {
+    if (!formData.email) {
+      setError("Por favor, ingresa tu correo electrónico para restablecer la contraseña")
+      return
+    }
+
+    setError("")
+    setLoading(true)
+
+    try {
+      const { error } = await resetPassword(formData.email)
+
+      if (error) {
+        setError(error.message || "Error al enviar el correo de restablecimiento")
+      } else {
+        setResetEmailSent(true)
+      }
+    } catch (err) {
+      setError("Error inesperado. Por favor, intenta de nuevo.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    setError("")
+    setLoading(true)
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      })
+
+      if (error) {
+        setError(error.message || "Error al iniciar sesión con Google")
+      }
+    } catch (err) {
+      setError("Error inesperado. Por favor, intenta de nuevo.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (resetEmailSent) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-border/40 shadow-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-foreground">Correo Enviado</CardTitle>
+            <CardDescription>
+              Hemos enviado un enlace de restablecimiento de contraseña a {formData.email}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => setResetEmailSent(false)} variant="outline" className="w-full">
+              Volver al inicio de sesión
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -49,6 +142,13 @@ export default function Login() {
             <CardDescription>Ingresa a tu cuenta para acceder al dashboard</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && (
+              <div className="flex items-center space-x-2 text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
@@ -64,6 +164,7 @@ export default function Login() {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="pl-10"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -82,11 +183,13 @@ export default function Login() {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className="pl-10 pr-10"
                     required
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    disabled={loading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -101,18 +204,28 @@ export default function Login() {
                     checked={formData.rememberMe}
                     onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
                     className="w-4 h-4 text-emerald-500 border-border rounded focus:ring-emerald-500"
+                    disabled={loading}
                   />
                   <Label htmlFor="remember" className="text-sm text-muted-foreground">
                     Recordarme
                   </Label>
                 </div>
-                <Link href="#" className="text-sm text-emerald-400 hover:text-emerald-300">
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  className="text-sm text-emerald-400 hover:text-emerald-300"
+                  disabled={loading}
+                >
                   ¿Olvidaste tu contraseña?
-                </Link>
+                </button>
               </div>
 
-              <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
-                Iniciar Sesión
+              <Button
+                type="submit"
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                disabled={loading}
+              >
+                {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
               </Button>
             </form>
 
@@ -123,8 +236,8 @@ export default function Login() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Button variant="outline" className="border-border/40">
+            <div className="grid grid-cols-1 gap-4">
+              <Button variant="outline" className="border-border/40" onClick={signInWithGoogle} disabled={loading}>
                 <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
@@ -143,13 +256,7 @@ export default function Login() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                Google
-              </Button>
-              <Button variant="outline" className="border-border/40">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-                Facebook
+                Continuar con Google
               </Button>
             </div>
 

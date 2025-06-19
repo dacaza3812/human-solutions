@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { ProtectedRoute } from "@/components/protected-route"
+import { useAuth } from "@/contexts/auth-context"
 import {
   Home,
   Users,
@@ -22,13 +24,15 @@ import {
   LogOut,
   Menu,
   X,
+  User,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 
-export default function Dashboard() {
+function DashboardContent() {
   const [activeView, setActiveView] = useState("overview")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { user, profile, signOut } = useAuth()
 
   const sidebarItems = [
     { id: "overview", name: "Resumen", icon: Home },
@@ -106,45 +110,40 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-              <Menu className="h-5 w-5" />
-            </Button>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer">
               <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
-              <h1 className="text-xl font-bold text-foreground">Fox Lawyer Dashboard</h1>
+              <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
             </Link>
-          </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-2">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar..." className="w-64" />
-            </div>
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <ThemeToggle />
-            <div className="flex items-center space-x-2">
-              <Link href="/login">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                >
-                  Iniciar Sesión
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-blue-500/50 text-blue-400 hover:bg-blue-500 hover:text-white"
-                >
-                  Registro
-                </Button>
-              </Link>
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-2">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Buscar..." className="w-64" />
+              </div>
+              <Button variant="ghost" size="icon">
+                <Bell className="h-5 w-5" />
+              </Button>
+              <ThemeToggle />
+
+              {/* User Profile Dropdown */}
+              <div className="flex items-center space-x-2">
+                <div className="hidden md:flex flex-col items-end">
+                  <span className="text-sm font-medium text-foreground">
+                    {profile?.first_name} {profile?.last_name}
+                  </span>
+                  <span className="text-xs text-muted-foreground capitalize">{profile?.account_type}</span>
+                </div>
+                <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              </div>
+
+              {/* Mobile Menu Button */}
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                <Menu className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -188,7 +187,11 @@ export default function Dashboard() {
             </nav>
 
             <div className="p-4 border-t border-border/40">
-              <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-muted-foreground hover:text-foreground"
+                onClick={signOut}
+              >
                 <LogOut className="w-4 h-4 mr-3" />
                 Cerrar Sesión
               </Button>
@@ -202,14 +205,43 @@ export default function Dashboard() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-3xl font-bold text-foreground">Resumen General</h2>
-                  <p className="text-muted-foreground">Bienvenido de vuelta, aquí tienes un resumen de tu actividad</p>
+                  <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
+                  <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
                 </div>
                 <Button className="bg-emerald-500 hover:bg-emerald-600">
                   <Plus className="w-4 h-4 mr-2" />
                   Nuevo Caso
                 </Button>
               </div>
+
+              {/* User Info Card */}
+              <Card className="border-border/40">
+                <CardHeader>
+                  <CardTitle className="text-foreground">Información de la Cuenta</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Correo Electrónico</p>
+                      <p className="font-medium">{user?.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tipo de Cuenta</p>
+                      <p className="font-medium capitalize">{profile?.account_type}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Teléfono</p>
+                      <p className="font-medium">{profile?.phone || "No especificado"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Fecha de Registro</p>
+                      <p className="font-medium">
+                        {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -318,5 +350,13 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
     </div>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   )
 }
