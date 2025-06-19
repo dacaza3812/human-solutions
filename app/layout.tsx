@@ -6,7 +6,6 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "Fox Lawyer - Asesoría Legal Personalizada",
   description: "Asesoría legal personalizada para resolver problemas financieros, familiares y amorosos",
-  generator: "v0.dev",
 }
 
 export default function RootLayout({
