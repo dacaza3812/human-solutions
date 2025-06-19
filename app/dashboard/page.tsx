@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
 import {
   Home,
   Users,
@@ -25,24 +26,156 @@ import {
   Menu,
   X,
   User,
+  Share2,
+  Copy,
+  CheckCircle,
+  Gift,
+  UserPlus,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import Link from "next/link"
 
 function DashboardContent() {
   const [activeView, setActiveView] = useState("overview")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [referralStats, setReferralStats] = useState({
+    total_referrals: 0,
+    active_referrals: 0,
+    total_earnings: 0,
+    monthly_earnings: 0,
+  })
+  const [referralCode, setReferralCode] = useState("")
+  const [copySuccess, setCopySuccess] = useState(false)
   const { user, profile, signOut } = useAuth()
 
-  const sidebarItems = [
-    { id: "overview", name: "Resumen", icon: Home },
-    { id: "clients", name: "Clientes", icon: Users },
-    { id: "cases", name: "Casos", icon: FileText },
-    { id: "analytics", name: "Análisis", icon: BarChart3 },
-    { id: "calendar", name: "Calendario", icon: Calendar },
-    { id: "messages", name: "Mensajes", icon: MessageCircle },
-    { id: "settings", name: "Configuración", icon: Settings },
+  // Generate referral code on component mount
+  useEffect(() => {
+    if (profile && !referralCode) {
+      const generateReferralCode = () => {
+        const firstName = profile.first_name?.toLowerCase() || ""
+        const lastName = profile.last_name?.toLowerCase() || ""
+        const randomNum = Math.floor(Math.random() * 1000)
+        return `${firstName}${lastName}${randomNum}`
+      }
+      setReferralCode(generateReferralCode())
+    }
+  }, [profile, referralCode])
+
+  // Fetch referral stats for clients
+  useEffect(() => {
+    if (profile?.account_type === "client" && profile.id) {
+      fetchReferralStats()
+    }
+  }, [profile])
+
+  const fetchReferralStats = async () => {
+    try {
+      // Use the new SQL function to get referral stats
+      const { data, error } = await supabase.rpc("get_referral_stats", {
+        user_referral_code: referralCode,
+      })
+
+      if (error) {
+        console.error("Error fetching referral stats:", error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        const stats = data[0]
+        setReferralStats({
+          total_referrals: stats.total_referrals || 0,
+          active_referrals: stats.active_referrals || 0,
+          total_earnings: stats.total_earnings || 0,
+          monthly_earnings: stats.monthly_earnings || 0,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching referral stats:", error)
+    }
+  }
+
+  // Menu items based on user role
+  const getMenuItems = () => {
+    const baseItems = [
+      { id: "overview", name: "Resumen", icon: Home },
+      { id: "settings", name: "Configuración", icon: Settings },
+    ]
+
+    if (profile?.account_type === "advisor") {
+      return [
+        ...baseItems.slice(0, 1), // Keep overview
+        { id: "clients", name: "Clientes", icon: Users },
+        { id: "cases", name: "Casos", icon: FileText },
+        { id: "analytics", name: "Análisis", icon: BarChart3 },
+        { id: "calendar", name: "Calendario", icon: Calendar },
+        { id: "messages", name: "Mensajes", icon: MessageCircle },
+        ...baseItems.slice(1), // Keep settings
+      ]
+    } else {
+      // Client menu
+      return [
+        ...baseItems.slice(0, 1), // Keep overview
+        { id: "referrals", name: "Referidos", icon: UserPlus },
+        { id: "cases", name: "Mis Casos", icon: FileText },
+        { id: "calendar", name: "Citas", icon: Calendar },
+        { id: "messages", name: "Mensajes", icon: MessageCircle },
+        ...baseItems.slice(1), // Keep settings
+      ]
+    }
+  }
+
+  const sidebarItems = getMenuItems()
+
+  // Datos de ejemplo para la búsqueda
+  const searchableData = [
+    { type: "client", name: "María González", description: "Cliente - Asesoría financiera", id: "1" },
+    { type: "client", name: "Carlos Rodríguez", description: "Cliente - Mediación familiar", id: "2" },
+    { type: "client", name: "Ana Martínez", description: "Cliente - Planificación presupuestaria", id: "3" },
+    { type: "case", name: "Caso #1234", description: "Mediación familiar - En progreso", id: "4" },
+    { type: "case", name: "Caso #1235", description: "Asesoría financiera - Completado", id: "5" },
+    { type: "appointment", name: "Consulta 10:00 AM", description: "Ana Martínez - Hoy", id: "6" },
+    { type: "appointment", name: "Consulta 2:30 PM", description: "Familia Rodríguez - Hoy", id: "7" },
   ]
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+
+    if (query.trim() === "") {
+      setSearchResults([])
+      setShowSearchResults(false)
+      return
+    }
+
+    const results = searchableData.filter(
+      (item) =>
+        item.name.toLowerCase().includes(query.toLowerCase()) ||
+        item.description.toLowerCase().includes(query.toLowerCase()),
+    )
+
+    setSearchResults(results)
+    setShowSearchResults(true)
+  }
+
+  const handleSearchResultClick = (result: any) => {
+    setSearchQuery(result.name)
+    setShowSearchResults(false)
+    console.log("Resultado seleccionado:", result)
+  }
+
+  const copyReferralLink = async () => {
+    const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error("Error copying to clipboard:", err)
+    }
+  }
 
   const stats = [
     {
@@ -71,6 +204,37 @@ function DashboardContent() {
       value: "98%",
       change: "+2%",
       icon: Award,
+      color: "text-orange-400",
+    },
+  ]
+
+  const clientStats = [
+    {
+      title: "Casos Activos",
+      value: "3",
+      change: "+1",
+      icon: FileText,
+      color: "text-emerald-400",
+    },
+    {
+      title: "Referidos Totales",
+      value: referralStats.total_referrals.toString(),
+      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
+      icon: UserPlus,
+      color: "text-blue-400",
+    },
+    {
+      title: "Ganancias por Referidos",
+      value: `$${referralStats.total_earnings}`,
+      change: `+$${referralStats.monthly_earnings}`,
+      icon: DollarSign,
+      color: "text-purple-400",
+    },
+    {
+      title: "Próximas Citas",
+      value: "2",
+      change: "Esta semana",
+      icon: Calendar,
       color: "text-orange-400",
     },
   ]
@@ -118,10 +282,46 @@ function DashboardContent() {
             </Link>
 
             <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center space-x-2">
-                <Search className="w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Buscar..." className="w-64" />
+              {/* Search Bar with Results - Fixed Icon Position */}
+              <div className="hidden md:flex items-center space-x-2 relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                  <Input
+                    placeholder="Buscar clientes, casos, citas..."
+                    className="w-64 pl-10"
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    onFocus={() => searchQuery && setShowSearchResults(true)}
+                    onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+                  />
+
+                  {/* Search Results Dropdown */}
+                  {showSearchResults && searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          onClick={() => handleSearchResultClick(result)}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
+                        >
+                          <div className="font-medium text-sm text-foreground">{result.name}</div>
+                          <div className="text-xs text-muted-foreground">{result.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* No Results Message */}
+                  {showSearchResults && searchResults.length === 0 && searchQuery.trim() !== "" && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 p-3">
+                      <div className="text-sm text-muted-foreground text-center">
+                        No se encontraron resultados para "{searchQuery}"
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+
               <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
               </Button>
@@ -163,6 +363,35 @@ function DashboardContent() {
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
                   <X className="h-5 w-5" />
                 </Button>
+              </div>
+
+              {/* Mobile Search */}
+              <div className="lg:hidden mt-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                  <Input
+                    placeholder="Buscar..."
+                    className="pl-10"
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+
+                  {/* Mobile Search Results */}
+                  {showSearchResults && searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          onClick={() => handleSearchResultClick(result)}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
+                        >
+                          <div className="font-medium text-sm text-foreground">{result.name}</div>
+                          <div className="text-xs text-muted-foreground">{result.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -208,10 +437,12 @@ function DashboardContent() {
                   <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
                   <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
                 </div>
-                <Button className="bg-emerald-500 hover:bg-emerald-600">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Caso
-                </Button>
+                {profile?.account_type === "advisor" && (
+                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo Caso
+                  </Button>
+                )}
               </div>
 
               {/* User Info Card */}
@@ -245,14 +476,14 @@ function DashboardContent() {
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, index) => (
+                {(profile?.account_type === "advisor" ? stats : clientStats).map((stat, index) => (
                   <Card key={index} className="border-border/40">
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">{stat.title}</p>
                           <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                          <p className={`text-sm ${stat.color}`}>{stat.change} vs mes anterior</p>
+                          <p className={`text-sm ${stat.color}`}>{stat.change}</p>
                         </div>
                         <div className={`w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center`}>
                           <stat.icon className={`w-6 h-6 ${stat.color}`} />
@@ -331,7 +562,188 @@ function DashboardContent() {
             </div>
           )}
 
-          {activeView !== "overview" && (
+          {/* Referrals Section - Only for Clients */}
+          {activeView === "referrals" && profile?.account_type === "client" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Programa de Referidos</h2>
+                  <p className="text-muted-foreground">Gana dinero compartiendo Fox Lawyer con tus amigos</p>
+                </div>
+              </div>
+
+              {/* Referral Link Card */}
+              <Card className="border-border/40">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <Share2 className="w-5 h-5 mr-2 text-emerald-400" />
+                    Tu Enlace de Referido
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="referralLink" className="text-sm font-medium">
+                      Enlace de Referido
+                    </Label>
+                    <div className="flex mt-2">
+                      <Input
+                        id="referralLink"
+                        value={`https://foxlawyer.vercel.app/register?ref=${referralCode}`}
+                        readOnly
+                        className="flex-1"
+                      />
+                      <Button onClick={copyReferralLink} variant="outline" className="ml-2" disabled={copySuccess}>
+                        {copySuccess ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Copiado
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copiar
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Gift className="w-5 h-5 text-emerald-400" />
+                      <h4 className="font-semibold text-emerald-400">¿Cómo funciona?</h4>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Comparte tu enlace único con amigos y familiares</li>
+                      <li>• Gana $25 USD por cada persona que se registre usando tu enlace</li>
+                      <li>• Los pagos se procesan automáticamente cada mes</li>
+                      <li>• No hay límite en la cantidad de referidos</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Referral Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Referidos</p>
+                        <p className="text-2xl font-bold text-foreground">{referralStats.total_referrals}</p>
+                        <p className="text-sm text-emerald-400">Todos los tiempos</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <UserPlus className="w-6 h-6 text-emerald-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Referidos Activos</p>
+                        <p className="text-2xl font-bold text-foreground">{referralStats.active_referrals}</p>
+                        <p className="text-sm text-blue-400">Usuarios activos</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Users className="w-6 h-6 text-blue-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Ganancias Totales</p>
+                        <p className="text-2xl font-bold text-foreground">${referralStats.total_earnings}</p>
+                        <p className="text-sm text-purple-400">USD ganados</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                        <DollarSign className="w-6 h-6 text-purple-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Este Mes</p>
+                        <p className="text-2xl font-bold text-foreground">${referralStats.monthly_earnings}</p>
+                        <p className="text-sm text-orange-400">Ganancias mensuales</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                        <TrendingUp className="w-6 h-6 text-orange-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Share Options */}
+              <Card className="border-border/40">
+                <CardHeader>
+                  <CardTitle className="text-foreground">Compartir en Redes Sociales</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Button
+                      variant="outline"
+                      className="h-12"
+                      onClick={() => {
+                        const text = `¡Únete a Fox Lawyer y transforma tus problemas en oportunidades! Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+                      }}
+                    >
+                      WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-12"
+                      onClick={() => {
+                        const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank")
+                      }}
+                    >
+                      Twitter
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-12"
+                      onClick={() => {
+                        const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                        window.open(
+                          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(text)}`,
+                          "_blank",
+                        )
+                      }}
+                    >
+                      Facebook
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-12"
+                      onClick={() => {
+                        const subject = "Únete a Fox Lawyer"
+                        const body = `¡Hola! Te invito a unirte a Fox Lawyer, una plataforma increíble de asesoría personalizada. Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
+                      }}
+                    >
+                      Email
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeView !== "overview" && activeView !== "referrals" && (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-8 h-8 text-muted-foreground" />
