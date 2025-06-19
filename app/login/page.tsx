@@ -12,7 +12,7 @@ import { Eye, EyeOff, ArrowLeft, Mail, Lock, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase" // Declare the supabase variable
+import { supabase } from "@/lib/supabase"
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
@@ -85,7 +85,7 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: "https://foxlawyer.vercel.app/dashboard", // URL de redirección actualizada
         },
       })
 

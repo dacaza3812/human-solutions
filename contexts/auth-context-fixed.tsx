@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User, Session } from "@supabase/supabase-js"
 import { supabase, type UserProfile } from "@/lib/supabase"
@@ -21,6 +20,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -71,16 +71,97 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log("Fetching profile for user:", userId)
+
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
-      if (error && error.code !== "PGRST116") {
+      if (error) {
         console.error("Error fetching profile:", error)
+
+        // If profile doesn't exist, try to create it from auth.users data
+        if (error.code === "PGRST116") {
+          console.log("Profile not found, attempting to create...")
+          await createMissingProfile(userId)
+          return
+        }
         return
       }
 
+      console.log("Profile fetched successfully:", data)
       setProfile(data)
     } catch (error) {
-      console.error("Error fetching profile:", error)
+      console.error("Unexpected error fetching profile:", error)
+    }
+  }
+
+  const createMissingProfile = async (userId: string) => {
+    try {
+      // Get user data from auth.users
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      // Generate referral code
+      const firstName = user.user_metadata?.first_name || "Usuario"
+      const lastName = user.user_metadata?.last_name || "Nuevo"
+
+      // Call the database function to generate referral code
+      const { data: referralCodeData, error: referralError } = await supabase.rpc("generate_referral_code", {
+        first_name: firstName,
+        last_name: lastName,
+      })
+
+      const referralCode =
+        referralCodeData || `${firstName.toLowerCase()}${lastName.toLowerCase()}${Math.floor(Math.random() * 1000)}`
+
+      // Create profile
+      const { data, error } = await supabase
+        .from("profiles")
+        .insert([
+          {
+            id: userId,
+            email: user.email!,
+            first_name: firstName,
+            last_name: lastName,
+            phone: user.user_metadata?.phone || null,
+            account_type: user.user_metadata?.account_type || "client",
+            referral_code: referralCode,
+            referred_by: user.user_metadata?.referral_code || null,
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error creating profile:", error)
+        return
+      }
+
+      console.log("Profile created successfully:", data)
+      setProfile(data)
+
+      // Create referral relationship if applicable
+      const referredBy = user.user_metadata?.referral_code
+      if (referredBy) {
+        const { error: referralRelationError } = await supabase.rpc("create_referral_relationship", {
+          referrer_code: referredBy,
+          referred_user_id: userId,
+        })
+
+        if (referralRelationError) {
+          console.error("Error creating referral relationship:", referralRelationError)
+        }
+      }
+    } catch (error) {
+      console.error("Error creating missing profile:", error)
+    }
+  }
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchUserProfile(user.id)
     }
   }
 
@@ -113,48 +194,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error }
       }
 
-      // Wait a bit for the trigger to complete
-      if (data.user && !data.user.email_confirmed_at) {
-        // For unconfirmed users, we might need to create the profile manually
-        // This is a fallback in case the trigger doesn't work
-        setTimeout(async () => {
-          try {
-            const { error: profileError } = await supabase.from("profiles").upsert(
-              [
-                {
-                  id: data.user!.id,
-                  email: data.user!.email,
-                  first_name: userData.first_name || "",
-                  last_name: userData.last_name || "",
-                  phone: userData.phone || "",
-                  account_type: userData.account_type || "client",
-                  referred_by: referralCode && referralCode.trim() !== "" ? referralCode.trim() : null,
-                },
-              ],
-              { onConflict: "id" },
-            )
-
-            if (profileError) {
-              console.error("Error creating profile fallback:", profileError)
-            }
-
-            // Create referral relationship if applicable
-            if (referralCode && referralCode.trim() !== "" && data.user) {
-              const { error: referralError } = await supabase.rpc("create_referral_relationship", {
-                referrer_code: referralCode.trim(),
-                referred_user_id: data.user.id,
-              })
-
-              if (referralError) {
-                console.error("Error creating referral relationship:", referralError)
-              }
-            }
-          } catch (err) {
-            console.error("Error in profile creation fallback:", err)
-          }
-        }, 1000)
-      }
-
       return { error: null }
     } catch (error) {
       console.error("Unexpected signup error:", error)
@@ -181,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    router.push("/") // Changed redirection to the main page
+    router.push("/")
   }
 
   const resetPassword = async (email: string) => {
@@ -204,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     resetPassword,
+    refreshProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
