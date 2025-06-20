@@ -180,8 +180,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/login")
+    try {
+      console.log("Attempting to sign out...")
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error("Error during sign out:", error)
+        // Optionally, you could show a toast notification to the user here
+        // toast({
+        //   title: "Error al cerrar sesión",
+        //   description: error.message,
+        //   variant: "destructive",
+        // });
+      } else {
+        console.log("Sign out successful. Redirecting to login page.")
+      }
+    } catch (err) {
+      console.error("Unexpected error during sign out:", err)
+      // toast({
+      //   title: "Error inesperado",
+      //   description: "Ocurrió un error al intentar cerrar sesión.",
+      //   variant: "destructive",
+      // });
+    } finally {
+      // Always attempt to redirect to login page, even if sign out failed on Supabase side,
+      // to ensure the user doesn't remain in a protected route with a potentially invalid session.
+      router.push("/login")
+    }
   }
 
   const resetPassword = async (email: string) => {
