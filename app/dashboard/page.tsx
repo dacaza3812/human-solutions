@@ -31,10 +31,18 @@ import {
   CheckCircle,
   Gift,
   UserPlus,
+  CalendarDays,
+  PieChart,
+  Eye,
+  Send,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { Calendar as CalendarComponent } from "@/components/calendar-component"
+import { FinancialCharts } from "@/components/financial-charts"
+import { ChatInterface } from "@/components/chat-interface"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 function DashboardContent() {
   const [activeView, setActiveView] = useState("overview")
@@ -50,7 +58,146 @@ function DashboardContent() {
   })
   const [referralCode, setReferralCode] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
+  const [selectedCase, setSelectedCase] = useState<any>(null)
+  const [selectedClient, setSelectedClient] = useState<any>(null)
+  const [activeChat, setActiveChat] = useState<number | null>(null)
+  const [clientFilter, setClientFilter] = useState("")
+  const [caseFilter, setCaseFilter] = useState("all")
   const { user, profile, signOut } = useAuth()
+
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [dateRange, setDateRange] = useState({
+    start: "2024-01-01",
+    end: "2024-12-31",
+  })
+
+  // Mock data for current user's cases (client view)
+  const userCases = [
+    {
+      id: 1,
+      title: "Asesoría Financiera Personal",
+      type: "Asesoría Financiera",
+      status: "En Progreso",
+      advisor: "Dr. María González",
+      advisorAvatar: "/placeholder-user.jpg",
+      description:
+        "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
+      createdDate: "2024-01-15",
+      nextAppointment: "2024-01-25 10:00 AM",
+      progress: 65,
+    },
+    {
+      id: 2,
+      title: "Mediación Familiar",
+      type: "Relaciones Familiares",
+      status: "Programada",
+      advisor: "Lic. Carlos Rodríguez",
+      advisorAvatar: "/placeholder-user.jpg",
+      description: "Resolución de conflictos familiares y mejora de la comunicación entre miembros de la familia.",
+      createdDate: "2024-01-10",
+      nextAppointment: "2024-01-20 2:30 PM",
+      progress: 25,
+    },
+    {
+      id: 3,
+      title: "Consulta Legal",
+      type: "Asesoría Legal",
+      status: "Completada",
+      advisor: "Abg. Ana Martínez",
+      advisorAvatar: "/placeholder-user.jpg",
+      description: "Consulta sobre derechos laborales y procedimientos legales.",
+      createdDate: "2023-12-20",
+      nextAppointment: null,
+      progress: 100,
+    },
+  ]
+
+  // Mock data for advisor's clients
+  const advisorClients = [
+    {
+      id: 1,
+      name: "Juan Pérez",
+      email: "juan@email.com",
+      phone: "+52 123 456 7890",
+      avatar: "/placeholder-user.jpg",
+      totalCases: 3,
+      activeCases: 2,
+      completedCases: 1,
+      joinDate: "2024-01-10",
+      lastActivity: "2024-01-18",
+    },
+    {
+      id: 2,
+      name: "María López",
+      email: "maria@email.com",
+      phone: "+52 098 765 4321",
+      avatar: "/placeholder-user.jpg",
+      totalCases: 2,
+      activeCases: 1,
+      completedCases: 1,
+      joinDate: "2024-01-05",
+      lastActivity: "2024-01-17",
+    },
+    {
+      id: 3,
+      name: "Carlos Mendoza",
+      email: "carlos@email.com",
+      phone: "+52 555 123 4567",
+      avatar: "/placeholder-user.jpg",
+      totalCases: 4,
+      activeCases: 3,
+      completedCases: 1,
+      joinDate: "2023-12-15",
+      lastActivity: "2024-01-19",
+    },
+  ]
+
+  // Mock data for advisor's cases
+  const advisorCases = [
+    {
+      id: 1,
+      clientName: "Juan Pérez",
+      clientId: 1,
+      title: "Asesoría Financiera Personal",
+      type: "Asesoría Financiera",
+      status: "En Progreso",
+      priority: "Alta",
+      createdDate: "2024-01-15",
+      dueDate: "2024-02-15",
+      description:
+        "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
+      progress: 65,
+    },
+    {
+      id: 2,
+      clientName: "María López",
+      clientId: 2,
+      title: "Mediación Familiar",
+      type: "Relaciones Familiares",
+      status: "Programada",
+      priority: "Media",
+      createdDate: "2024-01-10",
+      dueDate: "2024-01-30",
+      description: "Resolución de conflictos familiares y mejora de la comunicación.",
+      progress: 25,
+    },
+    {
+      id: 3,
+      clientName: "Carlos Mendoza",
+      clientId: 3,
+      title: "Consulta Legal",
+      type: "Asesoría Legal",
+      status: "En Revisión",
+      priority: "Baja",
+      createdDate: "2024-01-08",
+      dueDate: "2024-01-25",
+      description: "Consulta sobre derechos laborales y procedimientos legales.",
+      progress: 80,
+    },
+  ]
+
+  // Filter user's scheduled cases for quotes section
+  const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
 
   // Generate referral code on component mount
   useEffect(() => {
@@ -110,6 +257,7 @@ function DashboardContent() {
         ...baseItems.slice(0, 1), // Keep overview
         { id: "clients", name: "Clientes", icon: Users },
         { id: "cases", name: "Casos", icon: FileText },
+        { id: "financial", name: "Vista Financiera", icon: PieChart },
         { id: "analytics", name: "Análisis", icon: BarChart3 },
         { id: "calendar", name: "Calendario", icon: Calendar },
         { id: "messages", name: "Mensajes", icon: MessageCircle },
@@ -121,7 +269,8 @@ function DashboardContent() {
         ...baseItems.slice(0, 1), // Keep overview
         { id: "referrals", name: "Referidos", icon: UserPlus },
         { id: "cases", name: "Mis Casos", icon: FileText },
-        { id: "calendar", name: "Citas", icon: Calendar },
+        { id: "quotes", name: "Citas", icon: CalendarDays },
+        { id: "calendar", name: "Calendario", icon: Calendar },
         { id: "messages", name: "Mensajes", icon: MessageCircle },
         ...baseItems.slice(1), // Keep settings
       ]
@@ -177,6 +326,22 @@ function DashboardContent() {
     }
   }
 
+  const openChatForCase = (caseId: number) => {
+    setActiveChat(caseId)
+    setActiveView("messages")
+  }
+
+  const filteredClients = advisorClients.filter(
+    (client) =>
+      client.name.toLowerCase().includes(clientFilter.toLowerCase()) ||
+      client.email.toLowerCase().includes(clientFilter.toLowerCase()),
+  )
+
+  const filteredCases = advisorCases.filter((case_item) => {
+    if (caseFilter === "all") return true
+    return case_item.status.toLowerCase().includes(caseFilter.toLowerCase())
+  })
+
   const stats = [
     {
       title: "Clientes Activos",
@@ -211,7 +376,7 @@ function DashboardContent() {
   const clientStats = [
     {
       title: "Casos Activos",
-      value: "3",
+      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
       change: "+1",
       icon: FileText,
       color: "text-emerald-400",
@@ -232,7 +397,7 @@ function DashboardContent() {
     },
     {
       title: "Próximas Citas",
-      value: "2",
+      value: userScheduledCases.length.toString(),
       change: "Esta semana",
       icon: Calendar,
       color: "text-orange-400",
@@ -395,7 +560,7 @@ function DashboardContent() {
               </div>
             </div>
 
-            <nav className="flex-1 px-4 space-y-2">
+            <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
               {sidebarItems.map((item) => (
                 <button
                   key={item.id}
@@ -559,6 +724,758 @@ function DashboardContent() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          )}
+
+          {/* Client Cases Section */}
+          {activeView === "cases" && profile?.account_type === "client" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Mis Casos</h2>
+                  <p className="text-muted-foreground">Gestiona y revisa el progreso de tus casos</p>
+                </div>
+                <Button className="bg-emerald-500 hover:bg-emerald-600">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Solicitar Nuevo Caso
+                </Button>
+              </div>
+
+              <div className="grid gap-6">
+                {userCases.map((case_item) => (
+                  <Card key={case_item.id} className="border-border/40">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg text-foreground">{case_item.title}</CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">{case_item.type}</p>
+                        </div>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            case_item.status === "Completada"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400"
+                              : case_item.status === "En Progreso"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                          }`}
+                        >
+                          {case_item.status}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground">{case_item.description}</p>
+
+                      {/* Advisor Info */}
+                      <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={case_item.advisorAvatar || "/placeholder.svg"} />
+                          <AvatarFallback>{case_item.advisor.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-foreground">Asesor Asignado</p>
+                          <p className="text-sm text-muted-foreground">{case_item.advisor}</p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => openChatForCase(case_item.id)}>
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Mensaje
+                        </Button>
+                      </div>
+
+                      {/* Progress Bar */}
+                      {case_item.status !== "Completada" && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Progreso</span>
+                            <span className="text-foreground">{case_item.progress}%</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div
+                              className="bg-emerald-500 h-2 rounded-full transition-all"
+                              style={{ width: `${case_item.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Case Details */}
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Fecha de Creación</p>
+                          <p className="font-medium">{new Date(case_item.createdDate).toLocaleDateString()}</p>
+                        </div>
+                        {case_item.nextAppointment && (
+                          <div>
+                            <p className="text-muted-foreground">Próxima Cita</p>
+                            <p className="font-medium">{case_item.nextAppointment}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Advisor Cases Section */}
+          {activeView === "cases" && profile?.account_type === "advisor" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Mis Casos Asignados</h2>
+                  <p className="text-muted-foreground">Gestiona los casos de tus clientes</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={caseFilter}
+                    onChange={(e) => setCaseFilter(e.target.value)}
+                    className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  >
+                    <option value="all">Todos los casos</option>
+                    <option value="en progreso">En Progreso</option>
+                    <option value="programada">Programados</option>
+                    <option value="en revisión">En Revisión</option>
+                  </select>
+                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo Caso
+                  </Button>
+                </div>
+              </div>
+
+              <Card className="border-border/40">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border/40">
+                          <th className="text-left py-4 px-6 font-medium text-muted-foreground">Cliente</th>
+                          <th className="text-left py-4 px-6 font-medium text-muted-foreground">Caso</th>
+                          <th className="text-left py-4 px-6 font-medium text-muted-foreground">Tipo</th>
+                          <th className="text-left py-4 px-6 font-medium text-muted-foreground">Estado</th>
+                          <th className="text-left py-4 px-6 font-medium text-muted-foreground">Prioridad</th>
+                          <th className="text-left py-4 px-6 font-medium text-muted-foreground">Fecha Límite</th>
+                          <th className="text-center py-4 px-6 font-medium text-muted-foreground">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCases.map((case_item) => (
+                          <tr
+                            key={case_item.id}
+                            className="border-b border-border/20 hover:bg-muted/50 cursor-pointer"
+                            onClick={() => setSelectedCase(case_item)}
+                          >
+                            <td className="py-4 px-6">
+                              <div className="flex items-center space-x-3">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarFallback>{case_item.clientName.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{case_item.clientName}</span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div>
+                                <p className="font-medium text-sm">{case_item.title}</p>
+                                <p className="text-xs text-muted-foreground">#{case_item.id}</p>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-sm text-muted-foreground">{case_item.type}</td>
+                            <td className="py-4 px-6">
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  case_item.status === "En Progreso"
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                                    : case_item.status === "Programada"
+                                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                                      : "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+                                }`}
+                              >
+                                {case_item.status}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6">
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  case_item.priority === "Alta"
+                                    ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                                    : case_item.priority === "Media"
+                                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                                      : "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                                }`}
+                              >
+                                {case_item.priority}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-sm">{new Date(case_item.dueDate).toLocaleDateString()}</td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center justify-center space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openChatForCase(case_item.id)
+                                  }}
+                                >
+                                  <Send className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedCase(case_item)
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Case Detail Modal */}
+              {selectedCase && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xl">{selectedCase.title}</CardTitle>
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedCase(null)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Cliente</p>
+                          <p className="font-medium">{selectedCase.clientName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Tipo de Caso</p>
+                          <p className="font-medium">{selectedCase.type}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Estado</p>
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              selectedCase.status === "En Progreso"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                                : selectedCase.status === "Programada"
+                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                                  : "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+                            }`}
+                          >
+                            {selectedCase.status}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Prioridad</p>
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              selectedCase.priority === "Alta"
+                                ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                                : selectedCase.priority === "Media"
+                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                                  : "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            }`}
+                          >
+                            {selectedCase.priority}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Fecha de Creación</p>
+                          <p className="font-medium">{new Date(selectedCase.createdDate).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Fecha Límite</p>
+                          <p className="font-medium">{new Date(selectedCase.dueDate).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Descripción</p>
+                        <p className="text-sm">{selectedCase.description}</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Progreso del Caso</span>
+                          <span className="text-foreground">{selectedCase.progress}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-emerald-500 h-2 rounded-full transition-all"
+                            style={{ width: `${selectedCase.progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-3">
+                        <Button
+                          className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+                          onClick={() => {
+                            openChatForCase(selectedCase.id)
+                            setSelectedCase(null)
+                          }}
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Enviar Mensaje
+                        </Button>
+                        <Button variant="outline" className="flex-1">
+                          <FileText className="w-4 h-4 mr-2" />
+                          Ver Documentos
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Advisor Clients Section */}
+          {activeView === "clients" && profile?.account_type === "advisor" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Mis Clientes</h2>
+                  <p className="text-muted-foreground">Gestiona la información de tus clientes</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar clientes..."
+                      className="pl-10 w-64"
+                      value={clientFilter}
+                      onChange={(e) => setClientFilter(e.target.value)}
+                    />
+                  </div>
+                  <Button className="bg-emerald-500 hover:bg-emerald-600">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo Cliente
+                  </Button>
+                </div>
+              </div>
+
+              {/* Client Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Clientes</p>
+                        <p className="text-2xl font-bold text-foreground">{advisorClients.length}</p>
+                        <p className="text-sm text-emerald-400">+2 este mes</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <Users className="w-6 h-6 text-emerald-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Casos Activos</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {advisorClients.reduce((sum, client) => sum + client.activeCases, 0)}
+                        </p>
+                        <p className="text-sm text-blue-400">En progreso</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-blue-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Casos Completados</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {advisorClients.reduce((sum, client) => sum + client.completedCases, 0)}
+                        </p>
+                        <p className="text-sm text-purple-400">Este mes</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-purple-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Satisfacción</p>
+                        <p className="text-2xl font-bold text-foreground">98%</p>
+                        <p className="text-sm text-orange-400">Promedio</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                        <Award className="w-6 h-6 text-orange-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Clients Grid */}
+              <div className="grid gap-6">
+                {filteredClients.map((client) => (
+                  <Card
+                    key={client.id}
+                    className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedClient(client)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Avatar className="w-12 h-12">
+                            <AvatarImage src={client.avatar || "/placeholder.svg"} />
+                            <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="font-semibold text-lg text-foreground">{client.name}</h3>
+                            <p className="text-sm text-muted-foreground">{client.email}</p>
+                            <p className="text-sm text-muted-foreground">{client.phone}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Última actividad</p>
+                          <p className="text-sm font-medium">{new Date(client.lastActivity).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border/40">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-emerald-400">{client.totalCases}</p>
+                          <p className="text-xs text-muted-foreground">Total Casos</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-blue-400">{client.activeCases}</p>
+                          <p className="text-xs text-muted-foreground">Activos</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-purple-400">{client.completedCases}</p>
+                          <p className="text-xs text-muted-foreground">Completados</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Client Detail Modal */}
+              {selectedClient && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Avatar className="w-12 h-12">
+                            <AvatarImage src={selectedClient.avatar || "/placeholder.svg"} />
+                            <AvatarFallback>{selectedClient.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle className="text-xl">{selectedClient.name}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Teléfono</p>
+                          <p className="font-medium">{selectedClient.phone}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Fecha de Registro</p>
+                          <p className="font-medium">{new Date(selectedClient.joinDate).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Última Actividad</p>
+                          <p className="font-medium">{new Date(selectedClient.lastActivity).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Estado</p>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
+                            Activo
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <Card className="border-border/40">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-2xl font-bold text-emerald-400">{selectedClient.totalCases}</p>
+                            <p className="text-sm text-muted-foreground">Total Casos</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="border-border/40">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-2xl font-bold text-blue-400">{selectedClient.activeCases}</p>
+                            <p className="text-sm text-muted-foreground">Casos Activos</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="border-border/40">
+                          <CardContent className="p-4 text-center">
+                            <p className="text-2xl font-bold text-purple-400">{selectedClient.completedCases}</p>
+                            <p className="text-sm text-muted-foreground">Completados</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <div className="flex space-x-3">
+                        <Button
+                          className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+                          onClick={() => {
+                            // Find a case for this client to open chat
+                            const clientCase = advisorCases.find((c) => c.clientId === selectedClient.id)
+                            if (clientCase) {
+                              openChatForCase(clientCase.id)
+                              setSelectedClient(null)
+                            }
+                          }}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Enviar Mensaje
+                        </Button>
+                        <Button variant="outline" className="flex-1">
+                          <FileText className="w-4 h-4 mr-2" />
+                          Ver Casos
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Messages Section */}
+          {activeView === "messages" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Mensajes</h2>
+                  <p className="text-muted-foreground">
+                    {profile?.account_type === "client"
+                      ? "Comunícate con tus asesores asignados"
+                      : "Comunícate con tus clientes"}
+                  </p>
+                </div>
+              </div>
+
+              {activeChat ? (
+                <div className="space-y-4">
+                  <Button variant="outline" onClick={() => setActiveChat(null)} className="mb-4">
+                    ← Volver a conversaciones
+                  </Button>
+
+                  {profile?.account_type === "client"
+                    ? (() => {
+                        const case_item = userCases.find((c) => c.id === activeChat)
+                        return case_item ? (
+                          <ChatInterface
+                            caseId={activeChat}
+                            advisorName={case_item.advisor}
+                            advisorAvatar={case_item.advisorAvatar}
+                            currentUser="client"
+                          />
+                        ) : null
+                      })()
+                    : (() => {
+                        const case_item = advisorCases.find((c) => c.id === activeChat)
+                        return case_item ? (
+                          <ChatInterface
+                            caseId={activeChat}
+                            advisorName={`${profile?.first_name} ${profile?.last_name}`}
+                            advisorAvatar="/placeholder-user.jpg"
+                            currentUser="advisor"
+                          />
+                        ) : null
+                      })()}
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  <h3 className="text-lg font-semibold text-foreground">Conversaciones Activas</h3>
+
+                  {profile?.account_type === "client"
+                    ? userCases
+                        .filter((c) => c.status !== "Completada")
+                        .map((case_item) => (
+                          <Card
+                            key={case_item.id}
+                            className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => setActiveChat(case_item.id)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-center space-x-4">
+                                <Avatar className="w-12 h-12">
+                                  <AvatarImage src={case_item.advisorAvatar || "/placeholder.svg"} />
+                                  <AvatarFallback>{case_item.advisor.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-foreground">{case_item.advisor}</h4>
+                                  <p className="text-sm text-muted-foreground">{case_item.title}</p>
+                                  <p className="text-xs text-muted-foreground">Último mensaje: Hace 2 horas</p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
+                                    {case_item.status}
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                    : advisorCases
+                        .filter((c) => c.status !== "Completada")
+                        .map((case_item) => (
+                          <Card
+                            key={case_item.id}
+                            className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => setActiveChat(case_item.id)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-center space-x-4">
+                                <Avatar className="w-12 h-12">
+                                  <AvatarFallback>{case_item.clientName.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-foreground">{case_item.clientName}</h4>
+                                  <p className="text-sm text-muted-foreground">{case_item.title}</p>
+                                  <p className="text-xs text-muted-foreground">Último mensaje: Hace 1 hora</p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                                    {case_item.status}
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Quotes Section - Only for Clients */}
+          {activeView === "quotes" && profile?.account_type === "client" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Mis Citas</h2>
+                  <p className="text-muted-foreground">Gestiona tus citas y consultas programadas</p>
+                </div>
+                <Button className="bg-emerald-500 hover:bg-emerald-600">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nueva Cita
+                </Button>
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Calendar */}
+                <div className="lg:col-span-1">
+                  <CalendarComponent selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+                </div>
+
+                {/* Cases Table - Only scheduled cases for current user */}
+                <div className="lg:col-span-2">
+                  <Card className="border-border/40">
+                    <CardHeader>
+                      <CardTitle className="text-foreground">Mis Citas Programadas</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-border/40">
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Asesor</th>
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                              <th className="text-left py-3 px-4 font-medium text-muted-foreground">Hora</th>
+                              <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {userScheduledCases.map((case_item) => (
+                              <tr key={case_item.id} className="border-b border-border/20 hover:bg-muted/50">
+                                <td className="py-3 px-4 text-sm font-medium">{case_item.advisor}</td>
+                                <td className="py-3 px-4 text-sm text-muted-foreground">{case_item.type}</td>
+                                <td className="py-3 px-4 text-sm">
+                                  {new Date(case_item.createdDate).toLocaleDateString()}
+                                </td>
+                                <td className="py-3 px-4 text-sm">
+                                  {case_item.nextAppointment?.split(" ")[1] || "Por definir"}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      case_item.status === "En Progreso"
+                                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                                    }`}
+                                  >
+                                    {case_item.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Financial Overview Section - Only for Advisors */}
+          {activeView === "financial" && profile?.account_type === "advisor" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Vista Financiera</h2>
+                  <p className="text-muted-foreground">Análisis detallado de ingresos, gastos y métricas financieras</p>
+                </div>
+                <div className="flex space-x-2">
+                  <Input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                    className="w-40"
+                  />
+                  <Input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                    className="w-40"
+                  />
+                </div>
+              </div>
+
+              <FinancialCharts dateRange={dateRange} />
             </div>
           )}
 
@@ -743,17 +1660,24 @@ function DashboardContent() {
             </div>
           )}
 
-          {activeView !== "overview" && activeView !== "referrals" && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-8 h-8 text-muted-foreground" />
+          {activeView !== "overview" &&
+            activeView !== "referrals" &&
+            activeView !== "quotes" &&
+            activeView !== "financial" &&
+            activeView !== "cases" &&
+            activeView !== "clients" &&
+            activeView !== "messages" && (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Vista en Desarrollo</h3>
+                <p className="text-muted-foreground">
+                  La sección "{sidebarItems.find((item) => item.id === activeView)?.name}" estará disponible
+                  próximamente.
+                </p>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Vista en Desarrollo</h3>
-              <p className="text-muted-foreground">
-                La sección "{sidebarItems.find((item) => item.id === activeView)?.name}" estará disponible próximamente.
-              </p>
-            </div>
-          )}
+            )}
         </main>
       </div>
 
