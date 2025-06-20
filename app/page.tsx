@@ -71,8 +71,8 @@ export default function SolucionesHumanas() {
       icon: DollarSign,
       title: "Asesoría Financiera",
       description: "Haz que tu salario alcance hasta el final del mes",
-      details: "Planificación presupuestaria personalizada y estrategias de ahorro efectivas.",
-      features: ["Análisis de gastos", "Presupuesto personalizado", "Estrategias de ahorro"],
+      details: "Planificación para tus finanzas personales a corto, mediano y largo plazo.",
+      features: ["Generación de ingresos", "Técnicas de ahorro", "Inversión de tu capital"],
     },
     {
       icon: Users,
@@ -83,10 +83,10 @@ export default function SolucionesHumanas() {
     },
     {
       icon: Heart,
-      title: "Relaciones Amorosas",
+      title: "Problemas de relación",
       description: "Construye relaciones sólidas y duraderas",
-      details: "Coaching especializado en habilidades sociales y terapia de pareja.",
-      features: ["Terapia de pareja", "Coaching social", "Comunicación asertiva"],
+      details: "Resolución de conflictos con familiares, amigos, parejas, compañeros o jefes",
+      features: ["Como potenciar tu inteligencia interpersonal e intrapersonal", "Coaching social", "Comunicación asertiva"],
     },
     {
       icon: Shield,
