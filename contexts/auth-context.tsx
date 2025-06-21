@@ -21,6 +21,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
+  updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>
+  changePassword: (newPassword: string) => Promise<{ error: any }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -220,6 +222,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateUserProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) {
+      return { error: { message: "No user logged in." } }
+    }
+    try {
+      console.log("Attempting to update user profile:", updates)
+      const { data, error } = await supabase.from("profiles").update(updates).eq("id", user.id).select().single()
+
+      if (error) {
+        console.error("Error updating profile:", error)
+        return { error }
+      }
+
+      setProfile(data) // Update local profile state
+      console.log("Profile updated successfully:", data)
+      return { error: null }
+    } catch (error) {
+      console.error("Unexpected error updating profile:", error)
+      return { error }
+    }
+  }
+
+  const changePassword = async (newPassword: string) => {
+    if (!user) {
+      return { error: { message: "No user logged in." } }
+    }
+    try {
+      console.log("Attempting to change password...")
+      const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+
+      if (error) {
+        console.error("Error changing password:", error)
+        return { error }
+      }
+
+      console.log("Password changed successfully:", data)
+      return { error: null }
+    } catch (error) {
+      console.error("Unexpected error changing password:", error)
+      return { error }
+    }
+  }
+
   const value = {
     user,
     profile,
@@ -229,6 +274,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     resetPassword,
+    updateUserProfile,
+    changePassword,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

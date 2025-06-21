@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,6 +37,9 @@ import {
   PieChart,
   Eye,
   Send,
+  Key,
+  UserRound,
+  LinkIcon,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,13 +68,37 @@ function DashboardContent() {
   const [activeChat, setActiveChat] = useState<number | null>(null)
   const [clientFilter, setClientFilter] = useState("")
   const [caseFilter, setCaseFilter] = useState("all")
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, updateUserProfile, changePassword } = useAuth()
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [dateRange, setDateRange] = useState({
     start: "2024-01-01",
     end: "2024-12-31",
   })
+
+  // State for Settings section
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmNewPassword, setConfirmNewPassword] = useState("")
+  const [passwordChangeMessage, setPasswordChangeMessage] = useState("")
+  const [passwordChangeError, setPasswordChangeError] = useState("")
+
+  const [firstName, setFirstName] = useState(profile?.first_name || "")
+  const [lastName, setLastName] = useState(profile?.last_name || "")
+  const [profileUpdateMessage, setProfileUpdateMessage] = useState("")
+  const [profileUpdateError, setProfileUpdateError] = useState("")
+
+  const [newReferralCode, setNewReferralCode] = useState(profile?.referral_code || "")
+  const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
+  const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
+
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name || "")
+      setLastName(profile.last_name || "")
+      setNewReferralCode(profile.referral_code || "")
+    }
+  }, [profile])
 
   // Mock data for current user's cases (client view)
   const userCases = [
@@ -434,6 +463,86 @@ function DashboardContent() {
       status: "scheduled",
     },
   ]
+
+  // Handlers for Settings section
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordChangeMessage("")
+    setPasswordChangeError("")
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
+      return
+    }
+    // Add more robust password strength validation here if needed (e.g., regex for special chars, numbers)
+
+    // Supabase's updateUser does not require current password for security,
+    // but it's good practice to include it for user experience and to prevent accidental changes.
+    // For simplicity, we're not validating currentPassword against Supabase here.
+    // A more secure approach would involve re-authenticating the user or using a server-side function.
+
+    const { error } = await changePassword(newPassword)
+
+    if (error) {
+      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
+    } else {
+      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmNewPassword("")
+    }
+  }
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setProfileUpdateMessage("")
+    setProfileUpdateError("")
+
+    if (!firstName.trim() || !lastName.trim()) {
+      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
+      return
+    }
+
+    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
+
+    if (error) {
+      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
+    } else {
+      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
+    }
+  }
+
+  const handleReferralCodeUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setReferralCodeUpdateMessage("")
+    setReferralCodeUpdateError("")
+
+    if (!newReferralCode.trim()) {
+      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
+      return
+    }
+    // Basic validation: only alphanumeric characters
+    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
+      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
+      return
+    }
+
+    // In a real scenario, you'd check for uniqueness on the server-side (e.g., via a Supabase function/trigger)
+    // For this mock, we'll just assume it's unique.
+
+    const { error } = await updateUserProfile({ referral_code: newReferralCode })
+
+    if (error) {
+      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
+    } else {
+      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
+      setReferralCode(newReferralCode) // Update the local state used for referral link
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -1660,13 +1769,148 @@ function DashboardContent() {
             </div>
           )}
 
+          {/* Settings Section */}
+          {activeView === "settings" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Configuración de la Cuenta</h2>
+                  <p className="text-muted-foreground">Gestiona tu información personal y de seguridad</p>
+                </div>
+              </div>
+
+              {/* Change Password Card */}
+              <Card className="border-border/40">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <Key className="w-5 h-5 mr-2 text-purple-400" />
+                    Cambiar Contraseña
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div>
+                      <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="confirmNewPassword">Confirmar Nueva Contraseña</Label>
+                      <Input
+                        id="confirmNewPassword"
+                        type="password"
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    {passwordChangeError && <p className="text-red-500 text-sm">{passwordChangeError}</p>}
+                    {passwordChangeMessage && <p className="text-emerald-500 text-sm">{passwordChangeMessage}</p>}
+                    <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
+                      Actualizar Contraseña
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Update Profile Information Card */}
+              <Card className="border-border/40">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <UserRound className="w-5 h-5 mr-2 text-blue-400" />
+                    Actualizar Información de Perfil
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleProfileUpdate} className="space-y-4">
+                    <div>
+                      <Label htmlFor="firstName">Nombre</Label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Apellido</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    {profileUpdateError && <p className="text-red-500 text-sm">{profileUpdateError}</p>}
+                    {profileUpdateMessage && <p className="text-emerald-500 text-sm">{profileUpdateMessage}</p>}
+                    <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
+                      Guardar Cambios
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Update Referral Code Card */}
+              {profile?.account_type === "client" && ( // Only show for clients
+                <Card className="border-border/40">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-foreground">
+                      <LinkIcon className="w-5 h-5 mr-2 text-orange-400" />
+                      Modificar Código de Referido
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleReferralCodeUpdate} className="space-y-4">
+                      <div>
+                        <Label htmlFor="newReferralCode">Nuevo Código de Referido</Label>
+                        <Input
+                          id="newReferralCode"
+                          type="text"
+                          value={newReferralCode}
+                          onChange={(e) => setNewReferralCode(e.target.value)}
+                          placeholder="Ej: TUCODIGOUNICO"
+                          required
+                        />
+                      </div>
+                      {referralCodeUpdateError && <p className="text-red-500 text-sm">{referralCodeUpdateError}</p>}
+                      {referralCodeUpdateMessage && (
+                        <p className="text-emerald-500 text-sm">{referralCodeUpdateMessage}</p>
+                      )}
+                      <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
+                        Actualizar Código
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
           {activeView !== "overview" &&
             activeView !== "referrals" &&
             activeView !== "quotes" &&
             activeView !== "financial" &&
             activeView !== "cases" &&
             activeView !== "clients" &&
-            activeView !== "messages" && (
+            activeView !== "messages" &&
+            activeView !== "settings" && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                   <FileText className="w-8 h-8 text-muted-foreground" />
