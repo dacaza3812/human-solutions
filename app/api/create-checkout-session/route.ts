@@ -1,84 +1,91 @@
-import { type NextRequest, NextResponse } from "next/server"
-import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
+import { auth } from "@clerk/nextjs"
+import { NextResponse } from "next/server"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
-})
+import prismadb from "@/lib/prismadb"
+import { stripe } from "@/lib/stripe"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const DAY_IN_MS = 86_400_000
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { planId, userId } = await request.json()
+    const { userId } = auth()
+    const { planId } = await req.json()
 
-    if (!planId || !userId) {
-      return NextResponse.json({ error: "Plan ID and User ID are required" }, { status: 400 })
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 403 })
     }
 
-    // Get plan details from database
-    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
-
-    if (planError || !plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 })
+    if (!planId) {
+      return new NextResponse("Plan ID is required", { status: 400 })
     }
 
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", userId).single()
+    const userSubscription = await prismadb.userSubscription.findUnique({
+      where: {
+        userId: userId,
+      },
+    })
 
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
-    // Create or retrieve Stripe customer
-    let customerId = profile.stripe_customer_id
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: profile.email,
-        name: `${profile.first_name} ${profile.last_name}`,
-        metadata: {
-          userId: userId,
-        },
+    if (userSubscription && userSubscription.stripeCustomerId) {
+      const stripeSession = await stripe.billingPortal.sessions.create({
+        customer: userSubscription.stripeCustomerId,
+        return_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://foxlawyer.vercel.app"}/settings`,
       })
-      customerId = customer.id
 
-      // Update profile with Stripe customer ID
-      await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", userId)
+      return NextResponse.json({ url: stripeSession.url })
     }
 
-    // Create Stripe checkout session
+    const plan = await prismadb.plan.findUnique({
+      where: {
+        id: planId,
+      },
+    })
+
+    if (!plan) {
+      return new NextResponse("Plan not found", { status: 404 })
+    }
+
+    const customer = await prismadb.user.findUnique({
+      where: {
+        userId: userId,
+      },
+    })
+
+    if (!customer) {
+      return new NextResponse("Customer not found", { status: 404 })
+    }
+
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
+      customer: customer.id,
       payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
-            currency: plan.currency.toLowerCase(),
+            currency: "usd",
             product_data: {
               name: plan.name,
               description: plan.description,
             },
-            unit_amount: Math.round(plan.price * 100), // Convert to cents
+            unit_amount: Math.round(plan.price * 100),
             recurring: {
-              interval: plan.billing_interval as "month" | "year",
+              interval: "month",
             },
           },
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${request.nextUrl.origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://foxlawyer.vercel.app"}/success?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://foxlawyer.vercel.app"}/#planes`,
       metadata: {
-        userId: userId,
+        userId,
         planId: planId.toString(),
+        planName: plan.name, // Añadir el nombre del plan
       },
     })
 
-    return NextResponse.json({ sessionId: session.id })
+    return NextResponse.json({ url: session.url })
   } catch (error) {
-    console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.log("[STRIPE_ERROR]", error)
+    return new NextResponse("Internal error", { status: 500 })
   }
 }

@@ -172,7 +172,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (!error) {
-        router.push("/dashboard")
+        // Verificar si hay un plan seleccionado guardado
+        const selectedPlanId = localStorage.getItem("selectedPlanId")
+        if (selectedPlanId) {
+          localStorage.removeItem("selectedPlanId")
+          router.push(`/dashboard?planId=${selectedPlanId}`)
+        } else {
+          router.push("/dashboard")
+        }
       }
 
       return { error }

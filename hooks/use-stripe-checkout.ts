@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/auth-context"
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export function useStripeCheckout() {
-  const [loading, setLoading] = useState(false)
+  const [loadingPlanId, setLoadingPlanId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
 
@@ -17,7 +17,7 @@ export function useStripeCheckout() {
       return
     }
 
-    setLoading(true)
+    setLoadingPlanId(planId)
     setError(null)
 
     try {
@@ -55,13 +55,14 @@ export function useStripeCheckout() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
-      setLoading(false)
+      setLoadingPlanId(null)
     }
   }
 
   return {
     createCheckoutSession,
-    loading,
+    loadingPlanId,
     error,
+    isLoading: (planId: number) => loadingPlanId === planId,
   }
 }
