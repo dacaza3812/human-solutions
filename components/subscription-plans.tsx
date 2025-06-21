@@ -108,7 +108,7 @@ export function SubscriptionPlans({ currentPlanId }: SubscriptionPlansProps) {
 
             <CardContent className="space-y-6">
               <ul className="space-y-3">
-                {plan.features?.map((feature, index) => (
+                {(Array.isArray(plan.features) ? plan.features : []).map((feature, index) => (
                   <li key={index} className="flex items-start space-x-2 text-sm">
                     <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                     <span className="text-muted-foreground">{feature}</span>
