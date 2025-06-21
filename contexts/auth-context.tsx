@@ -1,31 +1,32 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
-import type { User, Session } from "@supabase/supabase-js"
-import { supabase, type UserProfile } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+import type { User, UserProfile, Session } from "@/types"
 
-interface AuthContextType {
-  user: User | null
-  profile: UserProfile | null
-  session: Session | null
-  loading: boolean
-  signUp: (
-    email: string,
-    password: string,
-    userData: Partial<UserProfile>,
-    referralCode?: string,
-  ) => Promise<{ error: any }>
-  signIn: (email: string, password: string) => Promise<{ error: any }>
-  signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: any }>
-  updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>
-  changePassword: (newPassword: string) => Promise<{ error: any }>
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<
+  | {
+      user: User | null
+      profile: UserProfile | null
+      session: Session | null
+      loading: boolean
+      signUp: (
+        email: string,
+        password: string,
+        userData: Partial<UserProfile>,
+        referralCode?: string,
+      ) => Promise<{ error: any }>
+      signIn: (email: string, password: string) => Promise<{ error: any }>
+      signOut: () => Promise<void>
+      resetPassword: (email: string) => Promise<{ error: any }>
+      updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>
+      changePassword: (newPassword: string) => Promise<{ error: any }>
+      refreshProfile: () => Promise<void>
+    }
+  | undefined
+>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state change:", event, session?.user?.id)
       setSession(session)
       setUser(session?.user ?? null)
 
@@ -71,23 +73,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, retries = 3) => {
     try {
+      console.log("Fetching profile for user:", userId)
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
       if (error && error.code !== "PGRST116") {
         console.error("Error fetching profile:", error)
+
+        // If profile not found and we have retries left, wait and try again
+        if (error.code === "PGRST116" && retries > 0) {
+          console.log(`Profile not found, retrying in 1 second... (${retries} retries left)`)
+          setTimeout(() => fetchUserProfile(userId, retries - 1), 1000)
+          return
+        }
         return
       }
 
+      console.log("Profile fetched successfully:", data)
       setProfile(data)
     } catch (error) {
       console.error("Error fetching profile:", error)
     }
   }
 
+  const refreshProfile = async () => {
+    if (user?.id) {
+      await fetchUserProfile(user.id)
+    }
+  }
+
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>, referralCode?: string) => {
     try {
+      console.log("Starting signup process for:", email)
+
       // Prepare metadata
       const metadata: any = {
         first_name: userData.first_name || "",
@@ -115,46 +134,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error }
       }
 
-      // Wait a bit for the trigger to complete
-      if (data.user && !data.user.email_confirmed_at) {
-        // For unconfirmed users, we might need to create the profile manually
-        // This is a fallback in case the trigger doesn't work
+      console.log("Signup successful:", data.user?.id)
+
+      // If user is immediately confirmed, create profile manually
+      if (data.user && data.user.email_confirmed_at) {
+        console.log("User confirmed immediately, creating profile...")
+        await createUserProfile(data.user, userData, referralCode)
+      } else if (data.user) {
+        // For unconfirmed users, create profile after a delay
+        console.log("User not confirmed, creating profile with delay...")
         setTimeout(async () => {
-          try {
-            const { error: profileError } = await supabase.from("profiles").upsert(
-              [
-                {
-                  id: data.user!.id,
-                  email: data.user!.email,
-                  first_name: userData.first_name || "",
-                  last_name: userData.last_name || "",
-                  phone: userData.phone || "",
-                  account_type: userData.account_type || "client",
-                  referred_by: referralCode && referralCode.trim() !== "" ? referralCode.trim() : null,
-                },
-              ],
-              { onConflict: "id" },
-            )
-
-            if (profileError) {
-              console.error("Error creating profile fallback:", profileError)
-            }
-
-            // Create referral relationship if applicable
-            if (referralCode && referralCode.trim() !== "" && data.user) {
-              const { error: referralError } = await supabase.rpc("create_referral_relationship", {
-                referrer_code: referralCode.trim(),
-                referred_user_id: data.user.id,
-              })
-
-              if (referralError) {
-                console.error("Error creating referral relationship:", referralError)
-              }
-            }
-          } catch (err) {
-            console.error("Error in profile creation fallback:", err)
-          }
-        }, 1000)
+          await createUserProfile(data.user!, userData, referralCode)
+        }, 2000)
       }
 
       return { error: null }
@@ -164,19 +155,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const createUserProfile = async (user: User, userData: Partial<UserProfile>, referralCode?: string) => {
+    try {
+      console.log("Creating profile for user:", user.id)
+
+      const profileData = {
+        id: user.id,
+        email: user.email!,
+        first_name: userData.first_name || "",
+        last_name: userData.last_name || "",
+        phone: userData.phone || "",
+        account_type: userData.account_type || "client",
+        referred_by: referralCode && referralCode.trim() !== "" ? referralCode.trim() : null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const { error: profileError } = await supabase.from("profiles").upsert([profileData], { onConflict: "id" })
+
+      if (profileError) {
+        console.error("Error creating profile:", profileError)
+        return
+      }
+
+      console.log("Profile created successfully")
+
+      // Create referral relationship if applicable
+      if (referralCode && referralCode.trim() !== "") {
+        console.log("Creating referral relationship...")
+        const { error: referralError } = await supabase.rpc("create_referral_relationship", {
+          referrer_code: referralCode.trim(),
+          referred_user_id: user.id,
+        })
+
+        if (referralError) {
+          console.error("Error creating referral relationship:", referralError)
+        } else {
+          console.log("Referral relationship created successfully")
+        }
+      }
+
+      // Refresh profile data
+      await fetchUserProfile(user.id)
+    } catch (err) {
+      console.error("Error in profile creation:", err)
+    }
+  }
+
   const signIn = async (email: string, password: string) => {
     try {
+      console.log("Signing in user:", email)
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (!error) {
-        router.push("/dashboard")
+        console.log("Sign in successful")
+        // Verificar si hay un plan seleccionado guardado
+        const selectedPlanId = localStorage.getItem("selectedPlanId")
+        if (selectedPlanId) {
+          localStorage.removeItem("selectedPlanId")
+          router.push(`/dashboard?planId=${selectedPlanId}`)
+        } else {
+          router.push("/dashboard")
+        }
       }
 
       return { error }
     } catch (error) {
+      console.error("Sign in error:", error)
       return { error }
     }
   }
@@ -188,25 +236,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Error during sign out:", error)
-        // Optionally, you could show a toast notification to the user here
-        // toast({
-        //   title: "Error al cerrar sesión",
-        //   description: error.message,
-        //   variant: "destructive",
-        // });
       } else {
         console.log("Sign out successful. Redirecting to login page.")
       }
     } catch (err) {
       console.error("Unexpected error during sign out:", err)
-      // toast({
-      //   title: "Error inesperado",
-      //   description: "Ocurrió un error al intentar cerrar sesión.",
-      //   variant: "destructive",
-      // });
     } finally {
-      // Always attempt to redirect to login page, even if sign out failed on Supabase side,
-      // to ensure the user doesn't remain in a protected route with a potentially invalid session.
       router.push("/login")
     }
   }
@@ -276,6 +311,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
     updateUserProfile,
     changePassword,
+    refreshProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
