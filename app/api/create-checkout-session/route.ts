@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
-import { supabaseService } from "@/lib/supabase"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -10,50 +9,24 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function POST(request: NextRequest) {
-  let planId: string | undefined
-  let userId: string | undefined
-
   try {
-    const { planId: receivedPlanId, userId: receivedUserId } = await request.json()
-
-    planId = receivedPlanId
-    userId = receivedUserId
+    const { planId, userId } = await request.json()
 
     if (!planId || !userId) {
-      console.error("Missing required parameters:", { planId, userId })
-      return NextResponse.json(
-        {
-          error: "Plan ID y User ID son requeridos",
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "Plan ID and User ID are required" }, { status: 400 })
     }
 
-    // Validate planId is a number
-    const planIdNumber = Number.parseInt(planId.toString())
-    if (isNaN(planIdNumber)) {
-      console.error("Invalid plan ID:", planId)
-      return NextResponse.json(
-        {
-          error: "Plan ID debe ser un número válido",
-        },
-        { status: 400 },
-      )
-    }
-
-    // Get plan details using Supabase service
-    const { data: plan, error: planError } = await supabaseService.getPlanById(planId)
+    // Get plan details from database
+    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
 
     if (planError || !plan) {
-      console.error("Plan not found:", planError)
       return NextResponse.json({ error: "Plan not found" }, { status: 404 })
     }
 
-    // Get user profile using Supabase service
-    const { data: profile, error: profileError } = await supabaseService.getProfile(userId)
+    // Get user profile
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
     if (profileError || !profile) {
-      console.error("User not found:", profileError)
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
@@ -70,30 +43,21 @@ export async function POST(request: NextRequest) {
       })
       customerId = customer.id
 
-      // Update profile with Stripe customer ID using Supabase service
-      await supabaseService.updateProfile(userId, { stripe_customer_id: customerId })
+      // Update profile with Stripe customer ID
+      await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", userId)
     }
 
-    // Create line items for Stripe checkout
-    let lineItems: any[]
-
-    if (plan.stripe_price_id) {
-      // Use existing Stripe Price ID if available
-      lineItems = [
-        {
-          price: plan.stripe_price_id,
-          quantity: 1,
-        },
-      ]
-    } else {
-      // Create price data dynamically if no Stripe Price ID
-      lineItems = [
+    // Create Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ["card"],
+      line_items: [
         {
           price_data: {
             currency: plan.currency.toLowerCase(),
             product_data: {
               name: plan.name,
-              description: plan.description || "",
+              description: plan.description,
             },
             unit_amount: Math.round(plan.price * 100), // Convert to cents
             recurring: {
@@ -102,41 +66,19 @@ export async function POST(request: NextRequest) {
           },
           quantity: 1,
         },
-      ]
-    }
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ["card"],
-      line_items: lineItems,
+      ],
       mode: "subscription",
-      success_url: `${request.nextUrl.origin}/success?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/dashboard?canceled=true`,
+      success_url: `${request.nextUrl.origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${request.nextUrl.origin}/?canceled=true`,
       metadata: {
         userId: userId,
-        planId: planIdNumber.toString(),
-        planName: plan.name,
+        planId: planId.toString(),
       },
-      allow_promotion_codes: true,
-      billing_address_collection: "required",
     })
 
-    console.log("Checkout session created successfully:", session.id)
     return NextResponse.json({ sessionId: session.id })
   } catch (error) {
-    console.error("Detailed error creating checkout session:", {
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
-      planId,
-      userId,
-    })
-
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Error interno del servidor",
-      },
-      { status: 500 },
-    )
+    console.error("Error creating checkout session:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

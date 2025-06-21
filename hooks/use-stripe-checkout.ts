@@ -3,55 +3,43 @@
 import { useState } from "react"
 import { loadStripe } from "@stripe/stripe-js"
 import { useAuth } from "@/contexts/auth-context"
-import { toast } from "@/hooks/use-toast"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export function useStripeCheckout() {
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
 
-  const createCheckoutSession = async (planId: string) => {
-    setError(null)
-
+  const createCheckoutSession = async (planId: number) => {
     if (!user) {
-      // Save plan selection for after login
-      localStorage.setItem("selectedPlanId", planId)
-      window.location.href = "/login"
+      setError("You must be logged in to subscribe")
       return
     }
 
+    setLoading(true)
+    setError(null)
+
     try {
-      setLoadingStates((prev) => ({ ...prev, [planId]: true }))
-
-      // Validate that we have the required environment variables
-      if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-        throw new Error("Stripe configuration is missing")
-      }
-
+      // Create checkout session
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          planId: Number.parseInt(planId),
+          planId,
           userId: user.id,
         }),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-      }
-
       const data = await response.json()
 
-      if (!data.sessionId) {
-        throw new Error("No session ID received from server")
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create checkout session")
       }
 
+      // Redirect to Stripe Checkout
       const stripe = await stripePromise
       if (!stripe) {
         throw new Error("Stripe failed to load")
@@ -62,29 +50,18 @@ export function useStripeCheckout() {
       })
 
       if (stripeError) {
-        throw new Error(stripeError.message || "Error redirecting to checkout")
+        throw new Error(stripeError.message)
       }
-    } catch (error) {
-      console.error("Error creating checkout session:", error)
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido al procesar el pago"
-      setError(errorMessage)
-
-      toast({
-        title: "Error al procesar el pago",
-        description: errorMessage,
-        variant: "destructive",
-      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
-      setLoadingStates((prev) => ({ ...prev, [planId]: false }))
+      setLoading(false)
     }
   }
 
-  const clearError = () => setError(null)
-
   return {
     createCheckoutSession,
-    loadingStates,
+    loading,
     error,
-    clearError,
   }
 }

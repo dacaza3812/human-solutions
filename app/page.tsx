@@ -51,7 +51,7 @@ export default function SolucionesHumanas() {
 
   const router = useRouter()
   const { user } = useAuth()
-  const { createCheckoutSession, loadingPlanId, error, isLoading } = useStripeCheckout()
+  const { createCheckoutSession, loading, error } = useStripeCheckout()
 
   const calculateEarnings = (refs: number) => {
     const directCommission = refs * 25
@@ -67,8 +67,6 @@ export default function SolucionesHumanas() {
 
   const handlePlanSelection = async (planId: number) => {
     if (!user) {
-      // Guardar el plan seleccionado en localStorage para después del login
-      localStorage.setItem("selectedPlanId", planId.toString())
       router.push("/login")
       return
     }
@@ -656,9 +654,9 @@ export default function SolucionesHumanas() {
                     }`}
                     size="lg"
                     onClick={() => handlePlanSelection(plan.id)}
-                    disabled={loadingPlanId === plan.id}
+                    disabled={loading}
                   >
-                    {loadingPlanId === plan.id ? (
+                    {loading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Procesando...
