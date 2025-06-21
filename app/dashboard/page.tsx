@@ -1,42 +1,43 @@
 "use client"
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 import { supabaseService } from "@/lib/supabase"
-import { SubscriptionActive } from "@/components/subscription-active"
-import { SubscriptionPlans } from "@/components/subscription-plans"
+
+// Import dashboard sections
+import { OverviewSection } from "@/components/dashboard/overview-section"
+import { ClientsSection } from "@/components/dashboard/clients-section"
+import { CasesSection } from "@/components/dashboard/cases-section"
+import { AppointmentsSection } from "@/components/dashboard/appointments-section"
+import { CalendarSection } from "@/components/dashboard/calendar-section"
+import { MessagesSection } from "@/components/dashboard/messages-section"
+import { FinancialSection } from "@/components/dashboard/financial-section"
+import { AnalyticsSection } from "@/components/dashboard/analytics-section"
+import { SubscriptionsSection } from "@/components/dashboard/subscriptions-section"
+import { ReferralsSection } from "@/components/dashboard/referrals-section"
+import { SettingsSection } from "@/components/dashboard/settings-section"
+
 import {
   Home,
   Users,
   FileText,
   Settings,
   BarChart3,
-  Calendar,
+  CalendarIcon,
   MessageCircle,
   Bell,
-  TrendingUp,
-  DollarSign,
-  Target,
-  Award,
   LogOut,
   Menu,
   X,
   User,
-  Share2,
-  Copy,
-  CheckCircle,
-  Gift,
   UserPlus,
   CalendarDays,
   PieChart,
   CreditCard,
-  Loader2,
 } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import Link from "next/link"
 
 function DashboardContent() {
@@ -49,9 +50,10 @@ function DashboardContent() {
     monthly_earnings: 0,
   })
   const [referralCode, setReferralCode] = useState("")
-  const [copySuccess, setCopySuccess] = useState(false)
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null)
   const [loadingSubscription, setLoadingSubscription] = useState(false)
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([])
+  const [loadingPayments, setLoadingPayments] = useState(false)
   const { user, profile, signOut } = useAuth()
 
   // Mock data for current user's cases (client view)
@@ -68,6 +70,9 @@ function DashboardContent() {
       createdDate: "2024-01-15",
       nextAppointment: "2024-01-25 10:00 AM",
       progress: 65,
+      priority: "Alta",
+      documents: ["Presupuesto_Familiar.pdf", "Plan_Ahorro.pdf"],
+      notes: "Cliente muy comprometido con el proceso. Necesita seguimiento semanal.",
     },
     {
       id: 2,
@@ -80,6 +85,9 @@ function DashboardContent() {
       createdDate: "2024-01-10",
       nextAppointment: "2024-01-20 2:30 PM",
       progress: 25,
+      priority: "Media",
+      documents: ["Acuerdo_Inicial.pdf"],
+      notes: "Primera sesión programada. Ambas partes están dispuestas a colaborar.",
     },
     {
       id: 3,
@@ -92,6 +100,9 @@ function DashboardContent() {
       createdDate: "2023-12-20",
       nextAppointment: null,
       progress: 100,
+      priority: "Baja",
+      documents: ["Dictamen_Legal.pdf", "Recomendaciones.pdf"],
+      notes: "Caso resuelto satisfactoriamente. Cliente informado de sus derechos.",
     },
   ]
 
@@ -108,7 +119,7 @@ function DashboardContent() {
     }
   }, [profile, referralCode])
 
-  // Fetch subscription info using Supabase service
+  // Fetch subscription info
   const fetchSubscriptionInfo = async () => {
     if (!profile?.id) return
 
@@ -129,13 +140,35 @@ function DashboardContent() {
     }
   }
 
+  // Fetch payment history
+  const fetchPaymentHistory = async () => {
+    if (!profile?.id) return
+
+    setLoadingPayments(true)
+    try {
+      const { data, error } = await supabaseService.getPaymentsByUser(profile.id)
+
+      if (error) {
+        console.error("Error fetching payment history:", error)
+        return
+      }
+
+      setPaymentHistory(data || [])
+    } catch (error) {
+      console.error("Error fetching payment history:", error)
+    } finally {
+      setLoadingPayments(false)
+    }
+  }
+
   useEffect(() => {
     if (profile?.id) {
       fetchSubscriptionInfo()
+      fetchPaymentHistory()
     }
   }, [profile])
 
-  // Fetch referral stats for clients using Supabase service
+  // Fetch referral stats for clients
   const fetchReferralStats = async () => {
     if (!referralCode) return
 
@@ -176,7 +209,7 @@ function DashboardContent() {
         { id: "cases", name: "Casos", icon: FileText },
         { id: "financial", name: "Vista Financiera", icon: PieChart },
         { id: "analytics", name: "Análisis", icon: BarChart3 },
-        { id: "calendar", name: "Calendario", icon: Calendar },
+        { id: "calendar", name: "Calendario", icon: CalendarIcon },
         { id: "messages", name: "Mensajes", icon: MessageCircle },
         ...baseItems.slice(1), // Keep subscriptions and settings
       ]
@@ -187,7 +220,7 @@ function DashboardContent() {
         { id: "referrals", name: "Referidos", icon: UserPlus },
         { id: "cases", name: "Mis Casos", icon: FileText },
         { id: "quotes", name: "Citas", icon: CalendarDays },
-        { id: "calendar", name: "Calendario", icon: Calendar },
+        { id: "calendar", name: "Calendario", icon: CalendarIcon },
         { id: "messages", name: "Mensajes", icon: MessageCircle },
         ...baseItems.slice(1), // Keep subscriptions and settings
       ]
@@ -196,78 +229,55 @@ function DashboardContent() {
 
   const sidebarItems = getMenuItems()
 
-  const copyReferralLink = async () => {
-    const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
-    try {
-      await navigator.clipboard.writeText(referralLink)
-      setCopySuccess(true)
-      setTimeout(() => setCopySuccess(false), 2000)
-    } catch (err) {
-      console.error("Error copying to clipboard:", err)
+  // Render the appropriate section based on activeView
+  const renderActiveSection = () => {
+    switch (activeView) {
+      case "overview":
+        return <OverviewSection referralStats={referralStats} userCases={userCases} />
+      case "clients":
+        return profile?.account_type === "advisor" ? <ClientsSection /> : null
+      case "cases":
+        return <CasesSection cases={userCases} />
+      case "quotes":
+        return <AppointmentsSection />
+      case "calendar":
+        return <CalendarSection />
+      case "messages":
+        return <MessagesSection />
+      case "financial":
+        return profile?.account_type === "advisor" ? <FinancialSection /> : null
+      case "analytics":
+        return profile?.account_type === "advisor" ? <AnalyticsSection /> : null
+      case "subscriptions":
+        return (
+          <SubscriptionsSection
+            subscriptionInfo={subscriptionInfo}
+            loadingSubscription={loadingSubscription}
+            paymentHistory={paymentHistory}
+            loadingPayments={loadingPayments}
+            onRefreshPayments={fetchPaymentHistory}
+          />
+        )
+      case "referrals":
+        return profile?.account_type === "client" ? (
+          <ReferralsSection referralStats={referralStats} referralCode={referralCode} />
+        ) : null
+      case "settings":
+        return <SettingsSection />
+      default:
+        return (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Vista en Desarrollo</h3>
+            <p className="text-muted-foreground">
+              La sección "{sidebarItems.find((item) => item.id === activeView)?.name}" estará disponible próximamente.
+            </p>
+          </div>
+        )
     }
   }
-
-  const stats = [
-    {
-      title: "Clientes Activos",
-      value: "124",
-      change: "+12%",
-      icon: Users,
-      color: "text-emerald-400",
-    },
-    {
-      title: "Casos Resueltos",
-      value: "89",
-      change: "+8%",
-      icon: Target,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ingresos Mensuales",
-      value: "$12,450",
-      change: "+23%",
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Satisfacción",
-      value: "98%",
-      change: "+2%",
-      icon: Award,
-      color: "text-orange-400",
-    },
-  ]
-
-  const clientStats = [
-    {
-      title: "Casos Activos",
-      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
-      change: "+1",
-      icon: FileText,
-      color: "text-emerald-400",
-    },
-    {
-      title: "Referidos Totales",
-      value: referralStats.total_referrals.toString(),
-      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
-      icon: UserPlus,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ganancias por Referidos",
-      value: `$${referralStats.total_earnings}`,
-      change: `+$${referralStats.monthly_earnings}`,
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Próximas Citas",
-      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
-      change: "Esta semana",
-      icon: Calendar,
-      color: "text-orange-400",
-    },
-  ]
 
   return (
     <div className="min-h-screen bg-background">
@@ -359,269 +369,7 @@ function DashboardContent() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
-          {activeView === "overview" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
-                  <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
-                </div>
-              </div>
-
-              {/* User Info Card */}
-              <Card className="border-border/40">
-                <CardHeader>
-                  <CardTitle className="text-foreground">Información de la Cuenta</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Correo Electrónico</p>
-                      <p className="font-medium">{user?.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tipo de Cuenta</p>
-                      <p className="font-medium capitalize">{profile?.account_type}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Teléfono</p>
-                      <p className="font-medium">{profile?.phone || "No especificado"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Fecha de Registro</p>
-                      <p className="font-medium">
-                        {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {(profile?.account_type === "advisor" ? stats : clientStats).map((stat, index) => (
-                  <Card key={index} className="border-border/40">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">{stat.title}</p>
-                          <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                          <p className={`text-sm ${stat.color}`}>{stat.change}</p>
-                        </div>
-                        <div className={`w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center`}>
-                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Subscriptions Section */}
-          {activeView === "subscriptions" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-                  <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-                </div>
-              </div>
-
-              {loadingSubscription ? (
-                <Card className="border-border/40">
-                  <CardContent className="p-8 text-center">
-                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-                    <p className="text-muted-foreground">Cargando información de suscripción...</p>
-                  </CardContent>
-                </Card>
-              ) : subscriptionInfo && subscriptionInfo.subscription_status === "active" ? (
-                <SubscriptionActive subscriptionInfo={subscriptionInfo} />
-              ) : (
-                <SubscriptionPlans currentPlanId={subscriptionInfo?.plan_id} />
-              )}
-            </div>
-          )}
-
-          {/* Referrals Section - Only for Clients */}
-          {activeView === "referrals" && profile?.account_type === "client" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-foreground">Programa de Referidos</h2>
-                  <p className="text-muted-foreground">Gana dinero compartiendo Fox Lawyer con tus amigos</p>
-                </div>
-              </div>
-
-              {/* Referral Link Card */}
-              <Card className="border-border/40">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
-                    <Share2 className="w-5 h-5 mr-2 text-emerald-400" />
-                    Tu Enlace de Referido
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="referralLink" className="text-sm font-medium">
-                      Enlace de Referido
-                    </Label>
-                    <div className="flex mt-2">
-                      <Input
-                        id="referralLink"
-                        value={`https://foxlawyer.vercel.app/register?ref=${referralCode}`}
-                        readOnly
-                        className="flex-1"
-                      />
-                      <Button onClick={copyReferralLink} variant="outline" className="ml-2" disabled={copySuccess}>
-                        {copySuccess ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Copiado
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copiar
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Gift className="w-5 h-5 text-emerald-400" />
-                      <h4 className="font-semibold text-emerald-400">¿Cómo funciona?</h4>
-                    </div>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Comparte tu enlace único con amigos y familiares</li>
-                      <li>• Gana $25 USD por cada persona que se registre usando tu enlace</li>
-                      <li>• Los pagos se procesan automáticamente cada mes</li>
-                      <li>• No hay límite en la cantidad de referidos</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Referral Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border-border/40">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Referidos</p>
-                        <p className="text-2xl font-bold text-foreground">{referralStats.total_referrals}</p>
-                        <p className="text-sm text-emerald-400">Todos los tiempos</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                        <UserPlus className="w-6 h-6 text-emerald-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/40">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Referidos Activos</p>
-                        <p className="text-2xl font-bold text-foreground">{referralStats.active_referrals}</p>
-                        <p className="text-sm text-blue-400">Usuarios activos</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <Users className="w-6 h-6 text-blue-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/40">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Ganancias Totales</p>
-                        <p className="text-2xl font-bold text-foreground">${referralStats.total_earnings}</p>
-                        <p className="text-sm text-purple-400">USD ganados</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                        <DollarSign className="w-6 h-6 text-purple-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/40">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Este Mes</p>
-                        <p className="text-2xl font-bold text-foreground">${referralStats.monthly_earnings}</p>
-                        <p className="text-sm text-orange-400">Ganancias mensuales</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                        <TrendingUp className="w-6 h-6 text-orange-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {/* Settings Section */}
-          {activeView === "settings" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-foreground">Configuración de la Cuenta</h2>
-                  <p className="text-muted-foreground">Gestiona tu información personal y de seguridad</p>
-                </div>
-              </div>
-
-              <Card className="border-border/40">
-                <CardHeader>
-                  <CardTitle className="text-foreground">Información Personal</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Nombre</p>
-                      <p className="font-medium">{profile?.first_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Apellido</p>
-                      <p className="font-medium">{profile?.last_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium">{user?.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tipo de Cuenta</p>
-                      <p className="font-medium capitalize">{profile?.account_type}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Default view for other sections */}
-          {!["overview", "subscriptions", "referrals", "settings"].includes(activeView) && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Vista en Desarrollo</h3>
-              <p className="text-muted-foreground">
-                La sección "{sidebarItems.find((item) => item.id === activeView)?.name}" estará disponible próximamente.
-              </p>
-            </div>
-          )}
-        </main>
+        <main className="flex-1 p-6">{renderActiveSection()}</main>
       </div>
 
       {/* Mobile Sidebar Overlay */}
