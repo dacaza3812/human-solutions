@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
+import { useAuth } from "@/contexts/auth-context"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Heart,
   DollarSign,
@@ -35,7 +38,9 @@ import {
   CircleDashed,
   FacebookIcon,
   InstagramIcon,
-  TwitterIcon
+  TwitterIcon,
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -45,6 +50,8 @@ export default function SolucionesHumanas() {
   const [monthlyEarnings, setMonthlyEarnings] = useState(25)
 
   const router = useRouter()
+  const { user } = useAuth()
+  const { createCheckoutSession, loading, error } = useStripeCheckout()
 
   const calculateEarnings = (refs: number) => {
     const directCommission = refs * 25
@@ -58,11 +65,21 @@ export default function SolucionesHumanas() {
     setMonthlyEarnings(calculateEarnings(refs))
   }
 
+  const handlePlanSelection = async (planId: number) => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    await createCheckoutSession(planId)
+  }
+
   const navigation = [
     { name: "Inicio", href: "#inicio" },
     { name: "Servicios", href: "#servicios" },
     { name: "Proceso", href: "#proceso" },
     { name: "Compensación", href: "#compensacion" },
+    { name: "Planes", href: "#planes" },
     { name: "Contacto", href: "#contacto" },
   ]
 
@@ -86,7 +103,11 @@ export default function SolucionesHumanas() {
       title: "Problemas de relación",
       description: "Construye relaciones sólidas y duraderas",
       details: "Resolución de conflictos con familiares, amigos, parejas, compañeros o jefes",
-      features: ["Como potenciar tu inteligencia interpersonal e intrapersonal", "Coaching social", "Comunicación asertiva"],
+      features: [
+        "Como potenciar tu inteligencia interpersonal e intrapersonal",
+        "Coaching social",
+        "Comunicación asertiva",
+      ],
     },
     {
       icon: Shield,
@@ -181,6 +202,51 @@ export default function SolucionesHumanas() {
   // Duplicate testimonials for infinite scroll
   const duplicatedTestimonials = [...testimonials, ...testimonials]
 
+  const plans = [
+    {
+      id: 1,
+      name: "Standard",
+      price: "$49.99",
+      frequency: "mensual",
+      description: "Ideal para necesidades básicas de asesoría.",
+      features: ["3 consultas/mes", "Soporte por email", "Acceso a recursos básicos", "Prioridad estándar"],
+      buttonText: "Elegir Plan Standard",
+      highlight: false,
+    },
+    {
+      id: 2,
+      name: "Premium",
+      price: "$149.99",
+      frequency: "mensual",
+      description: "Para un soporte más completo y personalizado.",
+      features: [
+        "10 consultas/mes",
+        "Soporte prioritario",
+        "Acceso a todos los recursos",
+        "Seguimiento personalizado",
+        "Prioridad alta",
+      ],
+      buttonText: "Elegir Plan Premium",
+      highlight: true,
+    },
+    {
+      id: 3,
+      name: "Collaborative",
+      price: "$299.99",
+      frequency: "mensual",
+      description: "Solución integral para equipos o familias.",
+      features: [
+        "Consultas ilimitadas",
+        "Asesor dedicado 24/7",
+        "Acceso para equipos",
+        "Reportes personalizados",
+        "Prioridad empresarial",
+      ],
+      buttonText: "Elegir Plan Collaborative",
+      highlight: false,
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -252,19 +318,6 @@ export default function SolucionesHumanas() {
                     {item.name}
                   </a>
                 ))}
-
-                {/* Separador */}
-                {/*<div className="border-t border-border/40 pt-6 mt-6">
-                  <button
-                    className="text-lg font-medium text-emerald-400 hover:text-emerald-300 transition-colors w-full text-left"
-                    onClick={() => {
-                      router.push("/dashboard")
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    Dashboard
-                  </button>
-                </div>*/}
               </nav>
             </div>
             <div className="p-6 border-t border-border/40">
@@ -306,7 +359,9 @@ export default function SolucionesHumanas() {
             </h1>
 
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la privacidad y confidencialidad del cliente
+              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
+              problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
+              privacidad y confidencialidad del cliente
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -468,8 +523,6 @@ export default function SolucionesHumanas() {
                     </div>
                   </div>
 
-                  
-
                   <div className="p-4 h-80 rounded-lg border border-purple-500/20 bg-purple-500/5">
                     <h4 className="font-semibold text-purple-400 mb-2">Bonos de Liderazgo</h4>
                     <p className="text-sm text-muted-foreground mb-2">Incentivos adicionales por volumen y mentorías</p>
@@ -477,8 +530,11 @@ export default function SolucionesHumanas() {
                       <Award className="w-3 h-3 mr-1" />
                       Hasta $500 USD adicionales mensuales
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2 mt-2">¡Potencia tu impacto y multiplica tus ingresos con nuestro programa Bonos de Liderazgo ! Diseñado para aquellos que no solo destacan por su desempeño individual.</p>
-                    
+                    <p className="text-sm text-muted-foreground mb-2 mt-2">
+                      ¡Potencia tu impacto y multiplica tus ingresos con nuestro programa Bonos de Liderazgo ! Diseñado
+                      para aquellos que no solo destacan por su desempeño individual.
+                    </p>
+
                     <div className="flex items-center text-xs text-purple-400">
                       <MessageCircleQuestion className="w-3 h-3 mr-1" />
                       ¿Qué ofrece?
@@ -526,9 +582,7 @@ export default function SolucionesHumanas() {
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-2">Ingresos mensuales estimados</p>
                     <p className="text-4xl font-bold text-emerald-400">${monthlyEarnings.toLocaleString()} USD</p>
-                    <p className="text-xs text-muted-foreground">
-                      Basado en {referrals} referidos directos 
-                    </p>
+                    <p className="text-xs text-muted-foreground">Basado en {referrals} referidos directos</p>
                   </div>
                 </div>
 
@@ -542,6 +596,90 @@ export default function SolucionesHumanas() {
               </CardContent>
             </Card>
           </div>
+        </div>
+      </section>
+
+      {/* Subscription Plans Section */}
+      <section id="planes" className="py-24 px-4 bg-card/20">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">Nuestros Planes de Suscripción</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Elige el plan que mejor se adapte a tus necesidades y comienza tu transformación.
+            </p>
+          </div>
+
+          {/* Error Alert */}
+          {error && (
+            <div className="max-w-2xl mx-auto mb-8">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {plans.map((plan, index) => (
+              <Card
+                key={index}
+                className={`border-border/40 ${
+                  plan.highlight ? "border-emerald-500 ring-2 ring-emerald-500" : ""
+                } bg-card/50 hover:bg-card/80 transition-colors flex flex-col`}
+              >
+                <CardHeader className="text-center pb-4">
+                  <CardTitle className="text-2xl font-bold text-foreground">{plan.name}</CardTitle>
+                  <CardDescription className="text-muted-foreground">{plan.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col justify-between p-6 pt-0">
+                  <div className="text-center mb-6">
+                    <p className="text-5xl font-bold text-foreground">
+                      {plan.price}
+                      <span className="text-lg text-muted-foreground">/{plan.frequency}</span>
+                    </p>
+                  </div>
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className={`w-full ${
+                      plan.highlight
+                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                        : "bg-muted-foreground hover:bg-muted-foreground/80 text-white"
+                    }`}
+                    size="lg"
+                    onClick={() => handlePlanSelection(plan.id)}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      plan.buttonText
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {!user && (
+            <div className="text-center mt-8">
+              <p className="text-sm text-muted-foreground">
+                ¿No tienes cuenta?{" "}
+                <Button variant="link" className="p-0 h-auto text-emerald-400" onClick={() => router.push("/register")}>
+                  Regístrate aquí
+                </Button>
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -799,7 +937,7 @@ export default function SolucionesHumanas() {
                   <InstagramIcon />
                 </Button>
                 <Button size="sm" variant="outline" className="w-10 h-10 p-0">
-                  <TwitterIcon/>
+                  <TwitterIcon />
                 </Button>
               </div>
             </div>
