@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
+import { supabaseService } from "@/lib/supabase"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -61,28 +62,25 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     // Get subscription details
     const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
 
-    // Update user profile with subscription info
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        plan_id: Number.parseInt(planId),
-        subscription_status: "active",
-        stripe_subscription_id: subscription.id,
-        subscription_start_date: new Date(subscription.current_period_start * 1000).toISOString(),
-        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-      })
-      .eq("id", userId)
+    // Update user profile with subscription info using Supabase service
+    const { error: profileError } = await supabaseService.updateSubscription(userId, {
+      plan_id: Number.parseInt(planId),
+      subscription_status: "active",
+      subscription_start_date: new Date(subscription.current_period_start * 1000).toISOString(),
+      subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
+    })
 
     if (profileError) {
       console.error("Error updating profile:", profileError)
       return
     }
 
-    // Create payment record
-    const { error: paymentError } = await supabase.from("payments").insert({
+    // Create payment record using Supabase service
+    const { error: paymentError } = await supabaseService.createPayment({
       user_id: userId,
       plan_id: Number.parseInt(planId),
       stripe_payment_intent_id: session.payment_intent as string,
+      stripe_checkout_session_id: session.id,
       amount: (session.amount_total || 0) / 100,
       currency: session.currency || "usd",
       status: "succeeded",
@@ -103,7 +101,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string
 
   try {
-    // Get user by Stripe customer ID
+    // Get user by Stripe customer ID using Supabase
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
@@ -115,10 +113,10 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       return
     }
 
-    // Create payment record for recurring payment
-    const { error: paymentError } = await supabase.from("payments").insert({
+    // Create payment record for recurring payment using Supabase service
+    const { error: paymentError } = await supabaseService.createPayment({
       user_id: profile.id,
-      plan_id: profile.plan_id,
+      plan_id: profile.plan_id!,
       stripe_invoice_id: invoice.id,
       amount: (invoice.amount_paid || 0) / 100,
       currency: invoice.currency || "usd",
@@ -140,7 +138,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string
 
   try {
-    // Get user by Stripe customer ID
+    // Get user by Stripe customer ID using Supabase
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
@@ -152,7 +150,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       return
     }
 
-    // Update subscription status
+    // Update subscription status using Supabase service
     const status =
       subscription.status === "active"
         ? "active"
@@ -162,13 +160,10 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
             ? "cancelled"
             : "inactive"
 
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        subscription_status: status,
-        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-      })
-      .eq("id", profile.id)
+    const { error: updateError } = await supabaseService.updateSubscription(profile.id, {
+      subscription_status: status,
+      subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
+    })
 
     if (updateError) {
       console.error("Error updating subscription status:", updateError)
@@ -184,7 +179,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string
 
   try {
-    // Get user by Stripe customer ID
+    // Get user by Stripe customer ID using Supabase
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
@@ -196,14 +191,11 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       return
     }
 
-    // Update subscription status to cancelled
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        subscription_status: "cancelled",
-        subscription_cancelled_at: new Date().toISOString(),
-      })
-      .eq("id", profile.id)
+    // Update subscription status to cancelled using Supabase service
+    const { error: updateError } = await supabaseService.updateSubscription(profile.id, {
+      subscription_status: "cancelled",
+      subscription_cancelled_at: new Date().toISOString(),
+    })
 
     if (updateError) {
       console.error("Error updating subscription status:", updateError)

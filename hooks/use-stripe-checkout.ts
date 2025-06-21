@@ -7,28 +7,27 @@ import { useAuth } from "@/contexts/auth-context"
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export function useStripeCheckout() {
-  const [loadingPlanId, setLoadingPlanId] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({})
   const { user } = useAuth()
 
-  const createCheckoutSession = async (planId: number) => {
+  const createCheckoutSession = async (planId: string) => {
     if (!user) {
-      setError("You must be logged in to subscribe")
+      // Save plan selection for after login
+      localStorage.setItem("selectedPlanId", planId)
+      window.location.href = "/login"
       return
     }
 
-    setLoadingPlanId(planId)
-    setError(null)
-
     try {
-      // Create checkout session
+      setLoadingStates((prev) => ({ ...prev, [planId]: true }))
+
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          planId,
+          planId: planId,
           userId: user.id,
         }),
       })
@@ -39,30 +38,28 @@ export function useStripeCheckout() {
         throw new Error(data.error || "Failed to create checkout session")
       }
 
-      // Redirect to Stripe Checkout
       const stripe = await stripePromise
       if (!stripe) {
         throw new Error("Stripe failed to load")
       }
 
-      const { error: stripeError } = await stripe.redirectToCheckout({
+      const { error } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
       })
 
-      if (stripeError) {
-        throw new Error(stripeError.message)
+      if (error) {
+        throw new Error(error.message)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+    } catch (error) {
+      console.error("Error creating checkout session:", error)
+      alert("Error al procesar el pago. Por favor, inténtalo de nuevo.")
     } finally {
-      setLoadingPlanId(null)
+      setLoadingStates((prev) => ({ ...prev, [planId]: false }))
     }
   }
 
   return {
     createCheckoutSession,
-    loadingPlanId,
-    error,
-    isLoading: (planId: number) => loadingPlanId === planId,
+    loadingStates,
   }
 }

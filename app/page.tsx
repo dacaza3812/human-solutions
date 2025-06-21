@@ -656,9 +656,9 @@ export default function SolucionesHumanas() {
                     }`}
                     size="lg"
                     onClick={() => handlePlanSelection(plan.id)}
-                    disabled={loadingPlanId !== null}
+                    disabled={loadingPlanId === plan.id}
                   >
-                    {isLoading(plan.id) ? (
+                    {loadingPlanId === plan.id ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Procesando...

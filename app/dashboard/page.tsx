@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
+import { supabaseService } from "@/lib/supabase"
 import { SubscriptionActive } from "@/components/subscription-active"
 import { SubscriptionPlans } from "@/components/subscription-plans"
 import {
@@ -42,9 +42,6 @@ import Link from "next/link"
 function DashboardContent() {
   const [activeView, setActiveView] = useState("overview")
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [showSearchResults, setShowSearchResults] = useState(false)
   const [referralStats, setReferralStats] = useState({
     total_referrals: 0,
     active_referrals: 0,
@@ -53,87 +50,9 @@ function DashboardContent() {
   })
   const [referralCode, setReferralCode] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
-  const [selectedCase, setSelectedCase] = useState<any>(null)
-  const [selectedClient, setSelectedClient] = useState<any>(null)
-  const [activeChat, setActiveChat] = useState<number | null>(null)
-  const [clientFilter, setClientFilter] = useState("")
-  const [caseFilter, setCaseFilter] = useState("all")
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null)
   const [loadingSubscription, setLoadingSubscription] = useState(false)
-  const { user, profile, signOut, updateUserProfile, changePassword } = useAuth()
-
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [dateRange, setDateRange] = useState({
-    start: "2024-01-01",
-    end: "2024-12-31",
-  })
-
-  // State for Settings section
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmNewPassword, setConfirmNewPassword] = useState("")
-  const [passwordChangeMessage, setPasswordChangeMessage] = useState("")
-  const [passwordChangeError, setPasswordChangeError] = useState("")
-
-  const [firstName, setFirstName] = useState(profile?.first_name || "")
-  const [lastName, setLastName] = useState(profile?.last_name || "")
-  const [profileUpdateMessage, setProfileUpdateMessage] = useState("")
-  const [profileUpdateError, setProfileUpdateError] = useState("")
-
-  const [newReferralCode, setNewReferralCode] = useState(profile?.referral_code || "")
-  const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
-  const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
-
-  useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name || "")
-      setLastName(profile.last_name || "")
-      setNewReferralCode(profile.referral_code || "")
-    }
-  }, [profile])
-
-  // Fetch subscription info
-  const fetchSubscriptionInfo = async () => {
-    if (!profile?.id) return
-
-    setLoadingSubscription(true)
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(`
-          subscription_status,
-          subscription_start_date,
-          subscription_end_date,
-          plan_id,
-          plans (
-            id,
-            name,
-            price,
-            description,
-            features
-          )
-        `)
-        .eq("id", profile.id)
-        .single()
-
-      if (error) {
-        console.error("Error fetching subscription info:", error)
-        return
-      }
-
-      setSubscriptionInfo(data)
-    } catch (error) {
-      console.error("Error fetching subscription info:", error)
-    } finally {
-      setLoadingSubscription(false)
-    }
-  }
-
-  useEffect(() => {
-    if (profile?.id) {
-      fetchSubscriptionInfo()
-    }
-  }, [profile])
+  const { user, profile, signOut } = useAuth()
 
   // Mock data for current user's cases (client view)
   const userCases = [
@@ -189,38 +108,58 @@ function DashboardContent() {
     }
   }, [profile, referralCode])
 
-  // Fetch referral stats for clients
+  // Fetch subscription info using Supabase service
+  const fetchSubscriptionInfo = async () => {
+    if (!profile?.id) return
+
+    setLoadingSubscription(true)
+    try {
+      const { data, error } = await supabaseService.getSubscriptionInfo(profile.id)
+
+      if (error) {
+        console.error("Error fetching subscription info:", error)
+        return
+      }
+
+      setSubscriptionInfo(data)
+    } catch (error) {
+      console.error("Error fetching subscription info:", error)
+    } finally {
+      setLoadingSubscription(false)
+    }
+  }
+
   useEffect(() => {
-    if (profile?.account_type === "client" && profile.id) {
-      fetchReferralStats()
+    if (profile?.id) {
+      fetchSubscriptionInfo()
     }
   }, [profile])
 
+  // Fetch referral stats for clients using Supabase service
   const fetchReferralStats = async () => {
+    if (!referralCode) return
+
     try {
-      // Use the new SQL function to get referral stats
-      const { data, error } = await supabase.rpc("get_referral_stats", {
-        user_referral_code: referralCode,
-      })
+      const { data, error } = await supabaseService.getReferralStats(referralCode)
 
       if (error) {
         console.error("Error fetching referral stats:", error)
         return
       }
 
-      if (data && data.length > 0) {
-        const stats = data[0]
-        setReferralStats({
-          total_referrals: stats.total_referrals || 0,
-          active_referrals: stats.active_referrals || 0,
-          total_earnings: stats.total_earnings || 0,
-          monthly_earnings: stats.monthly_earnings || 0,
-        })
+      if (data) {
+        setReferralStats(data)
       }
     } catch (error) {
       console.error("Error fetching referral stats:", error)
     }
   }
+
+  useEffect(() => {
+    if (profile?.account_type === "client" && referralCode) {
+      fetchReferralStats()
+    }
+  }, [profile, referralCode])
 
   // Menu items based on user role
   const getMenuItems = () => {
