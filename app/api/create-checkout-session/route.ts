@@ -65,17 +65,7 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       line_items: [
         {
-          price_data: {
-            currency: plan.currency.toLowerCase(),
-            product_data: {
-              name: plan.name,
-              description: plan.description,
-            },
-            unit_amount: Math.round(plan.price * 100), // Convert to cents
-            recurring: {
-              interval: plan.billing_interval as "month" | "year",
-            },
-          },
+          price: plan.stripe_price_id, // Usa el Stripe Price ID de tu DB
           quantity: 1,
         },
       ],
