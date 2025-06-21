@@ -10,11 +10,35 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function POST(request: NextRequest) {
+  let planId: string | undefined
+  let userId: string | undefined
+
   try {
-    const { planId, userId } = await request.json()
+    const { planId: receivedPlanId, userId: receivedUserId } = await request.json()
+
+    planId = receivedPlanId
+    userId = receivedUserId
 
     if (!planId || !userId) {
-      return NextResponse.json({ error: "Plan ID and User ID are required" }, { status: 400 })
+      console.error("Missing required parameters:", { planId, userId })
+      return NextResponse.json(
+        {
+          error: "Plan ID y User ID son requeridos",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Validate planId is a number
+    const planIdNumber = Number.parseInt(planId.toString())
+    if (isNaN(planIdNumber)) {
+      console.error("Invalid plan ID:", planId)
+      return NextResponse.json(
+        {
+          error: "Plan ID debe ser un número válido",
+        },
+        { status: 400 },
+      )
     }
 
     // Get plan details using Supabase service
@@ -88,17 +112,31 @@ export async function POST(request: NextRequest) {
       line_items: lineItems,
       mode: "subscription",
       success_url: `${request.nextUrl.origin}/success?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/?canceled=true`,
+      cancel_url: `${request.nextUrl.origin}/dashboard?canceled=true`,
       metadata: {
         userId: userId,
-        planId: planId.toString(),
+        planId: planIdNumber.toString(),
         planName: plan.name,
       },
+      allow_promotion_codes: true,
+      billing_address_collection: "required",
     })
 
+    console.log("Checkout session created successfully:", session.id)
     return NextResponse.json({ sessionId: session.id })
   } catch (error) {
-    console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Detailed error creating checkout session:", {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      planId,
+      userId,
+    })
+
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Error interno del servidor",
+      },
+      { status: 500 },
+    )
   }
 }

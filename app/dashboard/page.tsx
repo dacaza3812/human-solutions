@@ -129,12 +129,16 @@ function DashboardContent() {
 
       if (error) {
         console.error("Error fetching subscription info:", error)
+        // Don't return early, set subscriptionInfo to null so plans are shown
+        setSubscriptionInfo(null)
         return
       }
 
-      setSubscriptionInfo(data)
+      // If no subscription data, set to empty object to indicate no active subscription
+      setSubscriptionInfo(data || {})
     } catch (error) {
       console.error("Error fetching subscription info:", error)
+      setSubscriptionInfo(null)
     } finally {
       setLoadingSubscription(false)
     }
@@ -150,12 +154,14 @@ function DashboardContent() {
 
       if (error) {
         console.error("Error fetching payment history:", error)
+        setPaymentHistory([])
         return
       }
 
       setPaymentHistory(data || [])
     } catch (error) {
       console.error("Error fetching payment history:", error)
+      setPaymentHistory([])
     } finally {
       setLoadingPayments(false)
     }

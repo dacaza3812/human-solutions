@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Loader2 } from "lucide-react"
 import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
 import { supabaseService, type Plan } from "@/lib/supabase"
+import { toast } from "@/hooks/use-toast"
+import { Alert, AlertCircle, AlertDescription } from "@/components/ui/alert"
 
 interface SubscriptionPlansProps {
   currentPlanId?: number
@@ -15,6 +17,7 @@ export function SubscriptionPlans({ currentPlanId }: SubscriptionPlansProps) {
   const { createCheckoutSession, loadingStates } = useStripeCheckout()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -23,6 +26,7 @@ export function SubscriptionPlans({ currentPlanId }: SubscriptionPlansProps) {
 
         if (error) {
           console.error("Error fetching plans:", error)
+          setError("Failed to fetch plans. Please try again.")
           return
         }
 
@@ -31,6 +35,7 @@ export function SubscriptionPlans({ currentPlanId }: SubscriptionPlansProps) {
         }
       } catch (error) {
         console.error("Error fetching plans:", error)
+        setError("Failed to fetch plans. Please try again.")
       } finally {
         setLoading(false)
       }
@@ -44,6 +49,11 @@ export function SubscriptionPlans({ currentPlanId }: SubscriptionPlansProps) {
       await createCheckoutSession(planId.toString())
     } catch (error) {
       console.error("Error al procesar el pago:", error)
+      toast({
+        title: "Error al procesar el pago",
+        description: "Por favor, inténtalo de nuevo o contacta al soporte.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -128,6 +138,14 @@ export function SubscriptionPlans({ currentPlanId }: SubscriptionPlansProps) {
           </Card>
         ))}
       </div>
+      {error && (
+        <div className="max-w-2xl mx-auto mt-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
     </div>
   )
 }
