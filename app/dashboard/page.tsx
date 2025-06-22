@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
+import { SubscriptionsSection } from "@/components/dashboard/subscriptions-section"
 import {
   Home,
   Users,
@@ -40,6 +41,7 @@ import {
   Key,
   UserRound,
   LinkIcon,
+  CreditCard,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -296,6 +298,7 @@ function DashboardContent() {
       // Client menu
       return [
         ...baseItems.slice(0, 1), // Keep overview
+        { id: "subscriptions", name: "Suscripciones", icon: CreditCard },
         { id: "referrals", name: "Referidos", icon: UserPlus },
         { id: "cases", name: "Mis Casos", icon: FileText },
         { id: "quotes", name: "Citas", icon: CalendarDays },
@@ -835,6 +838,9 @@ function DashboardContent() {
               </div>
             </div>
           )}
+
+          {/* Subscriptions Section - Only for Clients */}
+          {activeView === "subscriptions" && profile?.account_type === "client" && <SubscriptionsSection />}
 
           {/* Client Cases Section */}
           {activeView === "cases" && profile?.account_type === "client" && (
@@ -1904,6 +1910,7 @@ function DashboardContent() {
           )}
 
           {activeView !== "overview" &&
+            activeView !== "subscriptions" &&
             activeView !== "referrals" &&
             activeView !== "quotes" &&
             activeView !== "financial" &&
