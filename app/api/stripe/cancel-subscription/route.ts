@@ -16,8 +16,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Logs para depuración
-    const allCookies = cookies().getAll().map(c => c.name)
+    const allCookies = cookies()
+      .getAll()
+      .map((c) => c.name)
     console.log("Cookies recibidas:", allCookies)
+
+    // Verificar si la cookie de Supabase está presente
+    const supabaseAuthCookie = cookies().get("sb-access-token") || cookies().get("sb-refresh-token") // Supabase sets different cookie names
+    if (!supabaseAuthCookie) {
+      console.error("Supabase auth cookie NOT found in request.")
+    } else {
+      console.log("Supabase auth cookie found in request:", supabaseAuthCookie.name)
+    }
 
     // Cliente supabase para Route Handlers
     const supabase = createRouteHandlerClient({
@@ -76,9 +86,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, subscription: canceled })
   } catch (err: any) {
     console.error("Error inesperado:", err)
-    return NextResponse.json(
-      { error: err.message || "Internal server error" },
-      { status: err.statusCode || 500 },
-    )
+    return NextResponse.json({ error: err.message || "Internal server error" }, { status: err.statusCode || 500 })
   }
 }
