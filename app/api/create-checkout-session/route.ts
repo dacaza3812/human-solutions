@@ -10,10 +10,22 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 
 export async function POST(request: NextRequest) {
   try {
-    const { planId, userId } = await request.json()
+    const { planId } = await request.json()
 
-    if (!planId || !userId) {
-      return NextResponse.json({ error: "Plan ID and User ID are required" }, { status: 400 })
+    // Get the user from the request headers or session
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader) {
+      return NextResponse.json({ error: "No authorization header" }, { status: 401 })
+    }
+
+    const token = authHeader.replace("Bearer ", "")
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token)
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Invalid user" }, { status: 401 })
     }
 
     // Get plan details from database
@@ -23,55 +35,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Plan not found" }, { status: 404 })
     }
 
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("*").eq("id", userId).single()
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
-    // Create or retrieve Stripe customer
-    let customerId = profile.stripe_customer_id
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: profile.email,
-        name: `${profile.first_name} ${profile.last_name}`,
-        metadata: {
-          userId: userId,
-        },
-      })
-      customerId = customer.id
-
-      // Update profile with Stripe customer ID
-      await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", userId)
-    }
-
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
       payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
-            currency: plan.currency.toLowerCase(),
+            currency: "usd",
             product_data: {
               name: plan.name,
               description: plan.description,
             },
             unit_amount: Math.round(plan.price * 100), // Convert to cents
             recurring: {
-              interval: plan.billing_interval as "month" | "year",
+              interval: "month",
             },
           },
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${request.nextUrl.origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment_process?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/?canceled=true`,
+      customer_email: user.email,
       metadata: {
-        userId: userId,
+        userId: user.id,
         planId: planId.toString(),
       },
     })
@@ -79,6 +67,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sessionId: session.id })
   } catch (error) {
     console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
   }
 }
