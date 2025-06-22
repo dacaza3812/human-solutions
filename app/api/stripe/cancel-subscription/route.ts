@@ -19,7 +19,9 @@ export async function POST(request: NextRequest) {
     const cookieStore = cookies()
     console.log("Server-side cookies available:", cookieStore.getAll())
 
-    // IMPORTANT: Verify SUPABASE_JWT_SECRET is loaded
+    // Log Supabase environment variables for debugging
+    console.log("NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log("NEXT_PUBLIC_SUPABASE_ANON_KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "Set" : "Not Set")
     const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET
     if (!supabaseJwtSecret) {
       console.error("SUPABASE_JWT_SECRET is not set in environment variables!")
