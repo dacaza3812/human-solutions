@@ -9,8 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: cookieStore })
+    const supabase = createRouteHandlerClient({ cookies: cookies() })
 
     const {
       data: { session },
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: `${request.nextUrl.origin}/dashboard`, // Redirige de vuelta al dashboard
+      return_url: `${request.nextUrl.origin}/dashboard`,
     })
 
     return NextResponse.json({ url: portalSession.url })
