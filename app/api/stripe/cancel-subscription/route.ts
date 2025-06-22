@@ -15,14 +15,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Subscription ID is required" }, { status: 400 })
     }
 
+    // Log cookies to debug
+    const cookieHeader = request.headers.get("cookie")
+    console.log("Request Cookies:", cookieHeader)
+
     // Verificar autenticación
     const supabase = createServerComponentClient({ cookies })
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
+    console.log("Session in cancel-subscription API:", session)
+
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized: No active session found." }, { status: 401 })
     }
 
     // Cancelar la suscripción en Stripe
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error("Error updating subscription status:", updateError)
       return NextResponse.json(
-        { error: `Failed to update subscription status: ${updateError.message}` },
+        { error: `Failed to update subscription status in Supabase: ${updateError.message}` },
         { status: 500 },
       )
     }

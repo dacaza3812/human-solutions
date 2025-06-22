@@ -158,7 +158,11 @@ export function SubscriptionsSection() {
   }
 
   const handleCancelSubscription = async () => {
-    if (!subscriptionInfo?.stripe_subscription_id) return
+    if (!user || !profile || !subscriptionInfo?.stripe_subscription_id) {
+      console.error("User, profile, or subscription ID missing for cancellation.")
+      setError("No se pudo cancelar la suscripción: información de usuario o suscripción faltante.")
+      return
+    }
 
     setCancelLoading(true)
     try {
@@ -174,7 +178,7 @@ export function SubscriptionsSection() {
 
       if (!response.ok) {
         const errorData = await response.json() // Lee el mensaje de error del cuerpo de la respuesta
-        throw new Error(errorData.error || "Error al cancelar la suscripción")
+        throw new Error(errorData.error || "Error desconocido al cancelar la suscripción")
       }
 
       // Actualizar la información de suscripción
