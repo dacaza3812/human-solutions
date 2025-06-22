@@ -19,6 +19,7 @@ import {
   Crown,
   Star,
   Zap,
+  X,
   RefreshCw,
 } from "lucide-react"
 
@@ -90,7 +91,7 @@ export function SubscriptionsSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showPlans, setShowPlans] = useState(false)
-  const [portalLoading, setPortalLoading] = useState(false) // Estado de carga para el portal
+  const [cancelLoading, setCancelLoading] = useState(false)
 
   useEffect(() => {
     if (profile?.id) {
@@ -156,38 +157,33 @@ export function SubscriptionsSection() {
     await createCheckoutSession(planId)
   }
 
-  // Función para redirigir al Portal de Clientes de Stripe
-  const handleManageSubscription = async () => {
-    if (!user || !profile || !profile.stripe_customer_id) {
-      setError("No se pudo acceder al portal de clientes: información de usuario o cliente de Stripe faltante.")
-      return
-    }
+  const handleCancelSubscription = async () => {
+    if (!subscriptionInfo?.stripe_subscription_id) return
 
-    setPortalLoading(true)
-    setError(null) // Limpiar errores previos
+    setCancelLoading(true)
     try {
-      const response = await fetch("/api/stripe/create-customer-portal-session", {
+      const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          customerId: profile.stripe_customer_id,
+          subscriptionId: subscriptionInfo.stripe_subscription_id,
         }),
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Error desconocido al crear la sesión del portal de clientes.")
+        const errorData = await response.json() // Lee el mensaje de error del cuerpo de la respuesta
+        throw new Error(errorData.error || "Error al cancelar la suscripción")
       }
 
-      const { url } = await response.json()
-      window.location.href = url // Redirige al usuario al portal de Stripe
+      // Actualizar la información de suscripción
+      await fetchSubscriptionInfo()
     } catch (err: any) {
-      console.error("Error redirecting to Stripe Customer Portal:", err)
-      setError(err.message || "Error al redirigir al portal de clientes de Stripe.")
+      console.error("Error canceling subscription:", err)
+      setError(err.message || "Error al cancelar la suscripción") // Muestra el mensaje de error específico
     } finally {
-      setPortalLoading(false)
+      setCancelLoading(false)
     }
   }
 
@@ -271,19 +267,18 @@ export function SubscriptionsSection() {
         {subscriptionInfo && (
           <Button
             variant="outline"
-            onClick={handleManageSubscription} // Redirige al portal para cambiar/cancelar
-            disabled={portalLoading}
+            onClick={() => setShowPlans(!showPlans)}
             className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
           >
-            {portalLoading ? (
+            {showPlans ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Cargando Portal...
+                <X className="w-4 h-4 mr-2" />
+                Ocultar Planes
               </>
             ) : (
               <>
                 <Zap className="w-4 h-4 mr-2" />
-                Gestionar Suscripción
+                Cambiar Plan
               </>
             )}
           </Button>
@@ -365,36 +360,26 @@ export function SubscriptionsSection() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 variant="outline"
-                onClick={handleManageSubscription} // Redirige al portal para cambiar plan
-                disabled={portalLoading}
+                onClick={() => setShowPlans(!showPlans)}
                 className="flex-1 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
               >
-                {portalLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Cargando Portal...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    Cambiar Plan
-                  </>
-                )}
+                <Zap className="w-4 h-4 mr-2" />
+                Cambiar Plan
               </Button>
               <Button
                 variant="outline"
-                onClick={handleManageSubscription} // Redirige al portal para cancelar
-                disabled={portalLoading || subscriptionInfo.subscription_status !== "active"}
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading || subscriptionInfo.subscription_status !== "active"}
                 className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white"
               >
-                {portalLoading ? (
+                {cancelLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Cargando Portal...
+                    Cancelando...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-4 h-4 mr-2" /> {/* Usar CreditCard para gestionar */}
+                    <X className="w-4 h-4 mr-2" />
                     Cancelar Suscripción
                   </>
                 )}

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -9,54 +9,46 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    // Log para ver todas las cookies que llegan al Route Handler
-    const allCookies = cookies()
-      .getAll()
-      .map((c) => `${c.name}=${c.value}`)
-    console.log("Cookies recibidas en cancel-subscription:", allCookies)
-
-    // Inicialización estándar y recomendada para Route Handlers
-    const supabase = createRouteHandlerClient({ cookies })
-
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
-
-    console.log("Sesión en cancel-subscription:", session?.user?.id, "Error:", sessionError?.message)
-
-    if (sessionError || !session) {
-      console.error("Error getting session for cancellation:", sessionError?.message || "No session found")
-      return NextResponse.json({ error: "Unauthorized: No active session found." }, { status: 401 })
-    }
-
     const { subscriptionId } = await request.json()
 
     if (!subscriptionId) {
-      return NextResponse.json({ error: "Subscription ID is required." }, { status: 400 })
+      return NextResponse.json({ error: "Subscription ID is required" }, { status: 400 })
     }
 
+    // Verificar autenticación
+    const supabase = createServerComponentClient({ cookies })
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Cancelar la suscripción en Stripe
     const canceledSubscription = await stripe.subscriptions.cancel(subscriptionId)
 
-    // Update Supabase profile status
+    // Actualizar el estado en Supabase
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ subscription_status: canceledSubscription.status, plan_id: null })
+      .update({
+        subscription_status: "canceled",
+        subscription_cancelled_at: new Date().toISOString(),
+      })
       .eq("id", session.user.id)
 
     if (updateError) {
-      console.error("Error updating Supabase profile after cancellation:", updateError)
-      // Even if Supabase update fails, Stripe cancellation was successful, so we still return success to client
+      console.error("Error updating subscription status:", updateError)
       return NextResponse.json(
-        {
-          subscription: canceledSubscription,
-          warning: "Subscription canceled in Stripe, but failed to update status in Supabase.",
-        },
-        { status: 200 },
+        { error: `Failed to update subscription status: ${updateError.message}` },
+        { status: 500 },
       )
     }
 
-    return NextResponse.json({ subscription: canceledSubscription })
+    return NextResponse.json({
+      success: true,
+      subscription: canceledSubscription,
+    })
   } catch (error: any) {
     console.error("Error canceling subscription:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
