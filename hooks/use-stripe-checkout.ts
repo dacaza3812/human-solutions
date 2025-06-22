@@ -4,64 +4,45 @@ import { useState } from "react"
 import { loadStripe } from "@stripe/stripe-js"
 import { useAuth } from "@/contexts/auth-context"
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
-
+// Cambiar de 'const useStripeCheckout = () => {' a 'export function useStripeCheckout() {'
+// Y eliminar la línea 'export default useStripeCheckout' al final del archivo.
 export function useStripeCheckout() {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
-  const createCheckoutSession = async (planId: number) => {
-    if (!user) {
-      setError("You must be logged in to subscribe")
-      return
-    }
+  const { user, session } = useAuth()
 
+  const createCheckoutSession = async (planId: string) => {
     setLoading(true)
-    setError(null)
-
     try {
-      // Create checkout session
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
         },
-        body: JSON.stringify({
-          planId,
-          userId: user.id,
-        }),
+        body: JSON.stringify({ planId, userId: user?.id }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create checkout session")
+        // Usar response.ok para verificar el estado HTTP
+        throw new Error(data.message || "Error al crear la sesión de pago")
       }
 
-      // Redirect to Stripe Checkout
       const stripe = await stripePromise
       if (!stripe) {
-        throw new Error("Stripe failed to load")
+        throw new Error("Error al cargar Stripe")
       }
-
-      const { error: stripeError } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId,
-      })
-
-      if (stripeError) {
-        throw new Error(stripeError.message)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      stripe.redirectToCheckout({ sessionId: data.sessionId })
+    } catch (error: any) {
+      console.error("Error creating checkout session:", error.message)
+      alert(error.message)
     } finally {
       setLoading(false)
     }
   }
 
-  return {
-    createCheckoutSession,
-    loading,
-    error,
-  }
+  return { createCheckoutSession, loading }
 }
