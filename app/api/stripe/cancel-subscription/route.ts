@@ -15,20 +15,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Subscription ID is required" }, { status: 400 })
     }
 
-    // Log cookies to debug
-    const cookieHeader = request.headers.get("cookie")
-    console.log("Request Cookies:", cookieHeader)
+    // Log all cookies available on the server-side
+    const cookieStore = cookies()
+    console.log("Server-side cookies available:", cookieStore.getAll())
+
+    // IMPORTANT: Verify SUPABASE_JWT_SECRET is loaded
+    const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET
+    if (!supabaseJwtSecret) {
+      console.error("SUPABASE_JWT_SECRET is not set in environment variables!")
+      return NextResponse.json(
+        { error: "Server configuration error: SUPABASE_JWT_SECRET is missing." },
+        { status: 500 },
+      )
+    }
+    console.log("SUPABASE_JWT_SECRET is set (first 5 chars):", supabaseJwtSecret.substring(0, 5) + "...")
 
     // Verificar autenticación
-    const supabase = createServerComponentClient({ cookies })
+    const supabase = createServerComponentClient({
+      cookies,
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    })
     const {
       data: { session },
+      error: sessionError, // Capture potential error from getSession
     } = await supabase.auth.getSession()
 
     console.log("Session in cancel-subscription API:", session)
+    if (sessionError) {
+      console.error("Error getting session from Supabase:", sessionError)
+    }
 
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized: No active session found." }, { status: 401 })
+      return NextResponse.json(
+        {
+          error:
+            "Unauthorized: No active session found. Please ensure you are logged in and cookies are being sent correctly.",
+        },
+        { status: 401 },
+      )
     }
 
     // Cancelar la suscripción en Stripe
@@ -44,7 +69,7 @@ export async function POST(request: NextRequest) {
       .eq("id", session.user.id)
 
     if (updateError) {
-      console.error("Error updating subscription status:", updateError)
+      console.error("Error updating subscription status in Supabase:", updateError)
       return NextResponse.json(
         { error: `Failed to update subscription status in Supabase: ${updateError.message}` },
         { status: 500 },
