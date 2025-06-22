@@ -158,10 +158,34 @@ export function SubscriptionsSection() {
   }
 
   const handleCancelSubscription = async () => {
-    if (!subscriptionInfo?.stripe_subscription_id) return
+    // Validaciones previas mejoradas
+    if (!user) {
+      setError("Usuario no autenticado. Por favor, inicia sesión nuevamente.")
+      return
+    }
 
+    if (!profile) {
+      setError("Perfil de usuario no encontrado. Por favor, recarga la página.")
+      return
+    }
+
+    if (!subscriptionInfo?.stripe_subscription_id) {
+      setError("ID de suscripción no encontrado. No se puede proceder con la cancelación.")
+      return
+    }
+
+    if (subscriptionInfo.subscription_status !== "active") {
+      setError("Solo se pueden cancelar suscripciones activas.")
+      return
+    }
+
+    // Limpiar errores previos
+    setError(null)
     setCancelLoading(true)
+
     try {
+      console.log("Iniciating subscription cancellation for:", subscriptionInfo.stripe_subscription_id)
+
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
         headers: {
@@ -172,16 +196,40 @@ export function SubscriptionsSection() {
         }),
       })
 
+      const responseData = await response.json()
+      console.log("Cancellation response:", response.status, responseData)
+
       if (!response.ok) {
-        const errorData = await response.json() // Lee el mensaje de error del cuerpo de la respuesta
-        throw new Error(errorData.error || "Error al cancelar la suscripción")
+        // Manejar diferentes tipos de errores de manera específica
+        if (response.status === 401) {
+          throw new Error("Sesión expirada. Por favor, cierra sesión e inicia sesión nuevamente.")
+        } else if (response.status === 403) {
+          throw new Error("No tienes permisos para cancelar esta suscripción.")
+        } else if (response.status === 404) {
+          throw new Error("Suscripción no encontrada en Stripe.")
+        } else {
+          throw new Error(responseData.error || `Error del servidor (${response.status})`)
+        }
       }
 
-      // Actualizar la información de suscripción
+      // Verificar si la respuesta incluye una advertencia
+      if (responseData.warning) {
+        console.warn("Cancellation warning:", responseData.warning)
+        setError(`Advertencia: ${responseData.warning}`)
+      }
+
+      console.log("Subscription canceled successfully:", responseData.subscription?.id)
+
+      // Actualizar la información de suscripción para reflejar el cambio
       await fetchSubscriptionInfo()
+
+      // Limpiar cualquier error previo si la cancelación fue exitosa
+      if (!responseData.warning) {
+        setError(null)
+      }
     } catch (err: any) {
-      console.error("Error canceling subscription:", err)
-      setError(err.message || "Error al cancelar la suscripción") // Muestra el mensaje de error específico
+      console.error("Error during subscription cancellation:", err)
+      setError(err.message || "Error inesperado al cancelar la suscripción")
     } finally {
       setCancelLoading(false)
     }
