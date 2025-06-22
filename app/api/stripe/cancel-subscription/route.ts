@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
       .map((c) => `${c.name}=${c.value}`)
     console.log("Cookies recibidas en cancel-subscription:", allCookies)
 
-    // Usar la sintaxis de función para pasar las cookies
-    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
+    // Inicialización estándar y recomendada para Route Handlers
+    const supabase = createRouteHandlerClient({ cookies })
 
     const {
       data: { session },
