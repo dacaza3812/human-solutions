@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createServerClient } from "@supabase/ssr" // Importar createServerClient
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -9,32 +9,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    // Usar createServerClient para un manejo más robusto de las cookies
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-            } catch {
-              // Esto puede ocurrir si se llama desde un Server Component,
-              // pero en un Route Handler debería funcionar.
-            }
-          },
-        },
-      },
-    )
+    // Log para ver todas las cookies que llegan al Route Handler
+    const allCookies = cookies()
+      .getAll()
+      .map((c) => `${c.name}=${c.value}`)
+    console.log("Cookies recibidas en create-customer-portal-session:", allCookies)
+
+    // Usar la sintaxis de función para pasar las cookies
+    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
 
     const {
       data: { session },
       error: sessionError,
     } = await supabase.auth.getSession()
+
+    console.log("Sesión en create-customer-portal-session:", session?.user?.id, "Error:", sessionError?.message)
 
     if (sessionError || !session) {
       console.error("Error getting session for customer portal:", sessionError?.message || "No session found")

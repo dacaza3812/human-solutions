@@ -9,12 +9,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies() })
+    // Log para ver todas las cookies que llegan al Route Handler
+    const allCookies = cookies()
+      .getAll()
+      .map((c) => `${c.name}=${c.value}`)
+    console.log("Cookies recibidas en cancel-subscription:", allCookies)
+
+    // Usar la sintaxis de función para pasar las cookies
+    const supabase = createRouteHandlerClient({ cookies: () => cookies() })
 
     const {
       data: { session },
       error: sessionError,
     } = await supabase.auth.getSession()
+
+    console.log("Sesión en cancel-subscription:", session?.user?.id, "Error:", sessionError?.message)
 
     if (sessionError || !session) {
       console.error("Error getting session for cancellation:", sessionError?.message || "No session found")
