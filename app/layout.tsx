@@ -2,6 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -19,7 +21,11 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <SpeedInsights />
+            <Analytics />
+            </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
