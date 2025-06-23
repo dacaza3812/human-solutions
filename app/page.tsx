@@ -946,7 +946,7 @@ export default function SolucionesHumanas() {
           <Separator className="my-8" />
 
           <div className="text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 Fox Lawyer. Todos los derechos reservados.</p>
+            <p>© 2025 Fox Lawyer. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>
