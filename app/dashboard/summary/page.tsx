@@ -1,233 +1,161 @@
 "use client"
-import { Button } from "@/components/ui/button"
-import { Plus, Users, Target, DollarSign, Award, FileText, UserPlus, Calendar } from "lucide-react"
+
+import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { UserInfoCard } from "../components/user-info-card"
-import { StatsGrid } from "../components/stats-grid"
-import { RecentActivityCard } from "../components/recent-activity-card"
-import { UpcomingAppointmentsCard } from "../components/upcoming-appointments-card"
-
-// Define un tipo para el perfil de usuario si no existe
-interface UserProfile {
-  id: string
-  first_name?: string | null
-  last_name?: string | null
-  account_type?: string | null
-  phone?: string | null
-  created_at?: string | null
-  referral_code?: string | null
-  stripe_customer_id?: string | null
-  // Añade cualquier otro campo de perfil que uses
-}
-
-// Define tipos para los datos mock
-interface ClientCase {
-  id: number
-  title: string
-  type: string
-  status: string
-  advisor: string
-  advisorAvatar: string
-  description: string
-  createdDate: string
-  nextAppointment: string | null
-  progress: number
-}
+import { UserInfoCard } from "@/app/dashboard/components/user-info-card"
+import { RecentActivityCard } from "@/app/dashboard/components/recent-activity-card"
+import { UpcomingAppointmentsCard } from "@/app/dashboard/components/upcoming-appointments-card"
+import { StatsGrid } from "@/app/dashboard/components/stats-grid"
+import { ClientCasesSection } from "@/app/dashboard/components/client-cases-section"
+import { AdvisorCasesSection } from "@/app/dashboard/components/advisor-cases-section"
+import { AdvisorClientsSection } from "@/app/dashboard/components/advisor-clients-section"
+import { MessagesSection } from "@/app/dashboard/components/messages-section"
+import { QuotesSection } from "@/app/dashboard/components/quotes-section"
+import { FinancialOverviewSection } from "@/app/dashboard/components/financial-overview-section"
+import { ReferralsSection } from "@/app/dashboard/components/referrals-section"
+import { FileText } from "lucide-react"
 
 export default function SummaryPage() {
-  const { user, profile } = useAuth()
+  const { profile, loading } = useAuth()
+  const [activeTab, setActiveTab] = useState("summary") // Default tab
 
-  // Mock data for current user's cases (client view)
-  const userCases: ClientCase[] = [
+  // Mock data for demonstration
+  const mockCases = [
     {
-      id: 1,
-      title: "Asesoría Financiera Personal",
-      type: "Asesoría Financiera",
-      status: "En Progreso",
-      advisor: "Dr. María González",
-      advisorAvatar: "/placeholder-user.jpg",
-      description:
-        "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
-      createdDate: "2024-01-15",
-      nextAppointment: "2024-01-25 10:00 AM",
-      progress: 65,
+      id: "1",
+      title: "Divorcio de mutuo acuerdo",
+      status: "En progreso",
+      lastUpdate: "2023-10-26",
     },
     {
-      id: 2,
-      title: "Mediación Familiar",
-      type: "Relaciones Familiares",
-      status: "Programada",
-      advisor: "Lic. Carlos Rodríguez",
-      advisorAvatar: "/placeholder-user.jpg",
-      description: "Resolución de conflictos familiares y mejora de la comunicación entre miembros de la familia.",
-      createdDate: "2024-01-10",
-      nextAppointment: "2024-01-20 2:30 PM",
-      progress: 25,
-    },
-    {
-      id: 3,
-      title: "Consulta Legal",
-      type: "Asesoría Legal",
-      status: "Completada",
-      advisor: "Abg. Ana Martínez",
-      advisorAvatar: "/placeholder-user.jpg",
-      description: "Consulta sobre derechos laborales y procedimientos legales.",
-      createdDate: "2023-12-20",
-      nextAppointment: null,
-      progress: 100,
+      id: "2",
+      title: "Demanda por accidente de tráfico",
+      status: "Pendiente",
+      lastUpdate: "2023-10-20",
     },
   ]
 
-  // Filter user's scheduled cases for quotes section
-  const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
-
-  // Define stats for advisor
-  const advisorStats = [
+  const mockClients = [
     {
-      title: "Clientes Activos",
-      value: "124",
-      change: "+12%",
-      icon: Users,
-      color: "text-emerald-400",
+      id: "c1",
+      name: "Ana García",
+      email: "ana.garcia@example.com",
+      phone: "555-1234",
+      cases: 2,
     },
     {
-      title: "Casos Resueltos",
-      value: "89",
-      change: "+8%",
-      icon: Target,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ingresos Mensuales",
-      value: "$12,450",
-      change: "+23%",
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Satisfacción",
-      value: "98%",
-      change: "+2%",
-      icon: Award,
-      color: "text-orange-400",
+      id: "c2",
+      name: "Luis Fernández",
+      email: "luis.f@example.com",
+      phone: "555-5678",
+      cases: 1,
     },
   ]
 
-  // Define stats for client
-  const clientStats = [
+  const mockActivity = [
     {
-      title: "Casos Activos",
-      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
-      change: "+1",
-      icon: FileText,
-      color: "text-emerald-400",
+      id: "a1",
+      description: "Actualización de caso: Divorcio de mutuo acuerdo",
+      timestamp: "Hace 2 horas",
     },
     {
-      title: "Referidos Totales",
-      value: "0", // This will be updated by the layout's referralStats
-      change: "+0", // This will be updated by the layout's referralStats
-      icon: UserPlus,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ganancias Totales",
-      value: "$0", // This will be updated by the layout's referralStats
-      change: "+$0", // This will be updated by the layout's referralStats
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Próximas Citas",
-      value: userScheduledCases.length.toString(),
-      change: "Esta semana",
-      icon: Calendar,
-      color: "text-orange-400",
+      id: "a2",
+      description: "Nuevo mensaje de Ana García",
+      timestamp: "Ayer",
     },
   ]
 
-  // Determine which set of stats to pass
-  const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
-
-  const recentActivity = [
+  const mockAppointments = [
     {
-      id: 1,
-      type: "Nuevo Cliente",
-      description: "María González se registró para asesoría financiera",
-      time: "Hace 2 horas",
-      status: "success",
-    },
-    {
-      id: 2,
-      type: "Caso Completado",
-      description: "Caso de mediación familiar #1234 resuelto exitosamente",
-      time: "Hace 4 horas",
-      status: "completed",
-    },
-    {
-      id: 3,
-      type: "Pago Recibido",
-      description: "Pago de $150 USD recibido de Carlos Rodríguez",
-      time: "Hace 6 horas",
-      status: "payment",
-    },
-    {
-      id: 4,
-      type: "Consulta Programada",
-      description: "Nueva consulta programada para mañana a las 10:00 AM",
-      time: "Hace 1 día",
-      status: "scheduled",
-    },
-  ]
-
-  // Data for UpcomingAppointmentsCard
-  const upcomingAppointmentsData = [
-    {
-      title: "Consulta Financiera",
+      id: "app1",
+      title: "Reunión caso Divorcio",
+      date: "2023-11-01",
       time: "10:00 AM",
-      description: "Ana Martínez - Planificación presupuestaria",
-      colorClass: "emerald",
     },
     {
-      title: "Mediación Familiar",
-      time: "2:30 PM",
-      description: "Familia Rodríguez - Resolución de conflictos",
-      colorClass: "blue",
-    },
-    {
-      title: "Consulta Profesional",
-      time: "4:00 PM",
-      description: "Luis Fernández - Asesoría empresarial",
-      colorClass: "purple",
+      id: "app2",
+      title: "Consulta inicial nuevo cliente",
+      date: "2023-11-03",
+      time: "02:00 PM",
     },
   ]
+
+  const mockQuotes = [
+    {
+      id: "q1",
+      service: "Asesoría Legal",
+      status: "Pendiente",
+      amount: "$150",
+      date: "2023-10-25",
+    },
+    {
+      id: "q2",
+      service: "Representación Judicial",
+      status: "Aceptada",
+      amount: "$1200",
+      date: "2023-10-20",
+    },
+  ]
+
+  const mockFinancialData = {
+    revenue: 15000,
+    expenses: 5000,
+    profit: 10000,
+    pendingPayments: 2500,
+  }
+
+  const mockReferralData = {
+    totalReferrals: 10,
+    activeReferrals: 5,
+    earnings: 250,
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
+        <p className="text-muted-foreground">Cargando resumen del dashboard.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="grid gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
-          <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
+          <h1 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name || "Usuario"}!</h1>
+          <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad.</p>
         </div>
-        {profile?.account_type === "advisor" && (
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Caso
-          </Button>
-        )}
       </div>
 
-      {/* User Info Card */}
-      <UserInfoCard user={user} profile={profile} />
+      <StatsGrid profileType={profile?.account_type || "client"} />
 
-      {/* Stats Grid */}
-      <StatsGrid stats={displayStats} />
-
-      {/* Recent Activity */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <RecentActivityCard recentActivity={recentActivity} />
-
-        <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        <UserInfoCard profile={profile} />
+        <RecentActivityCard activity={mockActivity} />
+        <UpcomingAppointmentsCard appointments={mockAppointments} />
       </div>
+
+      {profile?.account_type === "client" && (
+        <>
+          <ClientCasesSection cases={mockCases} />
+          <QuotesSection quotes={mockQuotes} />
+          <MessagesSection />
+          <ReferralsSection referralData={mockReferralData} />
+        </>
+      )}
+
+      {profile?.account_type === "advisor" && (
+        <>
+          <AdvisorCasesSection cases={mockCases} />
+          <AdvisorClientsSection clients={mockClients} />
+          <MessagesSection />
+          <FinancialOverviewSection financialData={mockFinancialData} />
+        </>
+      )}
     </div>
   )
 }

@@ -34,6 +34,7 @@ interface SettingsSectionProps {
   setPasswordChangeMessage: (value: string) => void
   passwordChangeError: string
   setPasswordChangeError: (value: string) => void
+  handlePasswordChange: (e: React.FormEvent) => Promise<void>
 
   // Profile state and handlers
   firstName: string
@@ -44,6 +45,7 @@ interface SettingsSectionProps {
   setProfileUpdateMessage: (value: string) => void
   profileUpdateError: string
   setProfileUpdateError: (value: string) => void
+  handleProfileUpdate: (e: React.FormEvent) => Promise<void>
 
   // Referral Code state and handlers
   newReferralCode: string
@@ -52,6 +54,7 @@ interface SettingsSectionProps {
   setReferralCodeUpdateMessage: (value: string) => void
   referralCodeUpdateError: string
   setReferralCodeUpdateError: (value: string) => void
+  handleReferralCodeUpdate: (e: React.FormEvent) => Promise<void>
 }
 
 export function SettingsSection({
@@ -82,74 +85,12 @@ export function SettingsSection({
   setReferralCodeUpdateMessage,
   referralCodeUpdateError,
   setReferralCodeUpdateError,
+  handlePasswordChange, // Passed from parent
+  handleProfileUpdate, // Passed from parent
+  handleReferralCodeUpdate, // Passed from parent
 }: SettingsSectionProps) {
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPasswordChangeMessage("")
-    setPasswordChangeError("")
-
-    if (newPassword !== confirmNewPassword) {
-      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
-      return
-    }
-    if (newPassword.length < 6) {
-      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
-      return
-    }
-
-    const { error } = await changePassword(newPassword)
-
-    if (error) {
-      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
-    } else {
-      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmNewPassword("")
-    }
-  }
-
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setProfileUpdateMessage("")
-    setProfileUpdateError("")
-
-    if (!firstName.trim() || !lastName.trim()) {
-      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
-      return
-    }
-
-    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
-
-    if (error) {
-      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
-    } else {
-      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
-    }
-  }
-
-  const handleReferralCodeUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setReferralCodeUpdateMessage("")
-    setReferralCodeUpdateError("")
-
-    if (!newReferralCode.trim()) {
-      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
-      return
-    }
-    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
-      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
-      return
-    }
-
-    const { error } = await updateUserProfile({ referral_code: newReferralCode })
-
-    if (error) {
-      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
-    } else {
-      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
-    }
-  }
+  // The handlers are now passed as props from the parent SettingsPage
+  // No need to redefine them here.
 
   return (
     <div className="space-y-6">

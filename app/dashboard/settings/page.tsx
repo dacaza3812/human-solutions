@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { SettingsSection } from "@/app/dashboard/components/settings-section"
 import { useAuth } from "@/contexts/auth-context"
 import { FileText } from "lucide-react"
@@ -51,76 +51,102 @@ export default function SettingsPage() {
   }, [profile])
 
   // Handlers for Settings section
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPasswordChangeMessage("")
-    setPasswordChangeError("")
+  const handlePasswordChange = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      setPasswordChangeMessage("")
+      setPasswordChangeError("")
 
-    if (newPassword !== confirmNewPassword) {
-      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
-      return
-    }
-    if (newPassword.length < 6) {
-      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
-      return
-    }
+      if (newPassword !== confirmNewPassword) {
+        setPasswordChangeError("Las nuevas contraseñas no coinciden.")
+        return
+      }
+      if (newPassword.length < 6) {
+        setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
+        return
+      }
 
-    const { error } = await changePassword(newPassword)
+      const { error } = await changePassword(newPassword)
 
-    if (error) {
-      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
-    } else {
-      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmNewPassword("")
-    }
-  }
+      if (error) {
+        setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
+      } else {
+        setPasswordChangeMessage("Contraseña cambiada exitosamente.")
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmNewPassword("")
+      }
+    },
+    [newPassword, confirmNewPassword, changePassword],
+  )
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setProfileUpdateMessage("")
-    setProfileUpdateError("")
+  const handleProfileUpdate = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      setProfileUpdateMessage("")
+      setProfileUpdateError("")
 
-    if (!firstName.trim() || !lastName.trim()) {
-      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
-      return
-    }
+      if (!firstName.trim() || !lastName.trim()) {
+        setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
+        return
+      }
 
-    console.log("Attempting to update profile with:", { first_name: firstName, last_name: lastName })
-    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
+      console.log("SettingsPage: updateUserProfile type from useAuth:", typeof updateUserProfile)
+      // Defensive check: Ensure updateUserProfile is a function before calling
+      if (typeof updateUserProfile !== "function") {
+        console.error("Error: updateUserProfile is not a function in SettingsPage. It might be undefined or null.")
+        setProfileUpdateError("Error interno: La función de actualización de perfil no está disponible.")
+        return
+      }
 
-    if (error) {
-      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
-    } else {
-      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
-      // The useEffect will pick up the profile change from AuthContext and update local state
-    }
-  }
+      console.log("Attempting to update profile with:", { first_name: firstName, last_name: lastName })
+      const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
 
-  const handleReferralCodeUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setReferralCodeUpdateMessage("")
-    setReferralCodeUpdateError("")
+      if (error) {
+        setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
+      } else {
+        setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
+        // The useEffect will pick up the profile change from AuthContext and update local state
+      }
+    },
+    [firstName, lastName, updateUserProfile],
+  ) // Add updateUserProfile to dependencies
 
-    if (!newReferralCode.trim()) {
-      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
-      return
-    }
-    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
-      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
-      return
-    }
+  const handleReferralCodeUpdate = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      setReferralCodeUpdateMessage("")
+      setReferralCodeUpdateError("")
 
-    const { error } = await updateUserProfile({ referral_code: newReferralCode })
+      if (!newReferralCode.trim()) {
+        setReferralCodeUpdateError("El código de referido no puede estar vacío.")
+        return
+      }
+      if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
+        setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
+        return
+      }
 
-    if (error) {
-      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
-    } else {
-      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
-      // The useEffect will pick up the profile change from AuthContext and update local state
-    }
-  }
+      // Defensive check: Ensure updateUserProfile is a function before calling
+      if (typeof updateUserProfile !== "function") {
+        console.error(
+          "Error: updateUserProfile is not a function in SettingsPage (referral code update). It might be undefined or null.",
+        )
+        setReferralCodeUpdateError("Error interno: La función de actualización de perfil no está disponible.")
+        return
+      }
+
+      const { error } = await updateUserProfile({ referral_code: newReferralCode })
+
+      if (error) {
+        setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
+      } else {
+        setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
+        // The useEffect will pick up the profile change from AuthContext and update local state
+      }
+    },
+    [newReferralCode, updateUserProfile],
+  ) // Add updateUserProfile to dependencies
 
   if (loading) {
     return (
@@ -136,6 +162,9 @@ export default function SettingsPage() {
 
   return (
     <SettingsSection
+      profile={profile}
+      changePassword={changePassword} // This is passed, but the handler is defined in this component
+      updateUserProfile={updateUserProfile} // This is passed, but the handler is defined in this component
       currentPassword={currentPassword}
       setCurrentPassword={setCurrentPassword}
       newPassword={newPassword}
@@ -146,7 +175,7 @@ export default function SettingsPage() {
       setPasswordChangeMessage={setPasswordChangeMessage}
       passwordChangeError={passwordChangeError}
       setPasswordChangeError={setPasswordChangeError}
-      handlePasswordChange={handlePasswordChange}
+      handlePasswordChange={handlePasswordChange} // Pass the handler
       firstName={firstName}
       setFirstName={setFirstName}
       lastName={lastName}
@@ -155,15 +184,14 @@ export default function SettingsPage() {
       setProfileUpdateMessage={setProfileUpdateMessage}
       profileUpdateError={profileUpdateError}
       setProfileUpdateError={setProfileUpdateError}
-      handleProfileUpdate={handleProfileUpdate}
+      handleProfileUpdate={handleProfileUpdate} // Pass the handler
       newReferralCode={newReferralCode}
       setNewReferralCode={setNewReferralCode}
       referralCodeUpdateMessage={referralCodeUpdateMessage}
       setReferralCodeUpdateMessage={setReferralCodeUpdateMessage}
       referralCodeUpdateError={referralCodeUpdateError}
       setReferralCodeUpdateError={setReferralCodeUpdateError}
-      handleReferralCodeUpdate={handleReferralCodeUpdate}
-      profile={profile}
+      handleReferralCodeUpdate={handleReferralCodeUpdate} // Pass the handler
     />
   )
 }

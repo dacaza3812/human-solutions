@@ -1,80 +1,87 @@
 "use client"
 
-import { useState } from "react"
-import { QuotesSection } from "@/app/dashboard/components/quotes-section"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { FileText } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { PlusCircle, XCircle, FileText } from "lucide-react"
 
-// Define tipos para los datos mock
-interface ClientCase {
-  id: number
-  title: string
-  type: string
+interface Quote {
+  id: string
+  service: string
   status: string
-  advisor: string
-  advisorAvatar: string
-  description: string
-  createdDate: string
-  nextAppointment: string | null
-  progress: number
+  amount: string
+  date: string
 }
 
 export default function QuotesPage() {
   const { profile, loading } = useAuth()
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [quotes, setQuotes] = useState<Quote[]>([])
+  const [loadingQuotes, setLoadingQuotes] = useState(true)
 
-  // Mock data for current user's cases (client view)
-  const userCases: ClientCase[] = [
-    {
-      id: 1,
-      title: "Asesoría Financiera Personal",
-      type: "Asesoría Financiera",
-      status: "En Progreso",
-      advisor: "Dr. María González",
-      advisorAvatar: "/placeholder-user.jpg",
-      description:
-        "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
-      createdDate: "2024-01-15",
-      nextAppointment: "2024-01-25 10:00 AM",
-      progress: 65,
-    },
-    {
-      id: 2,
-      title: "Mediación Familiar",
-      type: "Relaciones Familiares",
-      status: "Programada",
-      advisor: "Lic. Carlos Rodríguez",
-      advisorAvatar: "/placeholder-user.jpg",
-      description: "Resolución de conflictos familiares y mejora de la comunicación entre miembros de la familia.",
-      createdDate: "2024-01-10",
-      nextAppointment: "2024-01-20 2:30 PM",
-      progress: 25,
-    },
-    {
-      id: 3,
-      title: "Consulta Legal",
-      type: "Asesoría Legal",
-      status: "Completada",
-      advisor: "Abg. Ana Martínez",
-      advisorAvatar: "/placeholder-user.jpg",
-      description: "Consulta sobre derechos laborales y procedimientos legales.",
-      createdDate: "2023-12-20",
-      nextAppointment: null,
-      progress: 100,
-    },
-  ]
+  useEffect(() => {
+    // Simulate fetching quotes for client
+    setLoadingQuotes(true)
+    setTimeout(() => {
+      setQuotes([
+        {
+          id: "q1",
+          service: "Asesoría Legal Inicial",
+          status: "Pendiente",
+          amount: "$150",
+          date: "2023-10-25",
+        },
+        {
+          id: "q2",
+          service: "Representación en Juicio",
+          status: "Aceptada",
+          amount: "$1200",
+          date: "2023-10-20",
+        },
+        {
+          id: "q3",
+          service: "Redacción de Contrato",
+          status: "Rechazada",
+          amount: "$300",
+          date: "2023-10-18",
+        },
+        {
+          id: "q4",
+          service: "Consulta de Propiedad",
+          status: "Completada",
+          amount: "$200",
+          date: "2023-10-10",
+        },
+      ])
+      setLoadingQuotes(false)
+    }, 1000)
+  }, [profile])
 
-  // Filter user's scheduled cases for quotes section
-  const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "Pendiente":
+        return "secondary"
+      case "Aceptada":
+        return "default"
+      case "Rechazada":
+        return "destructive"
+      case "Completada":
+        return "success" // Assuming you have a 'success' variant for Badge
+      default:
+        return "outline"
+    }
+  }
 
-  if (loading) {
+  if (loading || loadingQuotes) {
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
           <FileText className="w-8 h-8 text-muted-foreground" />
         </div>
         <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
-        <p className="text-muted-foreground">Cargando información de citas.</p>
+        <p className="text-muted-foreground">Cargando tus citas y cotizaciones.</p>
       </div>
     )
   }
@@ -82,20 +89,65 @@ export default function QuotesPage() {
   if (profile?.account_type !== "client") {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">Acceso Restringido</h3>
-        <p className="text-muted-foreground">Esta sección está disponible solo para clientes.</p>
+        <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+        <h3 className="text-2xl font-semibold text-foreground mb-2">Acceso Denegado</h3>
+        <p className="text-muted-foreground">Solo los usuarios con cuenta de cliente pueden acceder a esta sección.</p>
       </div>
     )
   }
 
   return (
-    <QuotesSection
-      selectedDate={selectedDate}
-      setSelectedDate={setSelectedDate}
-      userScheduledCases={userScheduledCases}
-    />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">Mis Citas y Cotizaciones</h2>
+          <p className="text-muted-foreground">Revisa el estado de tus solicitudes de servicio y citas.</p>
+        </div>
+        <Button>
+          <PlusCircle className="mr-2 h-4 w-4" /> Solicitar Nueva Cita/Cotización
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Solicitudes</CardTitle>
+          <CardDescription>Aquí puedes ver todas tus solicitudes de citas y cotizaciones.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {quotes.length === 0 ? (
+            <p className="text-muted-foreground">No hay solicitudes para mostrar.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Servicio</TableHead>
+                  <TableHead>Monto</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha de Solicitud</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {quotes.map((quote) => (
+                  <TableRow key={quote.id}>
+                    <TableCell className="font-medium">{quote.service}</TableCell>
+                    <TableCell>{quote.amount}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(quote.status)}>{quote.status}</Badge>
+                    </TableCell>
+                    <TableCell>{quote.date}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm">
+                        Ver Detalles
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
