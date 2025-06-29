@@ -1,5 +1,7 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -45,7 +47,6 @@ import { QuotesSection } from "./components/quotes-section"
 import { FinancialOverviewSection } from "./components/financial-overview-section"
 import { ReferralsSection } from "./components/referrals-section"
 import { SettingsSection } from "./components/settings-section"
-import { useRouter } from "next/navigation"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -945,7 +946,9 @@ export default function Dashboard() {
 
   return (
     <ProtectedRoute>
-      <DashboardContent />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
+      </div>
     </ProtectedRoute>
   )
 }

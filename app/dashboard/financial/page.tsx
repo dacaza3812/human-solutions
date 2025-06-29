@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { XCircle } from "lucide-react"
 import { FinancialCharts } from "@/components/financial-charts"
+import { FinancialOverviewSection } from "../components/financial-overview-section"
 
 interface Transaction {
   id: string
@@ -20,6 +20,10 @@ export default function FinancialPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dateRange, setDateRange] = useState({
+    start: "2024-01-01",
+    end: "2024-12-31",
+  })
 
   useEffect(() => {
     if (!authLoading && profile?.account_type === "advisor") {
@@ -52,9 +56,9 @@ export default function FinancialPage() {
   const totalExpenses = transactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + t.amount, 0)
   const netBalance = totalIncome + totalExpenses // Expenses are negative amounts
 
-  if (loading) {
+  if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
@@ -67,9 +71,8 @@ export default function FinancialPage() {
   if (profile?.account_type !== "advisor") {
     return (
       <div className="text-center py-12">
-        <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h3 className="text-2xl font-semibold text-foreground mb-2">Acceso Denegado</h3>
-        <p className="text-muted-foreground">Esta sección es solo para asesores.</p>
+        <h3 className="text-xl font-semibold text-foreground mb-2">Acceso Denegado</h3>
+        <p className="text-muted-foreground">Esta sección solo está disponible para asesores.</p>
       </div>
     )
   }
@@ -77,7 +80,7 @@ export default function FinancialPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Vista Financiera</h1>
-
+      <FinancialOverviewSection dateRange={dateRange} setDateRange={setDateRange} />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>

@@ -126,14 +126,24 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
   // Get max value for chart scaling
   const maxEarnings = Math.max(...monthlyEarnings.map((m) => m.earnings))
 
-  const data = [
-    { name: "Ene", Ingresos: 4000, Gastos: 2400 },
-    { name: "Feb", Ingresos: 3000, Gastos: 1398 },
-    { name: "Mar", Ingresos: 2000, Gastos: 9800 },
-    { name: "Abr", Ingresos: 2780, Gastos: 3908 },
-    { name: "May", Ingresos: 1890, Gastos: 4800 },
-    { name: "Jun", Ingresos: 2390, Gastos: 3800 },
-    { name: "Jul", Ingresos: 3490, Gastos: 4300 },
+  const revenueData = [
+    { name: "Ene", total: 4000, subscriptions: 2400, cases: 1600 },
+    { name: "Feb", total: 3000, subscriptions: 1398, cases: 1602 },
+    { name: "Mar", total: 2000, subscriptions: 980, cases: 1020 },
+    { name: "Abr", total: 2780, subscriptions: 3908, cases: -1128 }, // Example of negative for cases if refunds/adjustments
+    { name: "May", total: 1890, subscriptions: 4800, cases: -2910 },
+    { name: "Jun", total: 2390, subscriptions: 3800, cases: -1410 },
+    { name: "Jul", total: 3490, subscriptions: 4300, cases: -810 },
+  ]
+
+  const clientAcquisitionData = [
+    { name: "Ene", newClients: 10, churn: 2 },
+    { name: "Feb", newClients: 12, churn: 3 },
+    { name: "Mar", newClients: 8, churn: 1 },
+    { name: "Abr", newClients: 15, churn: 4 },
+    { name: "May", newClients: 11, churn: 2 },
+    { name: "Jun", newClients: 13, churn: 3 },
+    { name: "Jul", newClients: 9, churn: 1 },
   ]
 
   return (
@@ -207,7 +217,7 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
           <h3 className="text-lg font-semibold mb-2">Ingresos vs. Gastos Mensuales</h3>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={data}
+              data={monthlyEarnings}
               margin={{
                 top: 5,
                 right: 30,
@@ -216,20 +226,20 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
               }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
+              <XAxis dataKey="month" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="Ingresos" fill="#22c55e" />
-              <Bar dataKey="Gastos" fill="#ef4444" />
+              <Bar dataKey="earnings" fill="#22c55e" name="Ingresos" />
+              <Bar dataKey="expenses" fill="#ef4444" name="Gastos" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="h-[300px]">
-          <h3 className="text-lg font-semibold mb-2">Tendencia de Ingresos</h3>
+          <h3 className="text-lg font-semibold mb-2">Adquisición de Clientes</h3>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={data}
+              data={clientAcquisitionData}
               margin={{
                 top: 5,
                 right: 30,
@@ -241,7 +251,8 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="Ingresos" stroke="#22c55e" activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="newClients" stroke="#8884d8" name="Nuevos Clientes" />
+              <Line type="monotone" dataKey="churn" stroke="#ff7300" name="Bajas" />
             </LineChart>
           </ResponsiveContainer>
         </div>

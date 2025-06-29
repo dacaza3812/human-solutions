@@ -1,238 +1,301 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarComponent } from "@/components/calendar-component"
-import { FinancialCharts } from "@/components/financial-charts"
-import { ChatInterface } from "@/components/chat-interface"
-import { UserInfoCard } from "@/app/dashboard/components/user-info-card"
-import { RecentActivityCard } from "@/app/dashboard/components/recent-activity-card"
-import { UpcomingAppointmentsCard } from "@/app/dashboard/components/upcoming-appointments-card"
-import { StatsGrid } from "@/app/dashboard/components/stats-grid"
+import { Plus, Users, FileText, DollarSign, Award, Calendar, Target, UserPlus } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
+import { UserInfoCard } from "../components/user-info-card"
+import { StatsGrid } from "../components/stats-grid"
+import { RecentActivityCard } from "../components/recent-activity-card"
+import { UpcomingAppointmentsCard } from "../components/upcoming-appointments-card"
 
-interface Case {
+// Define un tipo para el perfil de usuario si no existe
+interface UserProfile {
   id: string
-  title: string
-  status: string
-  last_updated: string
+  first_name?: string | null
+  last_name?: string | null
+  account_type?: string | null
+  phone?: string | null
+  created_at?: string | null
+  referral_code?: string | null
+  stripe_customer_id?: string | null
+  // Añade cualquier otro campo de perfil que uses
 }
 
-interface Client {
-  id: string
-  name: string
-  email: string
+// Define tipos para los datos mock
+interface ClientCase {
+  id: number
+  title: string
+  type: string
   status: string
+  advisor: string
+  advisorAvatar: string
+  description: string
+  createdDate: string
+  nextAppointment: string | null
+  progress: number
 }
 
-interface Appointment {
-  id: string
-  title: string
-  date: string
-  time: string
-  client: string
+interface ReferralStats {
+  total_referrals: number
+  active_referrals: number
+  total_earnings: number
+  monthly_earnings: number
 }
 
 export default function SummaryPage() {
-  const { profile, loading: authLoading } = useAuth()
-  const [cases, setCases] = useState<Case[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { user, profile, loading: authLoading } = useAuth()
+  const [referralStats, setReferralStats] = useState<ReferralStats>({
+    total_referrals: 0,
+    active_referrals: 0,
+    total_earnings: 0,
+    monthly_earnings: 0,
+  })
+  const [referralCode, setReferralCode] = useState("")
+
+  // Mock data for current user's cases (client view)
+  const userCases: ClientCase[] = [
+    {
+      id: 1,
+      title: "Asesoría Financiera Personal",
+      type: "Asesoría Financiera",
+      status: "En Progreso",
+      advisor: "Dr. María González",
+      advisorAvatar: "/placeholder-user.jpg",
+      description:
+        "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
+      createdDate: "2024-01-15",
+      nextAppointment: "2024-01-25 10:00 AM",
+      progress: 65,
+    },
+    {
+      id: 2,
+      title: "Mediación Familiar",
+      type: "Relaciones Familiares",
+      status: "Programada",
+      advisor: "Lic. Carlos Rodríguez",
+      advisorAvatar: "/placeholder-user.jpg",
+      description: "Resolución de conflictos familiares y mejora de la comunicación entre miembros de la familia.",
+      createdDate: "2024-01-10",
+      nextAppointment: "2024-01-20 2:30 PM",
+      progress: 25,
+    },
+    {
+      id: 3,
+      title: "Consulta Legal",
+      type: "Asesoría Legal",
+      status: "Completada",
+      advisor: "Abg. Ana Martínez",
+      advisorAvatar: "/placeholder-user.jpg",
+      description: "Consulta sobre derechos laborales y procedimientos legales.",
+      createdDate: "2023-12-20",
+      nextAppointment: null,
+      progress: 100,
+    },
+  ]
+
+  // Filter user's scheduled cases for quotes section
+  const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
 
   useEffect(() => {
-    if (!authLoading && profile) {
-      fetchDashboardData()
-    }
-  }, [profile, authLoading])
-
-  const fetchDashboardData = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      // Simulate fetching data based on profile type
-      if (profile?.account_type === "advisor") {
-        // Mock data for advisor
-        setCases([
-          { id: "1", title: "Divorcio Pérez", status: "Activo", last_updated: "2024-05-20" },
-          { id: "2", title: "Herencia García", status: "Pendiente", last_updated: "2024-05-18" },
-        ])
-        setClients([
-          { id: "101", name: "Juan Pérez", email: "juan@example.com", status: "Activo" },
-          { id: "102", name: "Ana López", email: "ana@example.com", status: "Pendiente" },
-        ])
-        setAppointments([
-          { id: "a1", title: "Reunión con Juan Pérez", date: "2024-06-01", time: "10:00 AM", client: "Juan Pérez" },
-          { id: "a2", title: "Consulta Ana López", date: "2024-06-02", time: "02:00 PM", client: "Ana López" },
-        ])
-      } else {
-        // Mock data for client
-        setCases([
-          { id: "3", title: "Mi Caso de Divorcio", status: "En Revisión", last_updated: "2024-05-22" },
-          { id: "4", title: "Consulta Legal", status: "Completado", last_updated: "2024-05-15" },
-        ])
-        setAppointments([{ id: "a3", title: "Cita con Abogado", date: "2024-06-05", time: "11:00 AM", client: "N/A" }])
+    if (profile && !referralCode) {
+      const generateReferralCode = () => {
+        const firstName = profile.first_name?.toLowerCase() || ""
+        const lastName = profile.last_name?.toLowerCase() || ""
+        const randomNum = Math.floor(Math.random() * 1000)
+        return `${firstName}${lastName}${randomNum}`
       }
-    } catch (err) {
-      console.error("Failed to fetch dashboard data:", err)
-      setError("Failed to load dashboard data. Please try again.")
-    } finally {
-      setLoading(false)
+      setReferralCode(profile.referral_code || generateReferralCode())
+    }
+  }, [profile, referralCode])
+
+  useEffect(() => {
+    if (profile?.account_type === "client" && profile.id && referralCode) {
+      fetchReferralStats()
+    }
+  }, [profile, referralCode])
+
+  const fetchReferralStats = async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_referral_stats", {
+        user_referral_code: referralCode,
+      })
+
+      if (error) {
+        console.error("Error fetching referral stats:", error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        const stats = data[0]
+        setReferralStats({
+          total_referrals: stats.total_referrals || 0,
+          active_referrals: stats.active_referrals || 0,
+          total_earnings: stats.total_earnings || 0,
+          monthly_earnings: stats.monthly_earnings || 0,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching referral stats:", error)
     }
   }
 
-  if (loading) {
+  // Define stats for advisor
+  const advisorStats = [
+    {
+      title: "Clientes Activos",
+      value: "124",
+      change: "+12%",
+      icon: Users,
+      color: "text-emerald-400",
+    },
+    {
+      title: "Casos Resueltos",
+      value: "89",
+      change: "+8%",
+      icon: Target,
+      color: "text-blue-400",
+    },
+    {
+      title: "Ingresos Mensuales",
+      value: "$12,450",
+      change: "+23%",
+      icon: DollarSign,
+      color: "text-purple-400",
+    },
+    {
+      title: "Satisfacción",
+      value: "98%",
+      change: "+2%",
+      icon: Award,
+      color: "text-orange-400",
+    },
+  ]
+
+  // Define stats for client
+  const clientStats = [
+    {
+      title: "Casos Activos",
+      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
+      change: "+1",
+      icon: FileText,
+      color: "text-emerald-400",
+    },
+    {
+      title: "Referidos Totales",
+      value: referralStats.total_referrals.toString(),
+      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
+      icon: UserPlus,
+      color: "text-blue-400",
+    },
+    {
+      title: "Ganancias Totales",
+      value: `$${referralStats.total_earnings}`,
+      change: `+$${referralStats.monthly_earnings}`,
+      icon: DollarSign,
+      color: "text-purple-400",
+    },
+    {
+      title: "Próximas Citas",
+      value: userScheduledCases.length.toString(),
+      change: "Esta semana",
+      icon: Calendar,
+      color: "text-orange-400",
+    },
+  ]
+
+  // Determine which set of stats to pass
+  const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
+
+  const recentActivity = [
+    {
+      id: 1,
+      type: "Nuevo Cliente",
+      description: "María González se registró para asesoría financiera",
+      time: "Hace 2 horas",
+      status: "success",
+    },
+    {
+      id: 2,
+      type: "Caso Completado",
+      description: "Caso de mediación familiar #1234 resuelto exitosamente",
+      time: "Hace 4 horas",
+      status: "completed",
+    },
+    {
+      id: 3,
+      type: "Pago Recibido",
+      description: "Pago de $150 USD recibido de Carlos Rodríguez",
+      time: "Hace 6 horas",
+      status: "payment",
+    },
+    {
+      id: 4,
+      type: "Consulta Programada",
+      description: "Nueva consulta programada para mañana a las 10:00 AM",
+      time: "Hace 1 día",
+      status: "scheduled",
+    },
+  ]
+
+  // Data for UpcomingAppointmentsCard
+  const upcomingAppointmentsData = [
+    {
+      title: "Consulta Financiera",
+      time: "10:00 AM",
+      description: "Ana Martínez - Planificación presupuestaria",
+      colorClass: "emerald",
+    },
+    {
+      title: "Mediación Familiar",
+      time: "2:30 PM",
+      description: "Familia Rodríguez - Resolución de conflictos",
+      colorClass: "blue",
+    },
+    {
+      title: "Consulta Profesional",
+      time: "4:00 PM",
+      description: "Luis Fernández - Asesoría empresarial",
+      colorClass: "purple",
+    },
+  ]
+
+  if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
   }
 
-  if (error) {
-    return <div className="text-center text-red-500">{error}</div>
-  }
-
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      <UserInfoCard profile={profile} />
-      <RecentActivityCard />
-      <UpcomingAppointmentsCard appointments={appointments} />
-      <StatsGrid profileType={profile?.account_type || "client"} />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
+          <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
+        </div>
+        {profile?.account_type === "advisor" && (
+          <Button className="bg-emerald-500 hover:bg-emerald-600">
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Caso
+          </Button>
+        )}
+      </div>
 
-      {profile?.account_type === "advisor" && (
-        <>
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Casos Recientes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Última Actualización</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cases.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell>{c.title}</TableCell>
-                      <TableCell>{c.status}</TableCell>
-                      <TableCell>{c.last_updated}</TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          Ver Detalles
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+      {/* User Info Card */}
+      <UserInfoCard user={user} profile={profile} />
 
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Clientes Activos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell>{client.name}</TableCell>
-                      <TableCell>{client.email}</TableCell>
-                      <TableCell>{client.status}</TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          Ver Perfil
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+      {/* Stats Grid */}
+      <StatsGrid stats={displayStats} />
 
-          <Card className="md:col-span-2 lg:col-span-1">
-            <CardHeader>
-              <CardTitle>Calendario</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CalendarComponent />
-            </CardContent>
-          </Card>
+      {/* Recent Activity */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <RecentActivityCard recentActivity={recentActivity} />
 
-          <Card className="md:col-span-2 lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Resumen Financiero</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FinancialCharts />
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {profile?.account_type === "client" && (
-        <>
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Mis Casos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Última Actualización</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cases.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell>{c.title}</TableCell>
-                      <TableCell>{c.status}</TableCell>
-                      <TableCell>{c.last_updated}</TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          Ver Detalles
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Asistencia Rápida</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChatInterface />
-            </CardContent>
-          </Card>
-        </>
-      )}
+        <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
+      </div>
     </div>
   )
 }

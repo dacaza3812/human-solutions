@@ -1,37 +1,55 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 interface ActivityItem {
-  id: string
+  id: number
+  type: string
   description: string
   time: string
+  status: "success" | "completed" | "payment" | "scheduled"
 }
 
-const mockActivities: ActivityItem[] = [
-  { id: "1", description: "Actualización de caso #1234", time: "Hace 5 min" },
-  { id: "2", description: "Nueva cita agendada", time: "Hace 1 hora" },
-  { id: "3", description: "Documento subido al caso #5678", time: "Ayer" },
-  { id: "4", description: "Mensaje de Juan Pérez", time: "Hace 2 días" },
-]
+interface RecentActivityCardProps {
+  recentActivity: ActivityItem[]
+}
 
-export function RecentActivityCard() {
+export function RecentActivityCard({ recentActivity }: RecentActivityCardProps) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "success":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+      case "completed":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+      case "payment":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+      case "scheduled":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
+    }
+  }
+
   return (
-    <Card className="col-span-1">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Actividad Reciente</CardTitle>
-        <Activity className="h-4 w-4 text-muted-foreground" />
+    <Card className="border-border/40">
+      <CardHeader>
+        <CardTitle>Actividad Reciente</CardTitle>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-2">
-          {mockActivities.map((activity) => (
-            <li key={activity.id} className="flex items-center justify-between text-sm">
-              <span>{activity.description}</span>
-              <span className="text-muted-foreground">{activity.time}</span>
-            </li>
+        <div className="space-y-4">
+          {recentActivity.map((activity) => (
+            <div key={activity.id} className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-foreground">{activity.type}</p>
+                <p className="text-sm text-muted-foreground">{activity.description}</p>
+              </div>
+              <div className="flex flex-col items-end">
+                <Badge className={getStatusColor(activity.status)}>{activity.time}</Badge>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       </CardContent>
     </Card>
   )

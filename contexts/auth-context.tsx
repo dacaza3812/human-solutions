@@ -1,22 +1,23 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import type React from "react"
+import { createContext, useState, useEffect, useContext, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
 
-// Define the UserProfile interface
-export interface UserProfile {
+// Define el tipo para el perfil de usuario
+interface UserProfile {
   id: string
-  email: string
-  first_name: string | null
-  last_name: string | null
-  account_type: "client" | "advisor" | null
-  phone: string | null
-  created_at: string | null
-  referral_code: string | null
-  stripe_customer_id: string | null
+  first_name?: string | null
+  last_name?: string | null
+  account_type?: string | null
+  phone?: string | null
+  created_at?: string | null
+  referral_code?: string | null
+  stripe_customer_id?: string | null
 }
 
+// Define el tipo para el contexto de autenticación
 interface AuthContextType {
   user: User | null
   profile: UserProfile | null
@@ -24,7 +25,10 @@ interface AuthContextType {
   signUp: (
     email: string,
     password: string,
-    accountType: "client" | "advisor",
+    firstName: string,
+    lastName: string,
+    accountType: string,
+    referralCode?: string,
   ) => Promise<{ user: User | null; error: Error | null }>
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: Error | null }>
   signOut: () => Promise<{ error: Error | null }>
@@ -33,112 +37,130 @@ interface AuthContextType {
   changePassword: (newPassword: string) => Promise<{ error: Error | null }>
 }
 
+// Crea el contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Proveedor del contexto de autenticación
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Fetch user and profile on mount
+  useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession()
+      if (error) {
+        console.error("Error getting session:", error)
+      }
+      setUser(session?.user || null)
+      if (session?.user) {
+        await fetchUserProfile(session.user.id)
+      }
+      setLoading(false)
+    }
+
+    getSession()
+
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user || null)
+      if (session?.user) {
+        await fetchUserProfile(session.user.id)
+      } else {
+        setProfile(null)
+      }
+      setLoading(false)
+    })
+
+    return () => {
+      authListener?.unsubscribe()
+    }
+  }, [])
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
     if (error) {
       console.error("Error fetching profile:", error)
+      setProfile(null)
       return null
     }
+    setProfile(data as UserProfile)
     return data as UserProfile
   }, [])
 
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setLoading(true)
-      if (session?.user) {
-        setUser(session.user)
-        const userProfile = await fetchUserProfile(session.user.id)
-        setProfile(userProfile)
-      } else {
-        setUser(null)
-        setProfile(null)
-      }
-      setLoading(false)
-    })
-
-    // Initial check
-    const getInitialSession = async () => {
-      setLoading(true)
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-        const userProfile = await fetchUserProfile(session.user.id)
-        setProfile(userProfile)
-      } else {
-        setUser(null)
-        setProfile(null)
-      }
-      setLoading(false)
-    }
-
-    getInitialSession()
-
-    return () => {
-      authListener.subscription.unsubscribe()
-    }
-  }, [fetchUserProfile])
-
   const signUp = useCallback(
-    async (email: string, password: string, accountType: "client" | "advisor") => {
+    async (
+      email: string,
+      password: string,
+      firstName: string,
+      lastName: string,
+      accountType: string,
+      referralCode?: string,
+    ) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { account_type: accountType },
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            account_type: accountType,
+            referral_code: referralCode || null,
+          },
         },
       })
-      if (data.user) {
-        setUser(data.user)
-        // Fetch profile immediately after sign up to ensure it's available
-        const userProfile = await fetchUserProfile(data.user.id)
-        setProfile(userProfile)
+
+      if (error) {
+        console.error("Error signing up:", error)
+        return { user: null, error }
       }
-      return { user: data.user, error }
+      setUser(data.user)
+      // Profile will be fetched by onAuthStateChange listener
+      return { user: data.user, error: null }
     },
-    [fetchUserProfile],
+    [],
   )
 
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (data.user) {
-        setUser(data.user)
-        const userProfile = await fetchUserProfile(data.user.id)
-        setProfile(userProfile)
-      }
-      return { user: data.user, error }
-    },
-    [fetchUserProfile],
-  )
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      console.error("Error signing in:", error)
+      return { user: null, error }
+    }
+    setUser(data.user)
+    // Profile will be fetched by onAuthStateChange listener
+    return { user: data.user, error: null }
+  }, [])
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut()
-    if (!error) {
-      setUser(null)
-      setProfile(null)
+    if (error) {
+      console.error("Error signing out:", error)
+      return { error }
     }
-    return { error }
+    setUser(null)
+    setProfile(null)
+    return { error: null }
   }, [])
 
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/update-password`, // Adjust redirect URL as needed
     })
-    return { error }
+    if (error) {
+      console.error("Error resetting password:", error)
+      return { error }
+    }
+    return { error: null }
   }, [])
 
   const updateUserProfile = useCallback(
@@ -153,12 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Error updating profile:", error)
         return { profile: null, error }
       }
-
-      if (data) {
-        setProfile(data as UserProfile) // Update the context's profile state
-        return { profile: data as UserProfile, error: null }
-      }
-      return { profile: null, error: new Error("No data returned after update.") }
+      setProfile(data as UserProfile)
+      return { profile: data as UserProfile, error: null }
     },
     [user],
   )
@@ -169,28 +187,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     if (error) {
       console.error("Error changing password:", error)
+      return { error }
     }
-    return { error }
+    return { error: null }
   }, [])
 
-  const value = React.useMemo(
-    () => ({
-      user,
-      profile,
-      loading,
-      signUp,
-      signIn,
-      signOut,
-      resetPassword,
-      updateUserProfile,
-      changePassword,
-    }),
-    [user, profile, loading, signUp, signIn, signOut, resetPassword, updateUserProfile, changePassword],
-  )
+  const value = {
+    user,
+    profile,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+    resetPassword,
+    updateUserProfile,
+    changePassword,
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// Hook para usar el contexto de autenticación
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {

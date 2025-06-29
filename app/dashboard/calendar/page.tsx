@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarComponent } from "@/components/calendar-component"
 
 interface Appointment {
@@ -58,6 +57,14 @@ export default function CalendarPage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
@@ -72,35 +79,15 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Calendario</h1>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Tus Citas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CalendarComponent />
-          <div className="mt-6 space-y-4">
-            <h3 className="text-lg font-semibold">Próximas Citas</h3>
-            {appointments.length === 0 ? (
-              <p className="text-muted-foreground">No tienes citas próximas.</p>
-            ) : (
-              <ul className="space-y-2">
-                {appointments.map((appt) => (
-                  <li key={appt.id} className="border-b pb-2 last:border-b-0">
-                    <p className="font-medium">{appt.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {appt.date} a las {appt.time}
-                      {appt.client && ` con ${appt.client}`}
-                      {appt.advisor && ` (Asesor: ${appt.advisor})`}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <h2 className="text-3xl font-bold text-foreground">Calendario</h2>
+      <p className="text-muted-foreground">Gestiona tus citas y eventos.</p>
+      <CalendarComponent />
+      <div className="text-center py-12">
+        <h3 className="text-xl font-semibold text-foreground mb-2">Vista en Desarrollo</h3>
+        <p className="text-muted-foreground">
+          La sección "Calendario" estará disponible próximamente con más funciones.
+        </p>
+      </div>
     </div>
   )
 }

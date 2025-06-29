@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, XCircle } from "lucide-react"
+import { XCircle } from "lucide-react"
 import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
 import { toast } from "@/components/ui/use-toast"
+import { SubscriptionsSection } from "@/components/dashboard/subscriptions-section"
 
 interface SubscriptionInfo {
   id: string
@@ -221,83 +220,5 @@ export default function SubscriptionsPage() {
     )
   }
 
-  return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Gestionar Suscripción</h1>
-
-      {subscriptionInfo && !showPlans ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Tu Suscripción Actual</CardTitle>
-            <CardDescription>Detalles de tu plan actual.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>
-              <span className="font-semibold">Plan:</span> {subscriptionInfo.plan_name}
-            </p>
-            <p>
-              <span className="font-semibold">Precio:</span> ${subscriptionInfo.price.toFixed(2)} / mes
-            </p>
-            <p>
-              <span className="font-semibold">Estado:</span>{" "}
-              <span
-                className={`capitalize ${subscriptionInfo.status === "active" ? "text-green-500" : "text-yellow-500"}`}
-              >
-                {subscriptionInfo.status}
-              </span>
-            </p>
-            <p>
-              <span className="font-semibold">Fin del Período Actual:</span>{" "}
-              {new Date(subscriptionInfo.current_period_end).toLocaleDateString()}
-            </p>
-            {subscriptionInfo.cancel_at_period_end && (
-              <p className="text-red-500">Tu suscripción se cancelará al final del período actual.</p>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={handleManageSubscription} disabled={checkoutLoading}>
-              {checkoutLoading ? "Redirigiendo..." : "Gestionar en Stripe"}
-            </Button>
-            {!subscriptionInfo.cancel_at_period_end && (
-              <Button variant="destructive" onClick={handleCancelSubscription} disabled={isCancelling}>
-                {isCancelling ? "Cancelando..." : "Cancelar Suscripción"}
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <Card key={plan.id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
-                <CardDescription>
-                  ${plan.price} <span className="text-muted-foreground">/ mes</span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <ul className="space-y-2 text-sm">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center">
-                      <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full"
-                  onClick={() => createCheckoutSession(plan.stripePriceId)}
-                  disabled={checkoutLoading}
-                >
-                  {checkoutLoading ? "Cargando..." : "Seleccionar Plan"}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  return <SubscriptionsSection />
 }

@@ -14,7 +14,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 
 interface SubscriptionInfo {
   status: string
-  current_period_end: string
+  current_period_end: number // Changed to number to match Stripe timestamp
   cancel_at_period_end: boolean
   price_id: string
 }

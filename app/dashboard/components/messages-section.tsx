@@ -1,11 +1,13 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Search } from "lucide-react"
 import { ChatInterface } from "@/components/chat-interface"
 
-// Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
   id: string
   first_name?: string | null
@@ -15,7 +17,6 @@ interface UserProfile {
   created_at?: string | null
   referral_code?: string | null
   stripe_customer_id?: string | null
-  // Añade cualquier otro campo de perfil que uses
 }
 
 interface ClientCase {
@@ -47,118 +48,83 @@ interface AdvisorCase {
 
 interface MessagesSectionProps {
   profile: UserProfile | null
-  activeChat: number | null
-  setActiveChat: (chatId: number | null) => void
   userCases: ClientCase[]
   advisorCases: AdvisorCase[]
+  activeChat: number | null
+  setActiveChat: (chatId: number | null) => void
 }
 
-export function MessagesSection({ profile, activeChat, setActiveChat, userCases, advisorCases }: MessagesSectionProps) {
+export function MessagesSection({ profile, userCases, advisorCases, activeChat, setActiveChat }: MessagesSectionProps) {
+  const [chatSearchQuery, setChatSearchQuery] = useState("")
+
+  const casesToDisplay = profile?.account_type === "client" ? userCases : advisorCases
+
+  const filteredCases = casesToDisplay.filter(
+    (caseItem) =>
+      caseItem.title.toLowerCase().includes(chatSearchQuery.toLowerCase()) ||
+      (profile?.account_type === "advisor" &&
+        (caseItem as AdvisorCase).clientName.toLowerCase().includes(chatSearchQuery.toLowerCase())),
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Mensajes</h2>
-          <p className="text-muted-foreground">
-            {profile?.account_type === "client"
-              ? "Comunícate con tus asesores asignados"
-              : "Comunícate con tus clientes"}
-          </p>
+          <p className="text-muted-foreground">Comunícate con tus asesores o clientes.</p>
         </div>
       </div>
 
-      {activeChat ? (
-        <div className="space-y-4">
-          <Button variant="outline" onClick={() => setActiveChat(null)} className="mb-4">
-            ← Volver a conversaciones
-          </Button>
+      <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-160px)]">
+        {/* Chat List */}
+        <Card className="lg:col-span-1 flex flex-col border-border/40">
+          <CardHeader className="border-b border-border/40 p-4">
+            <CardTitle className="text-lg">Chats</CardTitle>
+            <div className="relative mt-2">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar chat..."
+                className="pl-10"
+                value={chatSearchQuery}
+                onChange={(e) => setChatSearchQuery(e.target.value)}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 p-0 overflow-y-auto">
+            {filteredCases.length > 0 ? (
+              filteredCases.map((caseItem) => (
+                <Button
+                  key={caseItem.id}
+                  variant="ghost"
+                  className={`w-full justify-start text-left p-4 rounded-none border-b border-border/20 last:border-b-0 ${
+                    activeChat === caseItem.id ? "bg-muted/50" : ""
+                  }`}
+                  onClick={() => setActiveChat(caseItem.id)}
+                >
+                  <div>
+                    <p className="font-medium text-foreground">{caseItem.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {profile?.account_type === "client" ? caseItem.advisor : (caseItem as AdvisorCase).clientName}
+                    </p>
+                  </div>
+                </Button>
+              ))
+            ) : (
+              <p className="p-4 text-sm text-muted-foreground text-center">No se encontraron chats.</p>
+            )}
+          </CardContent>
+        </Card>
 
-          {profile?.account_type === "client"
-            ? (() => {
-                const case_item = userCases.find((c) => c.id === activeChat)
-                return case_item ? (
-                  <ChatInterface
-                    caseId={activeChat}
-                    advisorName={case_item.advisor}
-                    advisorAvatar={case_item.advisorAvatar}
-                    currentUser="client"
-                  />
-                ) : null
-              })()
-            : (() => {
-                const case_item = advisorCases.find((c) => c.id === activeChat)
-                return case_item ? (
-                  <ChatInterface
-                    caseId={activeChat}
-                    advisorName={`${profile?.first_name} ${profile?.last_name}`}
-                    advisorAvatar="/placeholder-user.jpg"
-                    currentUser="advisor"
-                  />
-                ) : null
-              })()}
+        {/* Chat Interface */}
+        <div className="lg:col-span-2">
+          <ChatInterface
+            activeChatId={activeChat}
+            profile={profile}
+            userCases={userCases}
+            advisorCases={advisorCases}
+          />
         </div>
-      ) : (
-        <div className="grid gap-4">
-          <h3 className="text-lg font-semibold text-foreground">Conversaciones Activas</h3>
-
-          {profile?.account_type === "client"
-            ? userCases
-                .filter((c) => c.status !== "Completada")
-                .map((case_item) => (
-                  <Card
-                    key={case_item.id}
-                    className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => setActiveChat(case_item.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={case_item.advisorAvatar || "/placeholder.svg"} />
-                          <AvatarFallback>{case_item.advisor.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground">{case_item.advisor}</h4>
-                          <p className="text-sm text-muted-foreground">{case_item.title}</p>
-                          <p className="text-xs text-muted-foreground">Último mensaje: Hace 2 horas</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-                            {case_item.status}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-            : advisorCases
-                .filter((c) => c.status !== "Completada")
-                .map((case_item) => (
-                  <Card
-                    key={case_item.id}
-                    className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => setActiveChat(case_item.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarFallback>{case_item.clientName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground">{case_item.clientName}</h4>
-                          <p className="text-sm text-muted-foreground">{case_item.title}</p>
-                          <p className="text-xs text-muted-foreground">Último mensaje: Hace 1 hora</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                            {case_item.status}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-        </div>
-      )}
+      </div>
     </div>
   )
 }

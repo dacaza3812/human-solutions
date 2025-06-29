@@ -1,23 +1,23 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Bell,
   Calendar,
-  CaseSensitive,
   LineChartIcon as ChartLine,
-  CircleDollarSign,
   FileText,
-  Handshake,
   Mail,
   Menu,
   Users,
   X,
   Home,
+  UserPlus,
+  CreditCard,
+  CalendarDays,
+  PieChart,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -77,25 +77,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     {
       name: "Suscripciones",
       href: "/dashboard/subscriptions",
-      icon: CircleDollarSign,
+      icon: CreditCard,
       roles: ["client"],
     },
     {
       name: "Referidos",
       href: "/dashboard/referrals",
-      icon: Handshake,
+      icon: UserPlus,
       roles: ["client"],
     },
     {
       name: "Casos",
       href: "/dashboard/cases",
-      icon: CaseSensitive,
+      icon: FileText,
       roles: ["client", "advisor"],
     },
     {
-      name: "Citas/Cotizaciones",
+      name: "Citas",
       href: "/dashboard/quotes",
-      icon: Calendar,
+      icon: CalendarDays,
       roles: ["client"],
     },
     {
@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     {
       name: "Financiero",
       href: "/dashboard/financial",
-      icon: ChartLine,
+      icon: PieChart,
       roles: ["advisor"],
     },
     {

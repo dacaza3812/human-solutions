@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar as CalendarComponent } from "@/components/calendar-component"
+import { CalendarComponent } from "@/components/calendar-component" // Corrected import
 import { Plus } from "lucide-react"
 
 interface ClientCase {
