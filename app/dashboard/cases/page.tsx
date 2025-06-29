@@ -23,6 +23,15 @@ import {
   Edit,
   MoreHorizontal,
 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import NewCaseForm from "@/components/new-case-form" // Import the new form component
 
 export default function CasesPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -168,10 +177,21 @@ export default function CasesPage() {
             <Filter className="w-4 h-4 mr-2" />
             Filtros Avanzados
           </Button>
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Caso
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-500 hover:bg-emerald-600">
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Caso
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Crear Nuevo Caso</DialogTitle>
+                <DialogDescription>Completa los detalles para iniciar un nuevo caso o consulta.</DialogDescription>
+              </DialogHeader>
+              <NewCaseForm />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
