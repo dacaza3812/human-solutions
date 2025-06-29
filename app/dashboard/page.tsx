@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ProtectedRoute } from "@/components/protected-route"
@@ -278,19 +279,6 @@ function DashboardContent() {
 
   // Filter user's scheduled cases for quotes section
   const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
-
-  // Generate referral code on component mount
-  useEffect(() => {
-    if (profile && !referralCode) {
-      const generateReferralCode = () => {
-        const firstName = profile.first_name?.toLowerCase() || ""
-        const lastName = profile.last_name?.toLowerCase() || ""
-        const randomNum = Math.floor(Math.random() * 1000)
-        return `${firstName}${lastName}${randomNum}`
-      }
-      setReferralCode(generateReferralCode())
-    }
-  }, [profile, referralCode])
 
   // Fetch referral stats for clients
   useEffect(() => {
@@ -947,10 +935,28 @@ function DashboardContent() {
   )
 }
 
+function DashboardRedirect() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to summary by default
+    router.replace("/dashboard/summary")
+  }, [router])
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Cargando dashboard...</p>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   return (
     <ProtectedRoute>
-      <DashboardContent />
+      <DashboardRedirect />
     </ProtectedRoute>
   )
 }
