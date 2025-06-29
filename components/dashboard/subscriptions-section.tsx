@@ -129,7 +129,7 @@ export function SubscriptionsSection() {
         throw profileError
       }
 
-      if (profileData && profileData.subscription_status === "canceled") {
+      if (profileData && profileData.subscription_status === "cancelled") {
         setSubscriptionInfo(null) // Treat as no active subscription for UI purposes
         setShowPlans(true) // Immediately show plans if canceled
       } else if (profileData && profileData.plans) {
