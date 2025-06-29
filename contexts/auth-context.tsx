@@ -1,51 +1,77 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { supabase, type UserProfile } from "@/lib/supabase" // Corrected import
-import type { User } from "@supabase/supabase-js"
-import { useToast } from "@/components/ui/use-toast"
-import { useTranslations } from "@/components/i18n-provider"
-import { usePathname } from "next/navigation"
-import { useRouter } from "next/navigation" // Added useRouter import
 
-
-import { revalidatePath } from "next/cache"
+import { createContext, useContext, useEffect, useState } from "react"
+import type { User, Session } from "@supabase/supabase-js"
+import { supabase, type UserProfile } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 interface AuthContextType {
   user: User | null
-  profile: UserProfile | null // Added profile to context type
-  session: any | null
+  profile: UserProfile | null
+  session: Session | null
   loading: boolean
-  error: string | null
   signUp: (
     email: string,
     password: string,
-    userData: Partial<UserProfile>, // Changed to userData for flexibility
+    userData: Partial<UserProfile>,
     referralCode?: string,
   ) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: any }> // Renamed from resetPasswordForEmail
-  updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }> // Added updateUserProfile
-  changePassword: (newPassword: string) => Promise<{ error: any }> // Added changePassword
+  resetPassword: (email: string) => Promise<{ error: any }>
+  updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>
+  changePassword: (newPassword: string) => Promise<{ error: any }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null) // Added profile state
-  const [session, setSession] = useState<any | null>(null) // Added session state
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null) // Retained error state
-  const { toast } = useToast()
-  const { t } = useTranslations()
-  const pathname = usePathname()
-  const router = useRouter() // Initialize useRouter
-  const currentLocale = pathname.split("/")[1] || "es" // Default to 'es' if no locale in path
+  const router = useRouter()
 
-  const fetchUserProfile = useCallback(async (userId: string) => {
+  useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      setSession(session)
+      setUser(session?.user ?? null)
+
+      if (session?.user) {
+        await fetchUserProfile(session.user.id)
+      }
+
+      setLoading(false)
+    }
+
+    getInitialSession()
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+
+      if (session?.user) {
+        await fetchUserProfile(session.user.id)
+      } else {
+        setProfile(null)
+      }
+
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const fetchUserProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
@@ -58,42 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error fetching profile:", error)
     }
-  }, []) // No dependencies needed for supabase instance
-
-  useEffect(() => {
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user || null)
-
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
-      }
-
-      setLoading(false)
-    }
-
-    getInitialSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user || null)
-
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
-      } else {
-        setProfile(null)
-      }
-
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [fetchUserProfile]) // Added fetchUserProfile to dependencies
+  }
 
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>, referralCode?: string) => {
     try {
@@ -114,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/${currentLocale}/dashboard`, // Use current locale
+          emailRedirectTo: "https://foxlawyer.vercel.app/dashboard",
           data: metadata,
         },
       })
@@ -134,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               [
                 {
                   id: data.user!.id,
-                  email: data.user!.email ?? "",
+                  email: data.user!.email,
                   first_name: userData.first_name || "",
                   last_name: userData.last_name || "",
                   phone: userData.phone || "",
@@ -181,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (!error) {
-        router.push(`/${currentLocale}/dashboard`) // Redirect to locale-aware dashboard
+        router.push("/dashboard")
       }
 
       return { error }
@@ -197,29 +188,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Error during sign out:", error)
-        toast({
-          title: t("auth.sign_out_failed"),
-          description: error.message,
-          variant: "destructive",
-        })
+        // Optionally, you could show a toast notification to the user here
+        // toast({
+        //   title: "Error al cerrar sesión",
+        //   description: error.message,
+        //   variant: "destructive",
+        // });
       } else {
         console.log("Sign out successful. Redirecting to login page.")
-        toast({
-          title: t("auth.signed_out"),
-          description: t("auth.see_you_soon"),
-        })
       }
     } catch (err) {
       console.error("Unexpected error during sign out:", err)
-      toast({
-        title: t("auth.unexpected_error"),
-        description: t("auth.sign_out_unexpected_error"),
-        variant: "destructive",
-      })
+      // toast({
+      //   title: "Error inesperado",
+      //   description: "Ocurrió un error al intentar cerrar sesión.",
+      //   variant: "destructive",
+      // });
     } finally {
       // Always attempt to redirect to login page, even if sign out failed on Supabase side,
       // to ensure the user doesn't remain in a protected route with a potentially invalid session.
-      
       router.push("/login")
     }
   }
@@ -227,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/${currentLocale}/reset-password`, // Use current locale
+        redirectTo: "https://foxlawyer.vercel.app/reset-password",
       })
       return { error }
     } catch (error) {
@@ -283,7 +270,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     session,
     loading,
-    error,
     signUp,
     signIn,
     signOut,

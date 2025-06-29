@@ -85,7 +85,7 @@ const plans = [
 ]
 
 export function SubscriptionsSection() {
-  const { user, profile, session } = useAuth()
+  const { user, profile } = useAuth()
   const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripeCheckout()
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -154,7 +154,7 @@ export function SubscriptionsSection() {
   }
 
   const handlePlanSelection = async (planId: number) => {
-    await createCheckoutSession(planId.toString())
+    await createCheckoutSession(planId)
   }
 
   const handleCancelSubscription = async () => {
@@ -164,10 +164,8 @@ export function SubscriptionsSection() {
     try {
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscriptionInfo.stripe_subscription_id,
@@ -178,11 +176,9 @@ export function SubscriptionsSection() {
         const errorData = await response.json() // Lee el mensaje de error del cuerpo de la respuesta
         throw new Error(errorData.error || "Error al cancelar la suscripción")
       }
-      
 
       // Actualizar la información de suscripción
       await fetchSubscriptionInfo()
-      setShowPlans(false)
     } catch (err: any) {
       console.error("Error canceling subscription:", err)
       setError(err.message || "Error al cancelar la suscripción") // Muestra el mensaje de error específico
