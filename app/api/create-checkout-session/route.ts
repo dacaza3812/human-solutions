@@ -1,72 +1,116 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
+import { headers } from "next/headers"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2024-04-10",
 })
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+export async function POST(req: Request) {
+  const supabase = createClient()
+  const headersList = headers()
+  const origin = headersList.get("origin")
 
-export async function POST(request: NextRequest) {
   try {
-    const { planId } = await request.json()
-
-    // Get the user from the request headers or session
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader) {
-      return NextResponse.json({ error: "No authorization header" }, { status: 401 })
-    }
-
-    const token = authHeader.replace("Bearer ", "")
     const {
       data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token)
+    } = await supabase.auth.getUser()
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Invalid user" }, { status: 401 })
+    if (!user) {
+      return new NextResponse(JSON.stringify({ error: "Unauthorized: No active session found" }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
     }
 
-    // Get plan details from database
-    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
+    const { priceId, locale } = await req.json()
 
-    if (planError || !plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 })
+    if (!priceId) {
+      return new NextResponse(JSON.stringify({ error: "Price ID is required" }), {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
     }
 
-    // Create Stripe checkout session
+    // Get or create Stripe customer
+    let customerId: string | null = null
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .single()
+
+    if (profileError) {
+      console.error("Error fetching profile:", profileError)
+      return new NextResponse(JSON.stringify({ error: "Error fetching user profile" }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+    }
+
+    if (profile?.stripe_customer_id) {
+      customerId = profile.stripe_customer_id
+    } else {
+      // Create a new Stripe customer
+      const customer = await stripe.customers.create({
+        email: user.email!,
+        metadata: {
+          supabase_user_id: user.id,
+        },
+      })
+      customerId = customer.id
+
+      // Update user profile with new customer ID
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: customerId })
+        .eq("id", user.id)
+
+      if (updateError) {
+        console.error("Error updating profile with Stripe customer ID:", updateError)
+        // Decide how to handle this: proceed or return error
+      }
+    }
+
+    const successUrl = `${origin}/${locale}/payment_process?session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${origin}/${locale}/dashboard`
+
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+      customer: customerId,
       line_items: [
         {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: plan.name,
-              description: plan.description,
-            },
-            unit_amount: Math.round(plan.price * 100), // Convert to cents
-            recurring: {
-              interval: "month",
-            },
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment_process?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/?canceled=true`,
-      customer_email: user.email,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
-        userId: user.id,
-        planId: planId.toString(),
+        user_id: user.id,
       },
     })
 
-    return NextResponse.json({ sessionId: session.id })
-  } catch (error) {
+    return new NextResponse(JSON.stringify({ id: session.id }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+  } catch (error: any) {
     console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
+    return new NextResponse(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
   }
 }
