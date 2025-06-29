@@ -329,32 +329,32 @@ function DashboardContent() {
   // Menu items based on user role
   const getMenuItems = () => {
     const baseItems = [
-      { id: "overview", name: "Resumen", icon: Home },
-      { id: "test", name: "Prueba", icon: TestTube },
-      { id: "settings", name: "Configuración", icon: Settings },
+      { id: "overview", name: "Resumen", icon: Home, href: "/dashboard" },
+      { id: "test", name: "Prueba", icon: TestTube, href: "/dashboard/test" },
+      { id: "settings", name: "Configuración", icon: Settings, href: null },
     ]
 
     if (profile?.account_type === "advisor") {
       return [
         ...baseItems.slice(0, 1), // Keep overview
-        { id: "clients", name: "Clientes", icon: Users },
-        { id: "cases", name: "Casos", icon: FileText },
-        { id: "financial", name: "Vista Financiera", icon: PieChart },
-        { id: "analytics", name: "Análisis", icon: BarChart3 },
-        { id: "calendar", name: "Calendario", icon: Calendar },
-        { id: "messages", name: "Mensajes", icon: MessageCircle },
+        { id: "clients", name: "Clientes", icon: Users, href: null },
+        { id: "cases", name: "Casos", icon: FileText, href: null },
+        { id: "financial", name: "Vista Financiera", icon: PieChart, href: null },
+        { id: "analytics", name: "Análisis", icon: BarChart3, href: null },
+        { id: "calendar", name: "Calendario", icon: Calendar, href: null },
+        { id: "messages", name: "Mensajes", icon: MessageCircle, href: null },
         ...baseItems.slice(1), // Keep test and settings
       ]
     } else {
       // Client menu
       return [
         ...baseItems.slice(0, 1), // Keep overview
-        { id: "subscriptions", name: "Suscripciones", icon: CreditCard },
-        { id: "referrals", name: "Referidos", icon: UserPlus },
-        { id: "cases", name: "Mis Casos", icon: FileText },
-        { id: "quotes", name: "Citas", icon: CalendarDays },
-        { id: "calendar", name: "Calendario", icon: Calendar },
-        { id: "messages", name: "Mensajes", icon: MessageCircle },
+        { id: "subscriptions", name: "Suscripciones", icon: CreditCard, href: null },
+        { id: "referrals", name: "Referidos", icon: UserPlus, href: null },
+        { id: "cases", name: "Mis Casos", icon: FileText, href: null },
+        { id: "quotes", name: "Citas", icon: CalendarDays, href: null },
+        { id: "calendar", name: "Calendario", icon: Calendar, href: null },
+        { id: "messages", name: "Mensajes", icon: MessageCircle, href: null },
         ...baseItems.slice(1), // Keep test and settings
       ]
     }
@@ -751,23 +751,44 @@ function DashboardContent() {
             </div>
 
             <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-              {sidebarItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveView(item.id)
-                    setSidebarOpen(false)
-                  }}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeView === item.id
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </button>
-              ))}
+              {sidebarItems.map((item) => {
+                // If item has href, render as Link, otherwise as button
+                if (item.href) {
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        activeView === item.id
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </Link>
+                  )
+                }
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveView(item.id)
+                      setSidebarOpen(false)
+                    }}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeView === item.id
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </button>
+                )
+              })}
             </nav>
 
             <div className="p-4 border-t border-border/40">
@@ -811,108 +832,6 @@ function DashboardContent() {
                 <RecentActivityCard recentActivity={recentActivity} />
 
                 <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
-              </div>
-            </div>
-          )}
-
-          {/* Test Section */}
-          {activeView === "test" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-foreground">Sección de Prueba</h2>
-                  <p className="text-muted-foreground">Esta es una página de prueba para testing</p>
-                </div>
-                <Button className="bg-emerald-500 hover:bg-emerald-600">
-                  <TestTube className="w-4 h-4 mr-2" />
-                  Ejecutar Prueba
-                </Button>
-              </div>
-
-              {/* Test Content */}
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <div className="bg-card rounded-lg border p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Pruebas Totales</p>
-                      <p className="text-2xl font-bold">156</p>
-                    </div>
-                    <TestTube className="h-8 w-8 text-emerald-500" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">+12% desde el mes pasado</p>
-                </div>
-
-                <div className="bg-card rounded-lg border p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Pruebas Exitosas</p>
-                      <p className="text-2xl font-bold">142</p>
-                    </div>
-                    <Target className="h-8 w-8 text-green-500" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">91% tasa de éxito</p>
-                </div>
-
-                <div className="bg-card rounded-lg border p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Pruebas Fallidas</p>
-                      <p className="text-2xl font-bold">14</p>
-                    </div>
-                    <X className="h-8 w-8 text-red-500" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">9% tasa de fallo</p>
-                </div>
-
-                <div className="bg-card rounded-lg border p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Tiempo Promedio</p>
-                      <p className="text-2xl font-bold">2.3s</p>
-                    </div>
-                    <Calendar className="h-8 w-8 text-blue-500" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">-0.2s mejora</p>
-                </div>
-              </div>
-
-              {/* Test History */}
-              <div className="bg-card rounded-lg border">
-                <div className="p-6 border-b">
-                  <h3 className="text-lg font-semibold">Historial de Pruebas</h3>
-                </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    {[
-                      { id: 1, name: "Test de Autenticación", status: "Exitoso", time: "1.2s", date: "Hace 5 min" },
-                      { id: 2, name: "Test de Base de Datos", status: "Exitoso", time: "2.8s", date: "Hace 10 min" },
-                      { id: 3, name: "Test de API", status: "Fallido", time: "5.1s", date: "Hace 15 min" },
-                      { id: 4, name: "Test de UI", status: "Exitoso", time: "1.9s", date: "Hace 20 min" },
-                    ].map((test) => (
-                      <div key={test.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-2 h-2 rounded-full ${test.status === "Exitoso" ? "bg-green-500" : "bg-red-500"}`}
-                          />
-                          <span className="font-medium">{test.name}</span>
-                        </div>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span>{test.time}</span>
-                          <span>{test.date}</span>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs ${
-                              test.status === "Exitoso"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                            }`}
-                          >
-                            {test.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
           )}
@@ -1021,7 +940,6 @@ function DashboardContent() {
           )}
 
           {activeView !== "overview" &&
-            activeView !== "test" &&
             activeView !== "subscriptions" &&
             activeView !== "referrals" &&
             activeView !== "quotes" &&
