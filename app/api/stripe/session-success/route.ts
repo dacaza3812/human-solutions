@@ -3,7 +3,7 @@ import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2025-05-28.basil",
 })
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Record the payment
-    const { error: paymentError } = await supabase.from("payments").insert({
+    const { error: paymentError } = await supabase.from("payments").upsert({
       user_id: userId,
       plan_id: planId,
       stripe_payment_intent_id: session.payment_intent,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       currency: session.currency || "usd",
       status: "succeeded",
       created_at: new Date().toISOString(),
-    })
+    }, { onConflict: 'stripe_checkout_session_id', ignoreDuplicates: true });
 
     if (paymentError) {
       console.error("Error recording payment:", paymentError)

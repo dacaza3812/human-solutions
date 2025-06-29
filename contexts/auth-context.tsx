@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import type { User, Session } from "@supabase/supabase-js"
 import { supabase, type UserProfile } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
+import { revalidatePath } from "next/cache"
 
 interface AuthContextType {
   user: User | null
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               [
                 {
                   id: data.user!.id,
-                  email: data.user!.email,
+                  email: data.user!.email ?? "",
                   first_name: userData.first_name || "",
                   last_name: userData.last_name || "",
                   phone: userData.phone || "",
@@ -207,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       // Always attempt to redirect to login page, even if sign out failed on Supabase side,
       // to ensure the user doesn't remain in a protected route with a potentially invalid session.
+      
       router.push("/login")
     }
   }
