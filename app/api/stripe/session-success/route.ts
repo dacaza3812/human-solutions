@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get plan details
-    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
+    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", Number(planId)).single()
 
     if (planError || !plan) {
       return NextResponse.json({ error: "Plan not found" }, { status: 404 })
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
         subscription_start_date: new Date().toISOString(),
         subscription_end_date: subscriptionEndDate.toISOString(),
         updated_at: new Date().toISOString(),
+
       })
       .eq("id", userId)
 
@@ -75,6 +76,8 @@ export async function POST(request: NextRequest) {
       currency: session.currency || "usd",
       status: "succeeded",
       created_at: new Date().toISOString(),
+      payment_method: session.payment_method_types?.[0] || "card",
+      stripe_invoice_id: session.invoice,
     })
 
     if (paymentError) {
