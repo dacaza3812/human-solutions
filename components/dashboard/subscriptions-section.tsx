@@ -131,6 +131,7 @@ export function SubscriptionsSection() {
 
       if (profileData && profileData.subscription_status === "canceled") {
         setSubscriptionInfo(null) // Treat as no active subscription for UI purposes
+        setShowPlans(true) // Immediately show plans if canceled
       } else if (profileData && profileData.plans) {
         setSubscriptionInfo({
           plan_id: profileData.plan_id,
@@ -144,8 +145,10 @@ export function SubscriptionsSection() {
           stripe_customer_id: profileData.stripe_customer_id,
           stripe_subscription_id: profileData.stripe_subscription_id,
         })
+        setShowPlans(false) // Hide plans if there's an active subscription
       } else {
         setSubscriptionInfo(null)
+        setShowPlans(false) // For truly new users, they'll click "Ver Planes Disponibles"
       }
     } catch (err: any) {
       console.error("Error fetching subscription info:", err)
