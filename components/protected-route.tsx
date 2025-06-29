@@ -2,36 +2,29 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  redirectTo?: string
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, redirectTo = "/login" }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push("/login")
-      } else {
-        setIsChecking(false)
-      }
+    if (!loading && !user) {
+      router.push(redirectTo)
     }
-  }, [user, loading, router])
+  }, [user, loading, router, redirectTo])
 
-  if (loading || isChecking) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Verificando autenticación...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
   }
