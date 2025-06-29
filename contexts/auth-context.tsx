@@ -9,6 +9,9 @@ import { useTranslations } from "@/components/i18n-provider"
 import { usePathname } from "next/navigation"
 import { useRouter } from "next/navigation" // Added useRouter import
 
+
+import { revalidatePath } from "next/cache"
+
 interface AuthContextType {
   user: User | null
   profile: UserProfile | null // Added profile to context type
@@ -131,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               [
                 {
                   id: data.user!.id,
-                  email: data.user!.email,
+                  email: data.user!.email ?? "",
                   first_name: userData.first_name || "",
                   last_name: userData.last_name || "",
                   phone: userData.phone || "",
@@ -214,7 +217,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       })
     } finally {
-      router.push(`/${currentLocale}/login`) // Redirect to locale-aware login
+      // Always attempt to redirect to login page, even if sign out failed on Supabase side,
+      // to ensure the user doesn't remain in a protected route with a potentially invalid session.
+      
+      router.push("/login")
     }
   }
 
