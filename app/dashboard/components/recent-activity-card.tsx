@@ -1,55 +1,48 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-
-interface ActivityItem {
-  id: number
-  type: string
-  description: string
-  time: string
-  status: "success" | "completed" | "payment" | "scheduled"
-}
+import { TrendingUp } from "lucide-react"
 
 interface RecentActivityCardProps {
-  recentActivity: ActivityItem[]
+  recentActivity: {
+    id: number
+    type: string
+    description: string
+    time: string
+    status: "success" | "completed" | "payment" | "scheduled"
+  }[]
 }
 
 export function RecentActivityCard({ recentActivity }: RecentActivityCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "success":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      case "completed":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-      case "payment":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
-      case "scheduled":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-    }
-  }
-
   return (
     <Card className="border-border/40">
       <CardHeader>
-        <CardTitle>Actividad Reciente</CardTitle>
+        <CardTitle className="flex items-center text-foreground">
+          <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
+          Actividad Reciente
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {recentActivity.map((activity) => (
-            <div key={activity.id} className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">{activity.type}</p>
-                <p className="text-sm text-muted-foreground">{activity.description}</p>
-              </div>
-              <div className="flex flex-col items-end">
-                <Badge className={getStatusColor(activity.status)}>{activity.time}</Badge>
-              </div>
+      <CardContent className="space-y-4">
+        {recentActivity.map((activity) => (
+          <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border border-border/40">
+            <div
+              className={`w-2 h-2 rounded-full mt-2 ${
+                activity.status === "success"
+                  ? "bg-emerald-400"
+                  : activity.status === "completed"
+                    ? "bg-blue-400"
+                    : activity.status === "payment"
+                      ? "bg-purple-400"
+                      : "bg-orange-400"
+              }`}
+            />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">{activity.type}</p>
+              <p className="text-xs text-muted-foreground">{activity.description}</p>
+              <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   )

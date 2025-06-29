@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
 
 // Mock financial data
 const monthlyEarnings = [
@@ -126,26 +125,6 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
   // Get max value for chart scaling
   const maxEarnings = Math.max(...monthlyEarnings.map((m) => m.earnings))
 
-  const revenueData = [
-    { name: "Ene", total: 4000, subscriptions: 2400, cases: 1600 },
-    { name: "Feb", total: 3000, subscriptions: 1398, cases: 1602 },
-    { name: "Mar", total: 2000, subscriptions: 980, cases: 1020 },
-    { name: "Abr", total: 2780, subscriptions: 3908, cases: -1128 }, // Example of negative for cases if refunds/adjustments
-    { name: "May", total: 1890, subscriptions: 4800, cases: -2910 },
-    { name: "Jun", total: 2390, subscriptions: 3800, cases: -1410 },
-    { name: "Jul", total: 3490, subscriptions: 4300, cases: -810 },
-  ]
-
-  const clientAcquisitionData = [
-    { name: "Ene", newClients: 10, churn: 2 },
-    { name: "Feb", newClients: 12, churn: 3 },
-    { name: "Mar", newClients: 8, churn: 1 },
-    { name: "Abr", newClients: 15, churn: 4 },
-    { name: "May", newClients: 11, churn: 2 },
-    { name: "Jun", newClients: 13, churn: 3 },
-    { name: "Jul", newClients: 9, churn: 1 },
-  ]
-
   return (
     <div className="space-y-6">
       {/* Financial Summary Cards */}
@@ -209,53 +188,6 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-[300px]">
-          <h3 className="text-lg font-semibold mb-2">Ingresos vs. Gastos Mensuales</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={monthlyEarnings}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="earnings" fill="#22c55e" name="Ingresos" />
-              <Bar dataKey="expenses" fill="#ef4444" name="Gastos" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="h-[300px]">
-          <h3 className="text-lg font-semibold mb-2">Adquisición de Clientes</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={clientAcquisitionData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="newClients" stroke="#8884d8" name="Nuevos Clientes" />
-              <Line type="monotone" dataKey="churn" stroke="#ff7300" name="Bajas" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
       </div>
 
       {/* Monthly Earnings Chart */}

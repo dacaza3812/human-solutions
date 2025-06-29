@@ -2,33 +2,35 @@
 
 import type React from "react"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  redirectTo?: string
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, redirectTo = "/login" }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (!loading && !user) {
-      // If not loading and no user, redirect to login
-      router.push("/login")
+      router.push(redirectTo)
     }
-  }, [user, loading, router])
+  }, [user, loading, router, redirectTo])
 
-  if (loading || !user) {
-    // Show a loading indicator or nothing while authentication is in progress
-    // or if user is not authenticated (before redirect)
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
+  }
+
+  if (!user) {
+    return null
   }
 
   return <>{children}</>

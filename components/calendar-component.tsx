@@ -10,7 +10,7 @@ interface CalendarProps {
   onDateSelect?: (date: Date) => void
 }
 
-export function CalendarComponent({ selectedDate, onDateSelect }: CalendarProps) {
+export function Calendar({ selectedDate, onDateSelect }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
 
   const today = new Date()

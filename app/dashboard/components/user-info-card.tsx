@@ -1,9 +1,9 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User } from "@supabase/supabase-js"
+import type { User } from "@supabase/supabase-js"
 
+// Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
   id: string
   first_name?: string | null
@@ -13,6 +13,7 @@ interface UserProfile {
   created_at?: string | null
   referral_code?: string | null
   stripe_customer_id?: string | null
+  // Añade cualquier otro campo de perfil que uses
 }
 
 interface UserInfoCardProps {
@@ -23,25 +24,28 @@ interface UserInfoCardProps {
 export function UserInfoCard({ user, profile }: UserInfoCardProps) {
   return (
     <Card className="border-border/40">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Información del Usuario</CardTitle>
-        <User className="h-4 w-4 text-muted-foreground" />
+      <CardHeader>
+        <CardTitle className="text-foreground">Información de la Cuenta</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center space-x-4">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src="/placeholder-user.jpg" alt="User Avatar" />
-            <AvatarFallback>
-              {profile?.first_name ? profile.first_name[0] : ""}
-              {profile?.last_name ? profile.last_name[0] : ""}
-            </AvatarFallback>
-          </Avatar>
+        <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <p className="text-2xl font-bold text-foreground">
-              {profile?.first_name} {profile?.last_name}
+            <p className="text-sm text-muted-foreground">Correo Electrónico</p>
+            <p className="font-medium">{user?.email}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Tipo de Cuenta</p>
+            <p className="font-medium capitalize">{profile?.account_type}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Teléfono</p>
+            <p className="font-medium">{profile?.phone || "No especificado"}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Fecha de Registro</p>
+            <p className="font-medium">
+              {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A"}
             </p>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="text-sm text-muted-foreground capitalize">Tipo de Cuenta: {profile?.account_type}</p>
           </div>
         </div>
       </CardContent>

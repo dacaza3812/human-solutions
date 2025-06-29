@@ -92,6 +92,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: latest
         version: 1.2.7(@types/react-dom@18.0.0)(@types/react@18.0.0)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
+      '@remix-run/react':
+        specifier: latest
+        version: 2.16.8(react-dom@18.0.0(react@18.0.0))(react@18.0.0)(typescript@5.0.2)
       '@stripe/stripe-js':
         specifier: latest
         version: 7.4.0
@@ -104,11 +107,14 @@ importers:
       '@supabase/supabase-js':
         specifier: latest
         version: 2.50.2
+      '@sveltejs/kit':
+        specifier: latest
+        version: 2.22.2(@sveltejs/vite-plugin-svelte@5.1.0(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)))(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0))
       '@vercel/analytics':
-        specifier: ^1.5.0
+        specifier: latest
         version: 1.5.0(@remix-run/react@2.16.8(react-dom@18.0.0(react@18.0.0))(react@18.0.0)(typescript@5.0.2))(@sveltejs/kit@2.22.2(@sveltejs/vite-plugin-svelte@5.1.0(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)))(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)))(next@14.2.16(react-dom@18.0.0(react@18.0.0))(react@18.0.0))(react@18.0.0)(svelte@5.34.9)(vue-router@4.5.1(vue@3.5.17(typescript@5.0.2)))(vue@3.5.17(typescript@5.0.2))
       '@vercel/speed-insights':
-        specifier: ^1.2.0
+        specifier: latest
         version: 1.2.0(@sveltejs/kit@2.22.2(@sveltejs/vite-plugin-svelte@5.1.0(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)))(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)))(next@14.2.16(react-dom@18.0.0(react@18.0.0))(react@18.0.0))(react@18.0.0)(svelte@5.34.9)(vue-router@4.5.1(vue@3.5.17(typescript@5.0.2)))(vue@3.5.17(typescript@5.0.2))
       class-variance-authority:
         specifier: ^0.7.1
@@ -161,6 +167,9 @@ importers:
       stripe:
         specifier: latest
         version: 18.2.1(@types/node@22.0.0)
+      svelte:
+        specifier: latest
+        version: 5.34.9
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.5.5
@@ -170,6 +179,12 @@ importers:
       vaul:
         specifier: latest
         version: 1.1.2(@types/react-dom@18.0.0)(@types/react@18.0.0)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
+      vue:
+        specifier: latest
+        version: 3.5.17(typescript@5.0.2)
+      vue-router:
+        specifier: latest
+        version: 4.5.1(vue@3.5.17(typescript@5.0.2))
       zod:
         specifier: ^3.22.4
         version: 3.24.1
@@ -3523,24 +3538,19 @@ snapshots:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.8
       '@jridgewell/trace-mapping': 0.3.25
-    optional: true
 
-  '@babel/helper-string-parser@7.27.1':
-    optional: true
+  '@babel/helper-string-parser@7.27.1': {}
 
-  '@babel/helper-validator-identifier@7.27.1':
-    optional: true
+  '@babel/helper-validator-identifier@7.27.1': {}
 
   '@babel/parser@7.27.7':
     dependencies:
       '@babel/types': 7.27.7
-    optional: true
 
   '@babel/types@7.27.7':
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
-    optional: true
 
   '@date-fns/tz@1.2.0': {}
 
@@ -3763,8 +3773,7 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@polka/url@1.0.0-next.29':
-    optional: true
+  '@polka/url@1.0.0-next.29': {}
 
   '@radix-ui/number@1.1.1': {}
 
@@ -4462,10 +4471,8 @@ snapshots:
       turbo-stream: 2.4.1
     optionalDependencies:
       typescript: 5.0.2
-    optional: true
 
-  '@remix-run/router@1.23.0':
-    optional: true
+  '@remix-run/router@1.23.0': {}
 
   '@remix-run/server-runtime@2.16.8(typescript@5.0.2)':
     dependencies:
@@ -4478,7 +4485,6 @@ snapshots:
       turbo-stream: 2.4.1
     optionalDependencies:
       typescript: 5.0.2
-    optional: true
 
   '@rollup/rollup-android-arm-eabi@4.44.1':
     optional: true
@@ -4612,7 +4618,6 @@ snapshots:
   '@sveltejs/acorn-typescript@1.0.5(acorn@8.15.0)':
     dependencies:
       acorn: 8.15.0
-    optional: true
 
   '@sveltejs/kit@2.22.2(@sveltejs/vite-plugin-svelte@5.1.0(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)))(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0))':
     dependencies:
@@ -4632,7 +4637,6 @@ snapshots:
       svelte: 5.34.9
       vite: 7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)
       vitefu: 1.0.7(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0))
-    optional: true
 
   '@sveltejs/vite-plugin-svelte-inspector@4.0.1(@sveltejs/vite-plugin-svelte@5.1.0(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)))(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0))':
     dependencies:
@@ -4642,7 +4646,6 @@ snapshots:
       vite: 7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@sveltejs/vite-plugin-svelte@5.1.0(svelte@5.34.9)(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0))':
     dependencies:
@@ -4656,7 +4659,6 @@ snapshots:
       vitefu: 1.0.7(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0))
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@swc/counter@0.1.3': {}
 
@@ -4670,8 +4672,7 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@types/cookie@0.6.0':
-    optional: true
+  '@types/cookie@0.6.0': {}
 
   '@types/d3-array@3.2.1': {}
 
@@ -4697,8 +4698,7 @@ snapshots:
 
   '@types/d3-timer@3.0.2': {}
 
-  '@types/estree@1.0.8':
-    optional: true
+  '@types/estree@1.0.8': {}
 
   '@types/json5@0.0.29': {}
 
@@ -4853,13 +4853,11 @@ snapshots:
       entities: 4.5.0
       estree-walker: 2.0.2
       source-map-js: 1.2.1
-    optional: true
 
   '@vue/compiler-dom@3.5.17':
     dependencies:
       '@vue/compiler-core': 3.5.17
       '@vue/shared': 3.5.17
-    optional: true
 
   '@vue/compiler-sfc@3.5.17':
     dependencies:
@@ -4872,27 +4870,22 @@ snapshots:
       magic-string: 0.30.17
       postcss: 8.5.6
       source-map-js: 1.2.1
-    optional: true
 
   '@vue/compiler-ssr@3.5.17':
     dependencies:
       '@vue/compiler-dom': 3.5.17
       '@vue/shared': 3.5.17
-    optional: true
 
-  '@vue/devtools-api@6.6.4':
-    optional: true
+  '@vue/devtools-api@6.6.4': {}
 
   '@vue/reactivity@3.5.17':
     dependencies:
       '@vue/shared': 3.5.17
-    optional: true
 
   '@vue/runtime-core@3.5.17':
     dependencies:
       '@vue/reactivity': 3.5.17
       '@vue/shared': 3.5.17
-    optional: true
 
   '@vue/runtime-dom@3.5.17':
     dependencies:
@@ -4900,20 +4893,16 @@ snapshots:
       '@vue/runtime-core': 3.5.17
       '@vue/shared': 3.5.17
       csstype: 3.1.3
-    optional: true
 
   '@vue/server-renderer@3.5.17(vue@3.5.17(typescript@5.0.2))':
     dependencies:
       '@vue/compiler-ssr': 3.5.17
       '@vue/shared': 3.5.17
       vue: 3.5.17(typescript@5.0.2)
-    optional: true
 
-  '@vue/shared@3.5.17':
-    optional: true
+  '@vue/shared@3.5.17': {}
 
-  '@web3-storage/multipart-parser@1.0.0':
-    optional: true
+  '@web3-storage/multipart-parser@1.0.0': {}
 
   acorn-jsx@5.3.2(acorn@8.15.0):
     dependencies:
@@ -5146,11 +5135,9 @@ snapshots:
 
   concat-map@0.0.1: {}
 
-  cookie@0.6.0:
-    optional: true
+  cookie@0.6.0: {}
 
-  cookie@0.7.2:
-    optional: true
+  cookie@0.7.2: {}
 
   cookie@1.0.2: {}
 
@@ -5240,8 +5227,7 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepmerge@4.3.1:
-    optional: true
+  deepmerge@4.3.1: {}
 
   define-data-property@1.1.4:
     dependencies:
@@ -5257,8 +5243,7 @@ snapshots:
 
   detect-node-es@1.1.0: {}
 
-  devalue@5.1.1:
-    optional: true
+  devalue@5.1.1: {}
 
   didyoumean@1.2.2: {}
 
@@ -5307,8 +5292,7 @@ snapshots:
       ansi-colors: 4.1.3
       strip-ansi: 6.0.1
 
-  entities@4.5.0:
-    optional: true
+  entities@4.5.0: {}
 
   es-abstract@1.24.0:
     dependencies:
@@ -5440,7 +5424,6 @@ snapshots:
       '@esbuild/win32-arm64': 0.25.5
       '@esbuild/win32-ia32': 0.25.5
       '@esbuild/win32-x64': 0.25.5
-    optional: true
 
   escalade@3.2.0: {}
 
@@ -5630,8 +5613,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  esm-env@1.2.2:
-    optional: true
+  esm-env@1.2.2: {}
 
   espree@9.6.1:
     dependencies:
@@ -5646,7 +5628,6 @@ snapshots:
   esrap@1.4.9:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
-    optional: true
 
   esrecurse@4.3.0:
     dependencies:
@@ -5654,8 +5635,7 @@ snapshots:
 
   estraverse@5.3.0: {}
 
-  estree-walker@2.0.2:
-    optional: true
+  estree-walker@2.0.2: {}
 
   esutils@2.0.3: {}
 
@@ -5952,7 +5932,6 @@ snapshots:
   is-reference@3.0.3:
     dependencies:
       '@types/estree': 1.0.8
-    optional: true
 
   is-regex@1.2.1:
     dependencies:
@@ -6053,8 +6032,7 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  kleur@4.1.5:
-    optional: true
+  kleur@4.1.5: {}
 
   language-subtag-registry@0.3.23: {}
 
@@ -6071,8 +6049,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  locate-character@3.0.0:
-    optional: true
+  locate-character@3.0.0: {}
 
   lodash.merge@4.6.2: {}
 
@@ -6089,7 +6066,6 @@ snapshots:
   magic-string@0.30.17:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
-    optional: true
 
   math-intrinsics@1.1.0: {}
 
@@ -6116,11 +6092,9 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  mri@1.2.0:
-    optional: true
+  mri@1.2.0: {}
 
-  mrmime@2.0.1:
-    optional: true
+  mrmime@2.0.1: {}
 
   ms@2.1.3: {}
 
@@ -6314,7 +6288,6 @@ snapshots:
       nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
-    optional: true
 
   prelude-ls@1.2.1: {}
 
@@ -6394,13 +6367,11 @@ snapshots:
       react: 18.0.0
       react-dom: 18.0.0(react@18.0.0)
       react-router: 6.30.0(react@18.0.0)
-    optional: true
 
   react-router@6.30.0(react@18.0.0):
     dependencies:
       '@remix-run/router': 1.23.0
       react: 18.0.0
-    optional: true
 
   react-style-singleton@2.2.3(@types/react@18.0.0)(react@18.0.0):
     dependencies:
@@ -6519,7 +6490,6 @@ snapshots:
       '@rollup/rollup-win32-ia32-msvc': 4.44.1
       '@rollup/rollup-win32-x64-msvc': 4.44.1
       fsevents: 2.3.3
-    optional: true
 
   run-parallel@1.2.0:
     dependencies:
@@ -6528,7 +6498,6 @@ snapshots:
   sade@1.8.1:
     dependencies:
       mri: 1.2.0
-    optional: true
 
   safe-array-concat@1.1.3:
     dependencies:
@@ -6622,7 +6591,6 @@ snapshots:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
       totalist: 3.0.1
-    optional: true
 
   slash@3.0.0: {}
 
@@ -6633,8 +6601,7 @@ snapshots:
 
   source-map-js@1.2.1: {}
 
-  source-map@0.7.4:
-    optional: true
+  source-map@0.7.4: {}
 
   stable-hash@0.0.5: {}
 
@@ -6762,7 +6729,6 @@ snapshots:
       locate-character: 3.0.0
       magic-string: 0.30.17
       zimmerframe: 1.1.2
-    optional: true
 
   tailwind-merge@2.5.5: {}
 
@@ -6818,8 +6784,7 @@ snapshots:
     dependencies:
       is-number: 7.0.0
 
-  totalist@3.0.1:
-    optional: true
+  totalist@3.0.1: {}
 
   tr46@0.0.3: {}
 
@@ -6838,8 +6803,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  turbo-stream@2.4.1:
-    optional: true
+  turbo-stream@2.4.1: {}
 
   type-check@0.4.0:
     dependencies:
@@ -6987,18 +6951,15 @@ snapshots:
       fsevents: 2.3.3
       jiti: 1.21.7
       yaml: 2.8.0
-    optional: true
 
   vitefu@1.0.7(vite@7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)):
     optionalDependencies:
       vite: 7.0.0(@types/node@22.0.0)(jiti@1.21.7)(yaml@2.8.0)
-    optional: true
 
   vue-router@4.5.1(vue@3.5.17(typescript@5.0.2)):
     dependencies:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.17(typescript@5.0.2)
-    optional: true
 
   vue@3.5.17(typescript@5.0.2):
     dependencies:
@@ -7009,7 +6970,6 @@ snapshots:
       '@vue/shared': 3.5.17
     optionalDependencies:
       typescript: 5.0.2
-    optional: true
 
   webidl-conversions@3.0.1: {}
 
@@ -7083,7 +7043,6 @@ snapshots:
 
   yaml@2.8.0: {}
 
-  zimmerframe@1.1.2:
-    optional: true
+  zimmerframe@1.1.2: {}
 
   zod@3.24.1: {}
