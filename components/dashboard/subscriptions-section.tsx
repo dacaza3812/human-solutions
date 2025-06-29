@@ -85,7 +85,7 @@ const plans = [
 ]
 
 export function SubscriptionsSection() {
-  const { user, profile } = useAuth()
+  const { session, profile } = useAuth()
   const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripeCheckout()
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -159,7 +159,7 @@ export function SubscriptionsSection() {
   }
 
   const handlePlanSelection = async (planId: number) => {
-    await createCheckoutSession(planId)
+    await createCheckoutSession(planId.toString())
   }
 
   const handleCancelSubscription = async () => {
@@ -169,8 +169,10 @@ export function SubscriptionsSection() {
     try {
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscriptionInfo.stripe_subscription_id,
@@ -184,6 +186,7 @@ export function SubscriptionsSection() {
 
       // Actualizar la información de suscripción
       await fetchSubscriptionInfo()
+      setShowPlans(false)
     } catch (err: any) {
       console.error("Error canceling subscription:", err)
       setError(err.message || "Error al cancelar la suscripción") // Muestra el mensaje de error específico
@@ -198,7 +201,7 @@ export function SubscriptionsSection() {
         return (
           <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">Activa</Badge>
         )
-      case "canceled":
+      case "cancelled":
         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">Cancelada</Badge>
       case "past_due":
         return (
