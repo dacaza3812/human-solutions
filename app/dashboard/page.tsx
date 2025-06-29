@@ -45,6 +45,7 @@ import { QuotesSection } from "./components/quotes-section"
 import { FinancialOverviewSection } from "./components/financial-overview-section"
 import { ReferralsSection } from "./components/referrals-section"
 import { SettingsSection } from "./components/settings-section"
+import { useRouter } from "next/navigation"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -278,19 +279,6 @@ function DashboardContent() {
 
   // Filter user's scheduled cases for quotes section
   const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
-
-  // Generate referral code on component mount
-  useEffect(() => {
-    if (profile && !referralCode) {
-      const generateReferralCode = () => {
-        const firstName = profile.first_name?.toLowerCase() || ""
-        const lastName = profile.last_name?.toLowerCase() || ""
-        const randomNum = Math.floor(Math.random() * 1000)
-        return `${firstName}${lastName}${randomNum}`
-      }
-      setReferralCode(generateReferralCode())
-    }
-  }, [profile, referralCode])
 
   // Fetch referral stats for clients
   useEffect(() => {
@@ -948,6 +936,13 @@ function DashboardContent() {
 }
 
 export default function Dashboard() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to summary by default
+    router.replace("/dashboard/summary")
+  }, [router])
+
   return (
     <ProtectedRoute>
       <DashboardContent />
