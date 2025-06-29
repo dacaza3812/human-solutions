@@ -129,7 +129,9 @@ export function SubscriptionsSection() {
         throw profileError
       }
 
-      if (profileData && profileData.plans) {
+      if (profileData && profileData.subscription_status === "canceled") {
+        setSubscriptionInfo(null) // Treat as no active subscription for UI purposes
+      } else if (profileData && profileData.plans) {
         setSubscriptionInfo({
           plan_id: profileData.plan_id,
           plan_name: profileData.plans.name,
@@ -370,7 +372,7 @@ export function SubscriptionsSection() {
                 variant="outline"
                 onClick={handleCancelSubscription}
                 disabled={cancelLoading || subscriptionInfo.subscription_status !== "active"}
-                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white"
+                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white bg-transparent"
               >
                 {cancelLoading ? (
                   <>
