@@ -1,28 +1,36 @@
 "use client"
 
-import type React from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { supabase } from "@/lib/supabase"
+import type { User } from "@supabase/supabase-js"
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react"
-import type { User, Session } from "@supabase/supabase-js"
-import { supabase, type UserProfile } from "@/lib/supabase"
-import { useRouter } from "next/navigation"
+// Define the UserProfile interface
+export interface UserProfile {
+  id: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  account_type: "client" | "advisor" | null
+  phone: string | null
+  created_at: string | null
+  referral_code: string | null
+  stripe_customer_id: string | null
+}
 
 interface AuthContextType {
   user: User | null
   profile: UserProfile | null
-  session: Session | null
   loading: boolean
   signUp: (
     email: string,
     password: string,
-    userData: Partial<UserProfile>,
-    referralCode?: string,
-  ) => Promise<{ error: any }>
-  signIn: (email: string, password: string) => Promise<{ error: any }>
-  signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: any }>
-  updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>
-  changePassword: (newPassword: string) => Promise<{ error: any }>
+    accountType: "client" | "advisor",
+  ) => Promise<{ user: User | null; error: Error | null }>
+  signIn: (email: string, password: string) => Promise<{ user: User | null; error: Error | null }>
+  signOut: () => Promise<{ error: Error | null }>
+  resetPassword: (email: string) => Promise<{ error: Error | null }>
+  updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ profile: UserProfile | null; error: Error | null }>
+  changePassword: (newPassword: string) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -30,267 +38,155 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   const fetchUserProfile = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching profile:", error)
-        return
-      }
-
-      setProfile(data)
-    } catch (error) {
+    if (error) {
       console.error("Error fetching profile:", error)
+      return null
     }
+    return data as UserProfile
   }, [])
 
   useEffect(() => {
-    // Get initial session
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setLoading(true)
+      if (session?.user) {
+        setUser(session.user)
+        const userProfile = await fetchUserProfile(session.user.id)
+        setProfile(userProfile)
+      } else {
+        setUser(null)
+        setProfile(null)
+      }
+      setLoading(false)
+    })
+
+    // Initial check
     const getInitialSession = async () => {
+      setLoading(true)
       const {
         data: { session },
+        error,
       } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
-
       if (session?.user) {
-        await fetchUserProfile(session.user.id)
+        setUser(session.user)
+        const userProfile = await fetchUserProfile(session.user.id)
+        setProfile(userProfile)
+      } else {
+        setUser(null)
+        setProfile(null)
       }
-
       setLoading(false)
     }
 
     getInitialSession()
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
-      } else {
-        setProfile(null)
-      }
-
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [fetchUserProfile])
 
   const signUp = useCallback(
-    async (email: string, password: string, userData: Partial<UserProfile>, referralCode?: string) => {
-      try {
-        // Prepare metadata
-        const metadata: any = {
-          first_name: userData.first_name || "",
-          last_name: userData.last_name || "",
-          phone: userData.phone || "",
-          account_type: userData.account_type || "client",
-        }
-
-        // Only add referral_code if it exists and is not empty
-        if (referralCode && referralCode.trim() !== "") {
-          metadata.referral_code = referralCode.trim()
-        }
-
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: "https://foxlawyer.vercel.app/dashboard",
-            data: metadata,
-          },
-        })
-
-        if (error) {
-          console.error("Signup error:", error)
-          return { error }
-        }
-
-        // Wait a bit for the trigger to complete
-        if (data.user && !data.user.email_confirmed_at) {
-          // For unconfirmed users, we might need to create the profile manually
-          // This is a fallback in case the trigger doesn't work
-          setTimeout(async () => {
-            try {
-              const { error: profileError } = await supabase.from("profiles").upsert(
-                [
-                  {
-                    id: data.user!.id,
-                    email: data.user!.email,
-                    first_name: userData.first_name || "",
-                    last_name: userData.last_name || "",
-                    phone: userData.phone || "",
-                    account_type: userData.account_type || "client",
-                    referred_by: referralCode && referralCode.trim() !== "" ? referralCode.trim() : null,
-                  },
-                ],
-                { onConflict: "id" },
-              )
-
-              if (profileError) {
-                console.error("Error creating profile fallback:", profileError)
-              }
-
-              // Create referral relationship if applicable
-              if (referralCode && referralCode.trim() !== "" && data.user) {
-                const { error: referralError } = await supabase.rpc("create_referral_relationship", {
-                  referrer_code: referralCode.trim(),
-                  referred_user_id: data.user.id,
-                })
-
-                if (referralError) {
-                  console.error("Error creating referral relationship:", referralError)
-                }
-              }
-            } catch (err) {
-              console.error("Error in profile creation fallback:", err)
-            }
-          }, 1000)
-        }
-
-        return { error: null }
-      } catch (error) {
-        console.error("Unexpected signup error:", error)
-        return { error }
+    async (email: string, password: string, accountType: "client" | "advisor") => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { account_type: accountType },
+        },
+      })
+      if (data.user) {
+        setUser(data.user)
+        // Fetch profile immediately after sign up to ensure it's available
+        const userProfile = await fetchUserProfile(data.user.id)
+        setProfile(userProfile)
       }
+      return { user: data.user, error }
     },
-    [],
+    [fetchUserProfile],
   )
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (!error) {
-          router.push("/dashboard")
-        }
-
-        return { error }
-      } catch (error) {
-        return { error }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (data.user) {
+        setUser(data.user)
+        const userProfile = await fetchUserProfile(data.user.id)
+        setProfile(userProfile)
       }
+      return { user: data.user, error }
     },
-    [router],
+    [fetchUserProfile],
   )
 
   const signOut = useCallback(async () => {
-    try {
-      console.log("Attempting to sign out...")
-      const { error } = await supabase.auth.signOut()
-
-      if (error) {
-        console.error("Error during sign out:", error)
-        // Optionally, you could show a toast notification to the user here
-        // toast({
-        //   title: "Error al cerrar sesión",
-        //   description: error.message,
-        //   variant: "destructive",
-        // });
-      } else {
-        console.log("Sign out successful. Redirecting to login page.")
-      }
-    } catch (err) {
-      console.error("Unexpected error during sign out:", err)
-      // toast({
-      //   title: "Error inesperado",
-      //   description: "Ocurrió un error al intentar cerrar sesión.",
-      //   variant: "destructive",
-      // });
-    } finally {
-      // Always attempt to redirect to login page, even if sign out failed on Supabase side,
-      // to ensure the user doesn't remain in a protected route with a potentially invalid session.
-      router.push("/login")
+    const { error } = await supabase.auth.signOut()
+    if (!error) {
+      setUser(null)
+      setProfile(null)
     }
-  }, [router])
+    return { error }
+  }, [])
 
   const resetPassword = useCallback(async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://foxlawyer.vercel.app/reset-password",
-      })
-      return { error }
-    } catch (error) {
-      return { error }
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    return { error }
   }, [])
 
   const updateUserProfile = useCallback(
     async (updates: Partial<UserProfile>) => {
       if (!user) {
-        return { error: { message: "No user logged in." } }
+        return { profile: null, error: new Error("User not authenticated.") }
       }
-      try {
-        console.log("AuthContext: Attempting to update user profile:", updates)
-        const { data, error } = await supabase.from("profiles").update(updates).eq("id", user.id).select().single()
 
-        if (error) {
-          console.error("AuthContext: Error updating profile:", error)
-          return { error }
-        }
+      const { data, error } = await supabase.from("profiles").update(updates).eq("id", user.id).select().single()
 
-        setProfile(data) // Update local profile state
-        console.log("AuthContext: Profile updated successfully:", data)
-        return { error: null }
-      } catch (error) {
-        console.error("AuthContext: Unexpected error updating profile:", error)
-        return { error }
+      if (error) {
+        console.error("Error updating profile:", error)
+        return { profile: null, error }
       }
+
+      if (data) {
+        setProfile(data as UserProfile) // Update the context's profile state
+        return { profile: data as UserProfile, error: null }
+      }
+      return { profile: null, error: new Error("No data returned after update.") }
     },
     [user],
   )
 
-  const changePassword = useCallback(
-    async (newPassword: string) => {
-      if (!user) {
-        return { error: { message: "No user logged in." } }
-      }
-      try {
-        console.log("AuthContext: Attempting to change password...")
-        const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+  const changePassword = useCallback(async (newPassword: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    })
+    if (error) {
+      console.error("Error changing password:", error)
+    }
+    return { error }
+  }, [])
 
-        if (error) {
-          console.error("AuthContext: Error changing password:", error)
-          return { error }
-        }
-
-        console.log("AuthContext: Password changed successfully:", data)
-        return { error: null }
-      } catch (error) {
-        console.error("AuthContext: Unexpected error changing password:", error)
-        return { error }
-      }
-    },
-    [user],
+  const value = React.useMemo(
+    () => ({
+      user,
+      profile,
+      loading,
+      signUp,
+      signIn,
+      signOut,
+      resetPassword,
+      updateUserProfile,
+      changePassword,
+    }),
+    [user, profile, loading, signUp, signIn, signOut, resetPassword, updateUserProfile, changePassword],
   )
-
-  const value = {
-    user,
-    profile,
-    session,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-    resetPassword,
-    updateUserProfile,
-    changePassword,
-  }
-
-  console.log("AuthContext value created. updateUserProfile type:", typeof value.updateUserProfile)
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

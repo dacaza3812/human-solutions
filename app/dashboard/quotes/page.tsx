@@ -2,96 +2,67 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, XCircle, FileText } from "lucide-react"
+import { PlusCircle, XCircle } from "lucide-react"
 
 interface Quote {
   id: string
-  service: string
-  status: string
-  amount: string
+  type: string
   date: string
+  status: string
+  advisor: string
 }
 
 export default function QuotesPage() {
-  const { profile, loading } = useAuth()
+  const { profile, loading: authLoading } = useAuth()
   const [quotes, setQuotes] = useState<Quote[]>([])
-  const [loadingQuotes, setLoadingQuotes] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulate fetching quotes for client
-    setLoadingQuotes(true)
-    setTimeout(() => {
-      setQuotes([
-        {
-          id: "q1",
-          service: "Asesoría Legal Inicial",
-          status: "Pendiente",
-          amount: "$150",
-          date: "2023-10-25",
-        },
-        {
-          id: "q2",
-          service: "Representación en Juicio",
-          status: "Aceptada",
-          amount: "$1200",
-          date: "2023-10-20",
-        },
-        {
-          id: "q3",
-          service: "Redacción de Contrato",
-          status: "Rechazada",
-          amount: "$300",
-          date: "2023-10-18",
-        },
-        {
-          id: "q4",
-          service: "Consulta de Propiedad",
-          status: "Completada",
-          amount: "$200",
-          date: "2023-10-10",
-        },
-      ])
-      setLoadingQuotes(false)
-    }, 1000)
-  }, [profile])
+    if (!authLoading && profile) {
+      fetchQuotes()
+    }
+  }, [profile, authLoading])
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "Pendiente":
-        return "secondary"
-      case "Aceptada":
-        return "default"
-      case "Rechazada":
-        return "destructive"
-      case "Completada":
-        return "success" // Assuming you have a 'success' variant for Badge
-      default:
-        return "outline"
+  const fetchQuotes = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Simulate fetching data for client's quotes/appointments
+      setQuotes([
+        { id: "1", type: "Consulta Inicial", date: "2024-06-10", status: "Confirmada", advisor: "Dr. Smith" },
+        { id: "2", type: "Revisión de Documentos", date: "2024-06-15", status: "Pendiente", advisor: "Dra. García" },
+        { id: "3", type: "Cotización de Servicio", date: "2024-06-05", status: "Completada", advisor: "Dr. Smith" },
+      ])
+    } catch (err) {
+      console.error("Failed to fetch quotes:", err)
+      setError("Failed to load quotes. Please try again.")
+    } finally {
+      setLoading(false)
     }
   }
 
-  if (loading || loadingQuotes) {
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
-        <p className="text-muted-foreground">Cargando tus citas y cotizaciones.</p>
+      <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
+  }
+
+  if (error) {
+    return <div className="text-center text-red-500">{error}</div>
   }
 
   if (profile?.account_type !== "client") {
     return (
       <div className="text-center py-12">
-        <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+        <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
         <h3 className="text-2xl font-semibold text-foreground mb-2">Acceso Denegado</h3>
-        <p className="text-muted-foreground">Solo los usuarios con cuenta de cliente pueden acceder a esta sección.</p>
+        <p className="text-muted-foreground">Esta sección es solo para clientes.</p>
       </div>
     )
   }
@@ -99,44 +70,51 @@ export default function QuotesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mis Citas y Cotizaciones</h2>
-          <p className="text-muted-foreground">Revisa el estado de tus solicitudes de servicio y citas.</p>
-        </div>
+        <h1 className="text-3xl font-bold">Mis Citas y Cotizaciones</h1>
         <Button>
-          <PlusCircle className="mr-2 h-4 w-4" /> Solicitar Nueva Cita/Cotización
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Solicitar Nueva Cita/Cotización
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Solicitudes</CardTitle>
-          <CardDescription>Aquí puedes ver todas tus solicitudes de citas y cotizaciones.</CardDescription>
+          <CardTitle>Próximas Citas y Cotizaciones</CardTitle>
         </CardHeader>
         <CardContent>
           {quotes.length === 0 ? (
-            <p className="text-muted-foreground">No hay solicitudes para mostrar.</p>
+            <div className="text-center py-8 text-muted-foreground">No tienes citas o cotizaciones pendientes.</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Servicio</TableHead>
-                  <TableHead>Monto</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Fecha</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Fecha de Solicitud</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead>Asesor</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {quotes.map((quote) => (
                   <TableRow key={quote.id}>
-                    <TableCell className="font-medium">{quote.service}</TableCell>
-                    <TableCell>{quote.amount}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(quote.status)}>{quote.status}</Badge>
-                    </TableCell>
+                    <TableCell className="font-medium">{quote.type}</TableCell>
                     <TableCell>{quote.date}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          quote.status === "Confirmada"
+                            ? "bg-green-100 text-green-800"
+                            : quote.status === "Pendiente"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {quote.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>{quote.advisor}</TableCell>
+                    <TableCell>
                       <Button variant="outline" size="sm">
                         Ver Detalles
                       </Button>

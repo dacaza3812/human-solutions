@@ -1,235 +1,230 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { CardFooter } from "@/components/ui/card"
+
+import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, XCircle, FileText } from "lucide-react"
+import { MessageCircle, Send } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 
 interface Message {
   id: string
-  sender: "me" | "other"
+  sender: string
   content: string
   timestamp: string
+  is_read: boolean
 }
 
 interface Conversation {
   id: string
-  participantName: string
-  lastMessage: string
-  lastMessageTime: string
-  messages: Message[]
+  participant: string
+  last_message: string
+  last_message_time: string
+  unread_count: number
 }
 
-const mockConversations: Conversation[] = [
-  {
-    id: "conv1",
-    participantName: "Lic. Juan Pérez",
-    lastMessage: "Revisando los documentos del caso.",
-    lastMessageTime: "10:30 AM",
-    messages: [
-      { id: "m1", sender: "other", content: "Hola, ¿cómo va mi caso de divorcio?", timestamp: "10:00 AM" },
+export default function MessagesPage() {
+  const { profile, loading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
+  const initialCaseId = searchParams.get("case")
+
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [newMessage, setNewMessage] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!authLoading && profile) {
+      fetchConversations()
+    }
+  }, [profile, authLoading])
+
+  useEffect(() => {
+    if (initialCaseId && conversations.length > 0) {
+      // Find conversation related to the initialCaseId, if applicable
+      // For now, just select the first one or a mock one
+      const mockConversation = conversations.find((conv) => conv.id === initialCaseId) || conversations[0]
+      if (mockConversation) {
+        setSelectedConversation(mockConversation)
+        fetchMessages(mockConversation.id)
+      }
+    } else if (conversations.length > 0 && !selectedConversation) {
+      setSelectedConversation(conversations[0])
+      fetchMessages(conversations[0].id)
+    }
+  }, [initialCaseId, conversations, selectedConversation]) // Added selectedConversation to dependencies
+
+  const fetchConversations = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Simulate fetching conversations
+      if (profile?.account_type === "advisor") {
+        setConversations([
+          {
+            id: "conv1",
+            participant: "Juan Pérez",
+            last_message: "Revisando los documentos...",
+            last_message_time: "10:30 AM",
+            unread_count: 2,
+          },
+          {
+            id: "conv2",
+            participant: "Ana López",
+            last_message: "Necesito una cita urgente.",
+            last_message_time: "Ayer",
+            unread_count: 0,
+          },
+        ])
+      } else {
+        setConversations([
+          {
+            id: "conv3",
+            participant: "Dr. Smith",
+            last_message: "Su caso está en progreso.",
+            last_message_time: "11:00 AM",
+            unread_count: 1,
+          },
+          {
+            id: "conv4",
+            participant: "Dra. García",
+            last_message: "Adjunto la cotización.",
+            last_message_time: "Hace 2 días",
+            unread_count: 0,
+          },
+        ])
+      }
+    } catch (err) {
+      console.error("Failed to fetch conversations:", err)
+      setError("No se pudieron cargar las conversaciones.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchMessages = async (conversationId: string) => {
+    // Simulate fetching messages for a specific conversation
+    setMessages([
+      { id: "msg1", sender: "Participant", content: "Hola, ¿cómo va mi caso?", timestamp: "10:00 AM", is_read: true },
       {
-        id: "m2",
-        sender: "me",
+        id: "msg2",
+        sender: "Me",
         content: "Hola, estoy revisando los documentos. Te actualizo pronto.",
         timestamp: "10:05 AM",
+        is_read: true,
       },
-      { id: "m3", sender: "other", content: "Perfecto, gracias.", timestamp: "10:10 AM" },
-      { id: "m4", sender: "other", content: "Revisando los documentos del caso.", timestamp: "10:30 AM" },
-    ],
-  },
-  {
-    id: "conv2",
-    participantName: "Ana García",
-    lastMessage: "Necesito una consulta sobre herencia.",
-    lastMessageTime: "Ayer",
-    messages: [
-      { id: "m5", sender: "other", content: "Hola, necesito una consulta sobre herencia.", timestamp: "Ayer 03:00 PM" },
-      { id: "m6", sender: "me", content: "Claro, ¿cuándo te viene bien?", timestamp: "Ayer 03:05 PM" },
-    ],
-  },
-  {
-    id: "conv3",
-    participantName: "Tech Innovators S.A.",
-    lastMessage: "Contrato de servicios listo para revisión.",
-    lastMessageTime: "23/10/2023",
-    messages: [
-      { id: "m7", sender: "other", content: "Contrato de servicios listo para revisión.", timestamp: "23/10/2023" },
-    ],
-  },
-]
-
-export default function MessagesPage() {
-  const { profile, loading } = useAuth()
-  const searchParams = useSearchParams()
-  const caseId = searchParams.get("case")
-
-  const [conversations, setConversations] = useState<Conversation[]>(mockConversations)
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
-  const [newMessage, setNewMessage] = useState("")
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    // If a caseId is provided, try to select a conversation related to it
-    if (caseId) {
-      // In a real app, you'd fetch conversations related to this caseId
-      // For now, we'll just select the first conversation as a placeholder
-      if (conversations.length > 0) {
-        setSelectedConversationId(conversations[0].id)
-      }
-    } else if (!selectedConversationId && conversations.length > 0) {
-      // Select the first conversation by default if no caseId and no conversation selected
-      setSelectedConversationId(conversations[0].id)
-    }
-  }, [caseId, conversations, selectedConversationId])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [selectedConversationId, conversations]) // Scroll when conversation changes or new message arrives
-
-  const selectedConversation = selectedConversationId
-    ? conversations.find((conv) => conv.id === selectedConversationId)
-    : null
+      { id: "msg3", sender: "Participant", content: "De acuerdo, gracias.", timestamp: "10:10 AM", is_read: false },
+    ])
+  }
 
   const handleSendMessage = () => {
-    if (newMessage.trim() === "" || !selectedConversationId) return
-
-    const updatedConversations = conversations.map((conv) => {
-      if (conv.id === selectedConversationId) {
-        const newMsg: Message = {
-          id: `m${conv.messages.length + 1}`,
-          sender: "me",
-          content: newMessage,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        }
-        return {
-          ...conv,
-          messages: [...conv.messages, newMsg],
-          lastMessage: newMessage,
-          lastMessageTime: newMsg.timestamp,
-        }
+    if (newMessage.trim() && selectedConversation) {
+      const newMsg: Message = {
+        id: Date.now().toString(),
+        sender: "Me", // Assuming "Me" is the current user
+        content: newMessage,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        is_read: false, // Mark as unread for the other party
       }
-      return conv
-    })
-    setConversations(updatedConversations)
-    setNewMessage("")
+      setMessages((prevMessages) => [...prevMessages, newMsg])
+      setNewMessage("")
+      // In a real app, send message to backend here
+    }
   }
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
-        <p className="text-muted-foreground">Cargando tus mensajes.</p>
+      <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
   }
 
-  if (!profile) {
-    return (
-      <div className="text-center py-12">
-        <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-        <h3 className="text-2xl font-semibold text-foreground mb-2">Error de Autenticación</h3>
-        <p className="text-muted-foreground">No se pudo cargar el perfil del usuario.</p>
-      </div>
-    )
+  if (error) {
+    return <div className="text-center text-red-500">{error}</div>
   }
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-4">
-      <Card className="hidden w-1/3 flex-col md:flex">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
+      {/* Conversation List */}
+      <Card className="lg:col-span-1 flex flex-col">
         <CardHeader>
-          <CardTitle>Conversaciones</CardTitle>
+          <CardTitle>Mensajes</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto p-0">
           {conversations.length === 0 ? (
-            <p className="p-4 text-muted-foreground">No hay conversaciones.</p>
+            <div className="text-center py-8 text-muted-foreground">No hay conversaciones.</div>
           ) : (
-            <nav>
+            <nav className="grid gap-1 p-2">
               {conversations.map((conv) => (
-                <div
+                <Button
                   key={conv.id}
-                  className={`flex items-center gap-3 p-4 cursor-pointer hover:bg-muted ${
-                    selectedConversationId === conv.id ? "bg-muted" : ""
-                  }`}
-                  onClick={() => setSelectedConversationId(conv.id)}
+                  variant="ghost"
+                  className={`justify-start h-auto py-3 ${selectedConversation?.id === conv.id ? "bg-muted" : ""}`}
+                  onClick={() => {
+                    setSelectedConversation(conv)
+                    fetchMessages(conv.id)
+                  }}
                 >
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage alt="User Avatar" src="/placeholder-user.jpg" />
-                    <AvatarFallback>{conv.participantName[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 gap-0.5">
-                    <p className="text-sm font-medium leading-none">{conv.participantName}</p>
-                    <p className="text-xs text-muted-foreground">{conv.lastMessage}</p>
+                  <div className="flex flex-col items-start">
+                    <span className="font-semibold">{conv.participant}</span>
+                    <span className="text-sm text-muted-foreground truncate w-full">{conv.last_message}</span>
+                    <span className="text-xs text-muted-foreground">{conv.last_message_time}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">{conv.lastMessageTime}</div>
-                </div>
+                  {conv.unread_count > 0 && (
+                    <span className="ml-auto px-2 py-1 text-xs font-bold bg-emerald-500 text-white rounded-full">
+                      {conv.unread_count}
+                    </span>
+                  )}
+                </Button>
               ))}
             </nav>
           )}
         </CardContent>
       </Card>
 
-      <Card className="flex flex-1 flex-col">
+      {/* Message View */}
+      <Card className="lg:col-span-2 flex flex-col">
         <CardHeader className="border-b">
           <CardTitle>
-            {selectedConversation ? selectedConversation.participantName : "Selecciona una conversación"}
+            {selectedConversation ? selectedConversation.participant : "Selecciona una conversación"}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto p-4">
+        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
           {selectedConversation ? (
-            <ScrollArea className="h-full pr-4">
-              <div className="space-y-4">
-                {selectedConversation.messages.map((message) => (
+            messages.length === 0 ? (
+              <div className="text-center text-muted-foreground">No hay mensajes en esta conversación.</div>
+            ) : (
+              messages.map((msg) => (
+                <div key={msg.id} className={`flex ${msg.sender === "Me" ? "justify-end" : "justify-start"}`}>
                   <div
-                    key={message.id}
-                    className={`flex items-start gap-3 ${message.sender === "me" ? "justify-end" : ""}`}
+                    className={`max-w-[70%] p-3 rounded-lg ${
+                      msg.sender === "Me" ? "bg-emerald-500 text-white" : "bg-muted text-foreground"
+                    }`}
                   >
-                    {message.sender === "other" && (
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage alt="User Avatar" src="/placeholder-user.jpg" />
-                        <AvatarFallback>{selectedConversation.participantName[0]}</AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div
-                      className={`rounded-lg p-3 text-sm ${
-                        message.sender === "me"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      <p>{message.content}</p>
-                      <p className="mt-1 text-right text-xs opacity-70">{message.timestamp}</p>
-                    </div>
-                    {message.sender === "me" && (
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage alt="User Avatar" src="/placeholder-user.jpg" />
-                        <AvatarFallback>{profile?.first_name?.[0] || "U"}</AvatarFallback>
-                      </Avatar>
-                    )}
+                    <p className="text-sm">{msg.content}</p>
+                    <span className="text-xs opacity-75 mt-1 block text-right">{msg.timestamp}</span>
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                </div>
+              ))
+            )
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              No hay conversación seleccionada.
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <MessageCircle className="w-16 h-16 mb-4" />
+              <p className="text-lg">Inicia una conversación</p>
             </div>
           )}
         </CardContent>
         {selectedConversation && (
           <CardFooter className="border-t p-4">
-            <div className="flex w-full items-center space-x-2">
+            <div className="flex w-full space-x-2">
               <Input
-                placeholder="Escribe tu mensaje..."
+                placeholder="Escribe un mensaje..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => {
@@ -240,7 +235,7 @@ export default function MessagesPage() {
               />
               <Button onClick={handleSendMessage}>
                 <Send className="h-4 w-4" />
-                <span className="sr-only">Enviar mensaje</span>
+                <span className="sr-only">Enviar</span>
               </Button>
             </div>
           </CardFooter>

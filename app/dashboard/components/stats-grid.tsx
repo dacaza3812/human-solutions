@@ -1,37 +1,40 @@
 "use client"
 
-import type React from "react"
-
-import { Card, CardContent } from "@/components/ui/card"
-
-interface StatItem {
-  title: string
-  value: string
-  change: string
-  icon: React.ElementType // Lucide icon component
-  color: string
-}
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DollarSign, Users, FileText, Percent } from "lucide-react"
 
 interface StatsGridProps {
-  stats: StatItem[] // Ahora espera el array de stats precalculado
+  profileType: "client" | "advisor" | null
 }
 
-export function StatsGrid({ stats }: StatsGridProps) {
+export function StatsGrid({ profileType }: StatsGridProps) {
+  const advisorStats = [
+    { title: "Ingresos Totales", value: "$15,000", icon: DollarSign, description: "+20.1% desde el mes pasado" },
+    { title: "Clientes Activos", value: "150", icon: Users, description: "+180.1% desde el mes pasado" },
+    { title: "Casos Abiertos", value: "75", icon: FileText, description: "+19% desde el mes pasado" },
+    { title: "Tasa de Éxito", value: "92%", icon: Percent, description: "+5% desde el año pasado" },
+  ]
+
+  const clientStats = [
+    { title: "Casos en Progreso", value: "2", icon: FileText, description: "Actualizado hace 2 días" },
+    { title: "Citas Próximas", value: "1", icon: Users, description: "Mañana a las 10 AM" },
+    { title: "Ahorros Potenciales", value: "$5,000", icon: DollarSign, description: "Estimado por asesoría" },
+    { title: "Referidos Activos", value: "3", icon: Percent, description: "Gana recompensas" },
+  ]
+
+  const stats = profileType === "advisor" ? advisorStats : clientStats
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 col-span-full">
       {stats.map((stat, index) => (
-        <Card key={index} className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.title}</p>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className={`text-sm ${stat.color}`}>{stat.change}</p>
-              </div>
-              <div className={`w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
-              </div>
-            </div>
+        <Card key={index}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+            <stat.icon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stat.value}</div>
+            <p className="text-xs text-muted-foreground">{stat.description}</p>
           </CardContent>
         </Card>
       ))}

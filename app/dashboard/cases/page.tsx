@@ -2,173 +2,204 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, XCircle, FileText } from "lucide-react"
+import { PlusCircle, Search } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Case {
   id: string
   title: string
+  client_name: string
   status: string
-  lastUpdate: string
-  description?: string
-  clientName?: string
-  advisorName?: string
+  last_updated: string
+  description: string
 }
 
 export default function CasesPage() {
-  const { profile, loading } = useAuth()
+  const { profile, loading: authLoading } = useAuth()
   const [cases, setCases] = useState<Case[]>([])
-  const [loadingCases, setLoadingCases] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterStatus, setFilterStatus] = useState("all")
 
   useEffect(() => {
-    // Simulate fetching cases based on user role
-    setLoadingCases(true)
-    setTimeout(() => {
-      if (profile?.account_type === "client") {
+    if (!authLoading && profile) {
+      fetchCases()
+    }
+  }, [profile, authLoading])
+
+  const fetchCases = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Simulate fetching data based on profile type
+      if (profile?.account_type === "advisor") {
         setCases([
           {
-            id: "c1",
-            title: "Divorcio de mutuo acuerdo",
-            status: "En progreso",
-            lastUpdate: "2023-10-26",
-            description: "Proceso de divorcio amistoso con reparto de bienes.",
-            advisorName: "Lic. Juan Pérez",
+            id: "1",
+            title: "Divorcio Pérez",
+            client_name: "Juan Pérez",
+            status: "Activo",
+            last_updated: "2024-05-20",
+            description: "Caso de divorcio complejo con bienes compartidos.",
           },
           {
-            id: "c2",
-            title: "Reclamación por accidente de tráfico",
+            id: "2",
+            title: "Herencia García",
+            client_name: "Ana García",
             status: "Pendiente",
-            lastUpdate: "2023-10-20",
-            description: "Demanda por lesiones personales tras colisión vehicular.",
-            advisorName: "Lic. María López",
+            last_updated: "2024-05-18",
+            description: "Sucesión testamentaria con múltiples herederos.",
           },
           {
-            id: "c3",
-            title: "Herencia familiar",
+            id: "3",
+            title: "Contrato Empresa X",
+            client_name: "Empresa X",
             status: "Completado",
-            lastUpdate: "2023-09-15",
-            description: "Gestión de la sucesión de bienes de un familiar.",
-            advisorName: "Lic. Juan Pérez",
+            last_updated: "2024-05-10",
+            description: "Revisión y redacción de contrato comercial.",
+          },
+          {
+            id: "4",
+            title: "Demanda Laboral",
+            client_name: "Roberto Soto",
+            status: "Activo",
+            last_updated: "2024-05-25",
+            description: "Demanda por despido injustificado.",
           },
         ])
-      } else if (profile?.account_type === "advisor") {
+      } else {
+        // Client's own cases
         setCases([
           {
-            id: "a1",
-            title: "Asesoría legal para startup",
-            status: "En progreso",
-            lastUpdate: "2023-10-28",
-            description: "Constitución de empresa y contratos iniciales.",
-            clientName: "Tech Innovators S.A.",
+            id: "5",
+            title: "Mi Caso de Divorcio",
+            client_name: "Yo",
+            status: "En Revisión",
+            last_updated: "2024-05-22",
+            description: "Mi proceso de divorcio.",
           },
           {
-            id: "a2",
-            title: "Defensa penal - Robo",
-            status: "Activo",
-            lastUpdate: "2023-10-27",
-            description: "Representación en caso de robo con violencia.",
-            clientName: "Carlos Ruiz",
-          },
-          {
-            id: "a3",
-            title: "Contrato de arrendamiento comercial",
-            status: "Pendiente",
-            lastUpdate: "2023-10-25",
-            description: "Revisión y redacción de contrato para local comercial.",
-            clientName: "Inversiones Alfa",
+            id: "6",
+            title: "Consulta Legal",
+            client_name: "Yo",
+            status: "Completado",
+            last_updated: "2024-05-15",
+            description: "Consulta sobre derechos de propiedad.",
           },
         ])
       }
-      setLoadingCases(false)
-    }, 1000)
-  }, [profile])
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "En progreso":
-      case "Activo":
-        return "default"
-      case "Pendiente":
-        return "secondary"
-      case "Completado":
-        return "success" // Assuming you have a 'success' variant for Badge
-      default:
-        return "outline"
+    } catch (err) {
+      console.error("Failed to fetch cases:", err)
+      setError("Failed to load cases. Please try again.")
+    } finally {
+      setLoading(false)
     }
   }
 
-  if (loading || loadingCases) {
+  const filteredCases = cases.filter((c) => {
+    const matchesSearch =
+      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = filterStatus === "all" || c.status.toLowerCase() === filterStatus.toLowerCase()
+    return matchesSearch && matchesStatus
+  })
+
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
-        <p className="text-muted-foreground">Cargando tus casos.</p>
+      <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
   }
 
-  if (!profile) {
-    return (
-      <div className="text-center py-12">
-        <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-        <h3 className="text-2xl font-semibold text-foreground mb-2">Error de Autenticación</h3>
-        <p className="text-muted-foreground">No se pudo cargar el perfil del usuario.</p>
-      </div>
-    )
+  if (error) {
+    return <div className="text-center text-red-500">{error}</div>
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mis Casos</h2>
-          <p className="text-muted-foreground">Gestiona todos tus asuntos legales aquí.</p>
-        </div>
-        {profile.account_type === "client" && (
+        <h1 className="text-3xl font-bold">{profile?.account_type === "advisor" ? "Gestión de Casos" : "Mis Casos"}</h1>
+        {profile?.account_type === "advisor" && (
           <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Caso
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nuevo Caso
           </Button>
         )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Casos</CardTitle>
-          <CardDescription>
-            {profile.account_type === "client"
-              ? "Aquí puedes ver el estado de tus casos activos e históricos."
-              : "Aquí puedes ver los casos que estás gestionando."}
-          </CardDescription>
+          <CardTitle>Listado de Casos</CardTitle>
         </CardHeader>
         <CardContent>
-          {cases.length === 0 ? (
-            <p className="text-muted-foreground">No hay casos para mostrar.</p>
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por título, cliente o descripción..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="activo">Activo</SelectItem>
+                <SelectItem value="pendiente">Pendiente</SelectItem>
+                <SelectItem value="en revisión">En Revisión</SelectItem>
+                <SelectItem value="completado">Completado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredCases.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No se encontraron casos que coincidan con tu búsqueda o filtros.
+            </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Título del Caso</TableHead>
-                  {profile.account_type === "advisor" && <TableHead>Cliente</TableHead>}
+                  <TableHead>Título</TableHead>
+                  {profile?.account_type === "advisor" && <TableHead>Cliente</TableHead>}
                   <TableHead>Estado</TableHead>
                   <TableHead>Última Actualización</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cases.map((c) => (
+                {filteredCases.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.title}</TableCell>
-                    {profile.account_type === "advisor" && <TableCell>{c.clientName || "N/A"}</TableCell>}
+                    {profile?.account_type === "advisor" && <TableCell>{c.client_name}</TableCell>}
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(c.status)}>{c.status}</Badge>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          c.status === "Activo"
+                            ? "bg-green-100 text-green-800"
+                            : c.status === "Pendiente"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : c.status === "En Revisión"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {c.status}
+                      </span>
                     </TableCell>
-                    <TableCell>{c.lastUpdate}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>{c.last_updated}</TableCell>
+                    <TableCell>
                       <Button variant="outline" size="sm">
                         Ver Detalles
                       </Button>

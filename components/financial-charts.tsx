@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
 
 // Mock financial data
 const monthlyEarnings = [
@@ -125,6 +126,16 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
   // Get max value for chart scaling
   const maxEarnings = Math.max(...monthlyEarnings.map((m) => m.earnings))
 
+  const data = [
+    { name: "Ene", Ingresos: 4000, Gastos: 2400 },
+    { name: "Feb", Ingresos: 3000, Gastos: 1398 },
+    { name: "Mar", Ingresos: 2000, Gastos: 9800 },
+    { name: "Abr", Ingresos: 2780, Gastos: 3908 },
+    { name: "May", Ingresos: 1890, Gastos: 4800 },
+    { name: "Jun", Ingresos: 2390, Gastos: 3800 },
+    { name: "Jul", Ingresos: 3490, Gastos: 4300 },
+  ]
+
   return (
     <div className="space-y-6">
       {/* Financial Summary Cards */}
@@ -188,6 +199,52 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-[300px]">
+          <h3 className="text-lg font-semibold mb-2">Ingresos vs. Gastos Mensuales</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="Ingresos" fill="#22c55e" />
+              <Bar dataKey="Gastos" fill="#ef4444" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="h-[300px]">
+          <h3 className="text-lg font-semibold mb-2">Tendencia de Ingresos</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={data}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="Ingresos" stroke="#22c55e" activeDot={{ r: 8 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Monthly Earnings Chart */}

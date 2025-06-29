@@ -2,93 +2,79 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { XCircle, FileText } from "lucide-react"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
-
-// Mock data for analytics
-const chartData = [
-  { month: "Ene", cases: 10, clients: 5 },
-  { month: "Feb", cases: 12, clients: 6 },
-  { month: "Mar", cases: 15, clients: 7 },
-  { month: "Abr", cases: 13, clients: 6 },
-  { month: "May", cases: 18, clients: 8 },
-  { month: "Jun", cases: 20, clients: 9 },
-]
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { XCircle } from "lucide-react"
+import { FinancialCharts } from "@/components/financial-charts" // Reusing for mock analytics
 
 export default function AnalyticsPage() {
-  const { profile, loading } = useAuth()
-  const [loadingAnalytics, setLoadingAnalytics] = useState(true)
+  const { profile, loading: authLoading } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulate loading analytics data
-    setLoadingAnalytics(true)
-    setTimeout(() => {
-      setLoadingAnalytics(false)
-    }, 1000)
-  }, [profile])
+    if (!authLoading && profile?.account_type === "advisor") {
+      // Simulate data fetching for analytics
+      const timer = setTimeout(() => {
+        setLoading(false)
+      }, 1000) // Simulate network delay
+      return () => clearTimeout(timer)
+    } else if (!authLoading && profile?.account_type !== "advisor") {
+      setLoading(false) // Not an advisor, so no analytics to load
+    }
+  }, [profile, authLoading])
 
-  if (loading || loadingAnalytics) {
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
-        <p className="text-muted-foreground">Cargando tus analíticas.</p>
+      <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
+  }
+
+  if (error) {
+    return <div className="text-center text-red-500">{error}</div>
   }
 
   if (profile?.account_type !== "advisor") {
     return (
       <div className="text-center py-12">
-        <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+        <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
         <h3 className="text-2xl font-semibold text-foreground mb-2">Acceso Denegado</h3>
-        <p className="text-muted-foreground">Solo los usuarios con cuenta de asesor pueden acceder a esta sección.</p>
+        <p className="text-muted-foreground">Esta sección es solo para asesores.</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Analíticas del Despacho</h2>
-          <p className="text-muted-foreground">Obtén información valiosa sobre el rendimiento de tu despacho.</p>
-        </div>
-      </div>
+      <h1 className="text-3xl font-bold">Análisis y Reportes</h1>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Casos Abiertos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Casos Activos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
-            <p className="text-xs text-muted-foreground">+3 del mes pasado</p>
+            <p className="text-4xl font-bold text-blue-600">45</p>
+            <p className="text-sm text-muted-foreground">Total de casos en progreso</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nuevos Clientes</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Nuevos Clientes (Mes)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">+2 del mes pasado</p>
+            <p className="text-4xl font-bold text-green-600">12</p>
+            <p className="text-sm text-muted-foreground">Clientes adquiridos este mes</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tasa de Éxito</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Tasa de Conversión</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">92%</div>
-            <p className="text-xs text-muted-foreground">Basado en casos cerrados</p>
+            <p className="text-4xl font-bold text-purple-600">18%</p>
+            <p className="text-sm text-muted-foreground">De prospectos a clientes</p>
           </CardContent>
         </Card>
       </div>
@@ -96,30 +82,21 @@ export default function AnalyticsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Rendimiento Mensual</CardTitle>
-          <CardDescription>Casos y clientes por mes.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              cases: { label: "Casos", color: "hsl(var(--primary))" },
-              clients: { label: "Clientes", color: "hsl(var(--muted-foreground))" },
-            }}
-            className="min-h-[300px] w-full"
-          >
-            <BarChart accessibilityLayer data={chartData}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="month"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                tickFormatter={(value) => value.slice(0, 3)}
-              />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-              <Bar dataKey="cases" fill="var(--color-cases)" radius={8} />
-              <Bar dataKey="clients" fill="var(--color-clients)" radius={8} />
-            </BarChart>
-          </ChartContainer>
+          <FinancialCharts /> {/* Reusing for a mock chart */}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reporte de Referidos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">
+            Aquí se mostrarán gráficos y tablas detalladas sobre el rendimiento de los referidos.
+          </p>
+          {/* Placeholder for more detailed referral analytics */}
         </CardContent>
       </Card>
     </div>

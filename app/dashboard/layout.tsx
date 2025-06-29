@@ -13,11 +13,11 @@ import {
   CircleDollarSign,
   FileText,
   Handshake,
-  Home,
   Mail,
   Menu,
   Users,
   X,
+  Home,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
-import ProtectedRoute from "@/components/protected-route"
+import { ProtectedRoute } from "@/components/protected-route" // Corrected import to named export
 import { supabase } from "@/lib/supabase"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -140,11 +140,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gray-900 dark:border-gray-100 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-700 dark:text-gray-300">Cargando dashboard...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
       </div>
     )
   }

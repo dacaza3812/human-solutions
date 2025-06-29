@@ -1,48 +1,37 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp } from "lucide-react"
+import { Activity } from "lucide-react"
 
-interface RecentActivityCardProps {
-  recentActivity: {
-    id: number
-    type: string
-    description: string
-    time: string
-    status: "success" | "completed" | "payment" | "scheduled"
-  }[]
+interface ActivityItem {
+  id: string
+  description: string
+  time: string
 }
 
-export function RecentActivityCard({ recentActivity }: RecentActivityCardProps) {
+const mockActivities: ActivityItem[] = [
+  { id: "1", description: "Actualización de caso #1234", time: "Hace 5 min" },
+  { id: "2", description: "Nueva cita agendada", time: "Hace 1 hora" },
+  { id: "3", description: "Documento subido al caso #5678", time: "Ayer" },
+  { id: "4", description: "Mensaje de Juan Pérez", time: "Hace 2 días" },
+]
+
+export function RecentActivityCard() {
   return (
-    <Card className="border-border/40">
-      <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
-          Actividad Reciente
-        </CardTitle>
+    <Card className="col-span-1">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Actividad Reciente</CardTitle>
+        <Activity className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="space-y-4">
-        {recentActivity.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border border-border/40">
-            <div
-              className={`w-2 h-2 rounded-full mt-2 ${
-                activity.status === "success"
-                  ? "bg-emerald-400"
-                  : activity.status === "completed"
-                    ? "bg-blue-400"
-                    : activity.status === "payment"
-                      ? "bg-purple-400"
-                      : "bg-orange-400"
-              }`}
-            />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">{activity.type}</p>
-              <p className="text-xs text-muted-foreground">{activity.description}</p>
-              <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-            </div>
-          </div>
-        ))}
+      <CardContent>
+        <ul className="space-y-2">
+          {mockActivities.map((activity) => (
+            <li key={activity.id} className="flex items-center justify-between text-sm">
+              <span>{activity.description}</span>
+              <span className="text-muted-foreground">{activity.time}</span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   )
