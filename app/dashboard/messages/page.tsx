@@ -1,17 +1,53 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { MessagesSection } from "../components/messages-section"
+import { MessagesSection } from "@/app/dashboard/components/messages-section"
 import { useAuth } from "@/contexts/auth-context"
+import { FileText } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 
+// Define tipos para los datos mock
+interface ClientCase {
+  id: number
+  title: string
+  type: string
+  status: string
+  advisor: string
+  advisorAvatar: string
+  description: string
+  createdDate: string
+  nextAppointment: string | null
+  progress: number
+}
+
+interface AdvisorCase {
+  id: number
+  clientName: string
+  clientId: number
+  title: string
+  type: string
+  status: string
+  priority: string
+  createdDate: string
+  dueDate: string
+  description: string
+  progress: number
+}
+
 export default function MessagesPage() {
-  const { profile } = useAuth()
+  const { profile, loading } = useAuth()
   const searchParams = useSearchParams()
+  const caseIdParam = searchParams.get("case")
   const [activeChat, setActiveChat] = useState<number | null>(null)
 
+  useEffect(() => {
+    if (caseIdParam) {
+      setActiveChat(Number(caseIdParam))
+    }
+  }, [caseIdParam])
+
   // Mock data for current user's cases (client view)
-  const userCases = [
+  const userCases: ClientCase[] = [
     {
       id: 1,
       title: "Asesoría Financiera Personal",
@@ -52,7 +88,7 @@ export default function MessagesPage() {
   ]
 
   // Mock data for advisor's cases
-  const advisorCases = [
+  const advisorCases: AdvisorCase[] = [
     {
       id: 1,
       clientName: "Juan Pérez",
@@ -95,13 +131,17 @@ export default function MessagesPage() {
     },
   ]
 
-  // Check for case parameter in URL
-  useEffect(() => {
-    const caseParam = searchParams.get("case")
-    if (caseParam) {
-      setActiveChat(Number.parseInt(caseParam))
-    }
-  }, [searchParams])
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
+        <p className="text-muted-foreground">Cargando mensajes.</p>
+      </div>
+    )
+  }
 
   return (
     <MessagesSection

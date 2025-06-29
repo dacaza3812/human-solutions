@@ -1,20 +1,46 @@
 "use client"
 
 import { useState } from "react"
-import { ClientCasesSection } from "../components/client-cases-section"
-import { AdvisorCasesSection } from "../components/advisor-cases-section"
+import { ClientCasesSection } from "@/app/dashboard/components/client-cases-section"
+import { AdvisorCasesSection } from "@/app/dashboard/components/advisor-cases-section"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { FileText } from "lucide-react"
+
+// Define tipos para los datos mock
+interface ClientCase {
+  id: number
+  title: string
+  type: string
+  status: string
+  advisor: string
+  advisorAvatar: string
+  description: string
+  createdDate: string
+  nextAppointment: string | null
+  progress: number
+}
+
+interface AdvisorCase {
+  id: number
+  clientName: string
+  clientId: number
+  title: string
+  type: string
+  status: string
+  priority: string
+  createdDate: string
+  dueDate: string
+  description: string
+  progress: number
+}
 
 export default function CasesPage() {
-  const { profile } = useAuth()
-  const router = useRouter()
+  const { profile, loading } = useAuth()
+  const [selectedCase, setSelectedCase] = useState<AdvisorCase | null>(null)
   const [caseFilter, setCaseFilter] = useState("all")
-  const [selectedCase, setSelectedCase] = useState<any>(null)
-  const [setSelectedClient] = useState<any>(null)
 
   // Mock data for current user's cases (client view)
-  const userCases = [
+  const userCases: ClientCase[] = [
     {
       id: 1,
       title: "Asesoría Financiera Personal",
@@ -55,7 +81,7 @@ export default function CasesPage() {
   ]
 
   // Mock data for advisor's cases
-  const advisorCases = [
+  const advisorCases: AdvisorCase[] = [
     {
       id: 1,
       clientName: "Juan Pérez",
@@ -99,24 +125,39 @@ export default function CasesPage() {
   ]
 
   const openChatForCase = (caseId: number) => {
-    router.push(`/dashboard/messages?case=${caseId}`)
+    // In a real app, this would navigate to the messages page with the caseId
+    console.log(`Opening chat for case ID: ${caseId}`)
   }
 
-  if (profile?.account_type === "client") {
-    return <ClientCasesSection userCases={userCases} openChatForCase={openChatForCase} />
-  } else if (profile?.account_type === "advisor") {
+  if (loading) {
     return (
-      <AdvisorCasesSection
-        advisorCases={advisorCases}
-        caseFilter={caseFilter}
-        setCaseFilter={setCaseFilter}
-        setSelectedCase={setSelectedCase}
-        openChatForCase={openChatForCase}
-        selectedCase={selectedCase}
-        setSelectedClient={setSelectedClient}
-      />
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
+        <p className="text-muted-foreground">Cargando información de casos.</p>
+      </div>
     )
   }
 
-  return null
+  return (
+    <>
+      {profile?.account_type === "client" && (
+        <ClientCasesSection userCases={userCases} openChatForCase={openChatForCase} />
+      )}
+
+      {profile?.account_type === "advisor" && (
+        <AdvisorCasesSection
+          advisorCases={advisorCases}
+          caseFilter={caseFilter}
+          setCaseFilter={setCaseFilter}
+          setSelectedCase={setSelectedCase}
+          openChatForCase={openChatForCase}
+          selectedCase={selectedCase}
+          setSelectedClient={() => {}} // This prop is not used in AdvisorCasesSection directly
+        />
+      )}
+    </>
+  )
 }

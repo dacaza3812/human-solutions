@@ -1,27 +1,44 @@
 "use client"
-
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
 import { Plus, Users, Target, DollarSign, Award, FileText, UserPlus, Calendar } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 import { UserInfoCard } from "../components/user-info-card"
 import { StatsGrid } from "../components/stats-grid"
 import { RecentActivityCard } from "../components/recent-activity-card"
 import { UpcomingAppointmentsCard } from "../components/upcoming-appointments-card"
 
+// Define un tipo para el perfil de usuario si no existe
+interface UserProfile {
+  id: string
+  first_name?: string | null
+  last_name?: string | null
+  account_type?: string | null
+  phone?: string | null
+  created_at?: string | null
+  referral_code?: string | null
+  stripe_customer_id?: string | null
+  // Añade cualquier otro campo de perfil que uses
+}
+
+// Define tipos para los datos mock
+interface ClientCase {
+  id: number
+  title: string
+  type: string
+  status: string
+  advisor: string
+  advisorAvatar: string
+  description: string
+  createdDate: string
+  nextAppointment: string | null
+  progress: number
+}
+
 export default function SummaryPage() {
   const { user, profile } = useAuth()
-  const [referralStats, setReferralStats] = useState({
-    total_referrals: 0,
-    active_referrals: 0,
-    total_earnings: 0,
-    monthly_earnings: 0,
-  })
-  const [referralCode, setReferralCode] = useState("")
 
-  // Mock data for user's cases
-  const userCases = [
+  // Mock data for current user's cases (client view)
+  const userCases: ClientCase[] = [
     {
       id: 1,
       title: "Asesoría Financiera Personal",
@@ -61,50 +78,8 @@ export default function SummaryPage() {
     },
   ]
 
-  // Generate referral code on component mount
-  useEffect(() => {
-    if (profile && !referralCode) {
-      const generateReferralCode = () => {
-        const firstName = profile.first_name?.toLowerCase() || ""
-        const lastName = profile.last_name?.toLowerCase() || ""
-        const randomNum = Math.floor(Math.random() * 1000)
-        return `${firstName}${lastName}${randomNum}`
-      }
-      setReferralCode(profile.referral_code || generateReferralCode())
-    }
-  }, [profile, referralCode])
-
-  // Fetch referral stats for clients
-  useEffect(() => {
-    if (profile?.account_type === "client" && profile.id) {
-      fetchReferralStats()
-    }
-  }, [profile])
-
-  const fetchReferralStats = async () => {
-    try {
-      const { data, error } = await supabase.rpc("get_referral_stats", {
-        user_referral_code: referralCode,
-      })
-
-      if (error) {
-        console.error("Error fetching referral stats:", error)
-        return
-      }
-
-      if (data && data.length > 0) {
-        const stats = data[0]
-        setReferralStats({
-          total_referrals: stats.total_referrals || 0,
-          active_referrals: stats.active_referrals || 0,
-          total_earnings: stats.total_earnings || 0,
-          monthly_earnings: stats.monthly_earnings || 0,
-        })
-      }
-    } catch (error) {
-      console.error("Error fetching referral stats:", error)
-    }
-  }
+  // Filter user's scheduled cases for quotes section
+  const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
 
   // Define stats for advisor
   const advisorStats = [
@@ -149,28 +124,28 @@ export default function SummaryPage() {
     },
     {
       title: "Referidos Totales",
-      value: referralStats.total_referrals.toString(),
-      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
+      value: "0", // This will be updated by the layout's referralStats
+      change: "+0", // This will be updated by the layout's referralStats
       icon: UserPlus,
       color: "text-blue-400",
     },
     {
       title: "Ganancias Totales",
-      value: `$${referralStats.total_earnings}`,
-      change: `+$${referralStats.monthly_earnings}`,
+      value: "$0", // This will be updated by the layout's referralStats
+      change: "+$0", // This will be updated by the layout's referralStats
       icon: DollarSign,
       color: "text-purple-400",
     },
     {
       title: "Próximas Citas",
-      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
+      value: userScheduledCases.length.toString(),
       change: "Esta semana",
       icon: Calendar,
       color: "text-orange-400",
     },
   ]
 
-  // Determine which set of stats to display
+  // Determine which set of stats to pass
   const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
 
   const recentActivity = [
@@ -250,6 +225,7 @@ export default function SummaryPage() {
       {/* Recent Activity */}
       <div className="grid lg:grid-cols-2 gap-6">
         <RecentActivityCard recentActivity={recentActivity} />
+
         <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
       </div>
     </div>

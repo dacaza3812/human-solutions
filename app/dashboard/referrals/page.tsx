@@ -1,14 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ReferralsSection } from "../components/referrals-section"
+import { ReferralsSection } from "@/app/dashboard/components/referrals-section"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
 import { FileText } from "lucide-react"
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
+
+interface ReferralStats {
+  total_referrals: number
+  active_referrals: number
+  total_earnings: number
+  monthly_earnings: number
+}
 
 export default function ReferralsPage() {
-  const { profile } = useAuth()
-  const [referralStats, setReferralStats] = useState({
+  const { profile, loading } = useAuth()
+  const [referralStats, setReferralStats] = useState<ReferralStats>({
     total_referrals: 0,
     active_referrals: 0,
     total_earnings: 0,
@@ -17,9 +24,8 @@ export default function ReferralsPage() {
   const [referralCode, setReferralCode] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
 
-  // Generate referral code on component mount
   useEffect(() => {
-    if (profile && !referralCode) {
+    if (profile) {
       const generateReferralCode = () => {
         const firstName = profile.first_name?.toLowerCase() || ""
         const lastName = profile.last_name?.toLowerCase() || ""
@@ -28,14 +34,13 @@ export default function ReferralsPage() {
       }
       setReferralCode(profile.referral_code || generateReferralCode())
     }
-  }, [profile, referralCode])
+  }, [profile])
 
-  // Fetch referral stats
   useEffect(() => {
-    if (profile?.account_type === "client" && profile.id) {
+    if (profile?.account_type === "client" && profile.id && referralCode) {
       fetchReferralStats()
     }
-  }, [profile])
+  }, [profile, referralCode])
 
   const fetchReferralStats = async () => {
     try {
@@ -63,7 +68,7 @@ export default function ReferralsPage() {
   }
 
   const copyReferralLink = async () => {
-    const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
+    const referralLink = `${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${referralCode}`
     try {
       await navigator.clipboard.writeText(referralLink)
       setCopySuccess(true)
@@ -71,6 +76,18 @@ export default function ReferralsPage() {
     } catch (err) {
       console.error("Error copying to clipboard:", err)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
+        <p className="text-muted-foreground">Cargando información de referidos.</p>
+      </div>
+    )
   }
 
   if (profile?.account_type !== "client") {
@@ -87,7 +104,6 @@ export default function ReferralsPage() {
 
   return (
     <ReferralsSection
-      profile={profile}
       referralStats={referralStats}
       referralCode={referralCode}
       copyReferralLink={copyReferralLink}

@@ -1,19 +1,45 @@
 "use client"
 
 import { useState } from "react"
-import { AdvisorClientsSection } from "../components/advisor-clients-section"
+import { AdvisorClientsSection } from "@/app/dashboard/components/advisor-clients-section"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
 import { FileText } from "lucide-react"
 
+// Define tipos para los datos mock
+interface AdvisorClient {
+  id: number
+  name: string
+  email: string
+  phone: string
+  avatar: string
+  totalCases: number
+  activeCases: number
+  completedCases: number
+  joinDate: string
+  lastActivity: string
+}
+
+interface AdvisorCase {
+  id: number
+  clientName: string
+  clientId: number
+  title: string
+  type: string
+  status: string
+  priority: string
+  createdDate: string
+  dueDate: string
+  description: string
+  progress: number
+}
+
 export default function ClientsPage() {
-  const { profile } = useAuth()
-  const router = useRouter()
-  const [selectedClient, setSelectedClient] = useState<any>(null)
+  const { profile, loading } = useAuth()
   const [clientFilter, setClientFilter] = useState("")
+  const [selectedClient, setSelectedClient] = useState<AdvisorClient | null>(null)
 
   // Mock data for advisor's clients
-  const advisorClients = [
+  const advisorClients: AdvisorClient[] = [
     {
       id: 1,
       name: "Juan Pérez",
@@ -52,8 +78,8 @@ export default function ClientsPage() {
     },
   ]
 
-  // Mock data for advisor's cases
-  const advisorCases = [
+  // Mock data for advisor's cases (needed for client details view)
+  const advisorCases: AdvisorCase[] = [
     {
       id: 1,
       clientName: "Juan Pérez",
@@ -97,7 +123,20 @@ export default function ClientsPage() {
   ]
 
   const openChatForCase = (caseId: number) => {
-    router.push(`/dashboard/messages?case=${caseId}`)
+    // In a real app, this would navigate to the messages page with the caseId
+    console.log(`Opening chat for case ID: ${caseId}`)
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-xl font-semibold text-foreground mb-2">Cargando...</h3>
+        <p className="text-muted-foreground">Cargando información de clientes.</p>
+      </div>
+    )
   }
 
   if (profile?.account_type !== "advisor") {
@@ -115,11 +154,11 @@ export default function ClientsPage() {
   return (
     <AdvisorClientsSection
       advisorClients={advisorClients}
-      advisorCases={advisorCases}
-      selectedClient={selectedClient}
-      setSelectedClient={setSelectedClient}
       clientFilter={clientFilter}
       setClientFilter={setClientFilter}
+      setSelectedClient={setSelectedClient}
+      selectedClient={selectedClient}
+      advisorCases={advisorCases}
       openChatForCase={openChatForCase}
     />
   )
