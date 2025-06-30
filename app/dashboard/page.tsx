@@ -143,6 +143,9 @@ function DashboardContent() {
   const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
   const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
 
+  console.log(JSON.stringify(profile, null, 2))
+  //console.log(JSON.stringify(user, null, 2))
+
   useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name || "")
@@ -281,16 +284,10 @@ function DashboardContent() {
 
   // Generate referral code on component mount
   useEffect(() => {
-    if (profile && !referralCode) {
-      const generateReferralCode = () => {
-        const firstName = profile.first_name?.toLowerCase() || ""
-        const lastName = profile.last_name?.toLowerCase() || ""
-        const randomNum = Math.floor(Math.random() * 1000)
-        return `${firstName}${lastName}${randomNum}`
-      }
-      setReferralCode(generateReferralCode())
-    }
-  }, [profile, referralCode])
+  if (profile?.referral_code) {
+    setReferralCode(profile.referral_code)
+  }
+}, [profile])
 
   // Fetch referral stats for clients
   useEffect(() => {
@@ -303,8 +300,8 @@ function DashboardContent() {
     try {
       // Use the new SQL function to get referral stats
       const { data, error } = await supabase.rpc("get_referral_stats", {
-        user_referral_code: referralCode,
-      })
+  user_referral_code: profile?.referral_code,
+})
 
       if (error) {
         console.error("Error fetching referral stats:", error)
