@@ -3,8 +3,8 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context" // Re-imported useAuth
-import { supabase } from "@/lib/supabase" // Re-imported supabase
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
 import { Plus, DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
 import { UserInfoCard } from "./components/user-info-card"
 import { StatsGrid } from "./components/stats-grid"
@@ -67,7 +67,6 @@ interface AdvisorCase {
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState("overview")
   const [referralStats, setReferralStats] = useState({
-    // Re-introduced referralStats state
     total_referrals: 0,
     active_referrals: 0,
     total_earnings: 0,
@@ -80,7 +79,8 @@ export default function DashboardPage() {
   const [activeChat, setActiveChat] = useState<number | null>(null)
   const [clientFilter, setClientFilter] = useState("")
   const [caseFilter, setCaseFilter] = useState("all")
-  const { user, profile, updateUserProfile, changePassword } = useAuth() // Re-introduced useAuth hook
+  const [dataLoading, setDataLoading] = useState(false)
+  const { user, profile, updateUserProfile, changePassword, loading } = useAuth()
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [dateRange, setDateRange] = useState({
@@ -110,7 +110,7 @@ export default function DashboardPage() {
       setLastName(profile.last_name || "")
       setNewReferralCode(profile.referral_code || "")
     }
-  }, [profile]) // Dependency on profile to update when profile data is available
+  }, [profile])
 
   // Mock data for current user's cases (client view)
   const userCases: ClientCase[] = [
@@ -253,16 +253,19 @@ export default function DashboardPage() {
     }
   }, [profile, referralCode])
 
-  // Fetch referral stats for clients
+  // Fetch referral stats for clients - optimized with proper error handling
   useEffect(() => {
-    if (profile?.account_type === "client" && profile.id && referralCode) {
-      // Added referralCode dependency
+    if (profile?.account_type === "client" && profile.id && referralCode && !loading) {
       fetchReferralStats()
     }
-  }, [profile, referralCode]) // Added referralCode to dependencies
+  }, [profile, referralCode, loading])
 
   const fetchReferralStats = async () => {
+    if (dataLoading) return // Prevent multiple simultaneous calls
+
     try {
+      setDataLoading(true)
+
       // Use the new SQL function to get referral stats
       const { data, error } = await supabase.rpc("get_referral_stats", {
         user_referral_code: referralCode,
@@ -284,6 +287,8 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching referral stats:", error)
+    } finally {
+      setDataLoading(false)
     }
   }
 
@@ -502,6 +507,20 @@ export default function DashboardPage() {
       setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
       setReferralCode(newReferralCode)
     }
+  }
+
+  // Show loading state if auth is still loading
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+            <p className="text-muted-foreground">Cargando datos del dashboard...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -4,8 +4,8 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { ProtectedRoute } from "@/components/protected-route" // Re-imported ProtectedRoute
-import { useAuth } from "@/contexts/auth-context" // Re-imported useAuth
+import { ProtectedRoute } from "@/components/protected-route"
+import { useAuth } from "@/contexts/auth-context"
 import {
   Home,
   Users,
@@ -40,9 +40,21 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
-  const { user, profile, signOut } = useAuth() // Re-introduced useAuth hook
+  const { user, profile, signOut, loading } = useAuth()
 
   const pathname = usePathname()
+
+  // Show loading state if auth is still loading
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+          <p className="text-muted-foreground">Cargando dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Menu items based on user role
   const getMenuItems = () => {
@@ -271,7 +283,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
               <Button
                 variant="ghost"
                 className="w-full justify-start text-muted-foreground hover:text-foreground"
-                onClick={signOut} // Re-connected signOut
+                onClick={signOut}
               >
                 <LogOut className="w-4 h-4 mr-3" />
                 Cerrar Sesión
@@ -295,9 +307,16 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ProtectedRoute>
-      {" "}
-      {/* Re-added ProtectedRoute wrapper */}
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+              <p className="text-muted-foreground">Cargando...</p>
+            </div>
+          </div>
+        }
+      >
         <DashboardLayoutContent>{children}</DashboardLayoutContent>
       </Suspense>
     </ProtectedRoute>

@@ -35,19 +35,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
+    let isMounted = true
+
     // Get initial session
     const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
 
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
+        if (error) {
+          console.error("Error getting session:", error)
+          if (isMounted) {
+            setLoading(false)
+          }
+          return
+        }
+
+        if (isMounted) {
+          setSession(session)
+          setUser(session?.user ?? null)
+
+          if (session?.user) {
+            await fetchUserProfile(session.user.id)
+          }
+
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error("Unexpected error getting session:", error)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
-
-      setLoading(false)
     }
 
     getInitialSession()
@@ -56,6 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return
+
+      console.log("Auth state change:", event, session?.user?.id)
+
       setSession(session)
       setUser(session?.user ?? null)
 
@@ -65,10 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null)
       }
 
+      // Ensure loading is set to false after auth state change
       setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const fetchUserProfile = async (userId: string) => {
@@ -88,6 +117,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>, referralCode?: string) => {
     try {
+      setLoading(true)
+
       // Prepare metadata
       const metadata: any = {
         first_name: userData.first_name || "",
@@ -112,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Signup error:", error)
+        setLoading(false)
         return { error }
       }
 
@@ -157,15 +189,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }, 1000)
       }
 
+      setLoading(false)
       return { error: null }
     } catch (error) {
       console.error("Unexpected signup error:", error)
+      setLoading(false)
       return { error }
     }
   }
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true)
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -175,49 +211,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/dashboard")
       }
 
+      setLoading(false)
       return { error }
     } catch (error) {
+      setLoading(false)
       return { error }
     }
   }
 
   const signOut = async () => {
     try {
+      setLoading(true)
       console.log("Attempting to sign out...")
       const { error } = await supabase.auth.signOut()
 
       if (error) {
         console.error("Error during sign out:", error)
-        // Optionally, you could show a toast notification to the user here
-        // toast({
-        //   title: "Error al cerrar sesión",
-        //   description: error.message,
-        //   variant: "destructive",
-        // });
       } else {
         console.log("Sign out successful. Redirecting to login page.")
       }
     } catch (err) {
       console.error("Unexpected error during sign out:", err)
-      // toast({
-      //   title: "Error inesperado",
-      //   description: "Ocurrió un error al intentar cerrar sesión.",
-      //   variant: "destructive",
-      // });
     } finally {
-      // Always attempt to redirect to login page, even if sign out failed on Supabase side,
-      // to ensure the user doesn't remain in a protected route with a potentially invalid session.
+      setLoading(false)
+      // Always attempt to redirect to login page
       router.push("/login")
     }
   }
 
   const resetPassword = async (email: string) => {
     try {
+      setLoading(true)
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: "https://foxlawyer.vercel.app/reset-password",
       })
+      setLoading(false)
       return { error }
     } catch (error) {
+      setLoading(false)
       return { error }
     }
   }
