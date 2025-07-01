@@ -2,97 +2,67 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { supabase } from "@/lib/supabase"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
+import Image from "next/image"
 import { useToast } from "@/components/ui/use-toast"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [accountType, setAccountType] = useState("client") // Default to client
+  const [referralCode, setReferralCode] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const referralCodeFromUrl = searchParams.get("ref")
+  const { signUp } = useAuth()
   const { toast } = useToast()
-
-  useEffect(() => {
-    if (referralCodeFromUrl) {
-      toast({
-        title: "Código de Referido Detectado",
-        description: `Te has registrado a través del código: ${referralCodeFromUrl}`,
-      })
-    }
-  }, [referralCodeFromUrl, toast])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError(null)
-    setSuccessMessage(null)
 
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.")
-      setLoading(false)
-      return
+    const userData = {
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone,
+      account_type: accountType,
     }
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.")
-      setLoading(false)
-      return
-    }
+    const { error } = await signUp(email, password, userData, referralCode)
 
-    try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            account_type: "free", // Default account type
-            referral_code: referralCodeFromUrl, // Store referral code if present
-          },
-        },
+    if (error) {
+      toast({
+        title: "Error de registro",
+        description: error.message,
+        variant: "destructive",
       })
-
-      if (signUpError) {
-        setError(signUpError.message)
-      } else if (data.user) {
-        setSuccessMessage("¡Registro exitoso! Por favor, revisa tu correo electrónico para verificar tu cuenta.")
-        toast({
-          title: "Registro Exitoso",
-          description: "Por favor, revisa tu correo electrónico para verificar tu cuenta.",
-        })
-        // Optionally redirect after a short delay
-        setTimeout(() => {
-          router.push("/login")
-        }, 3000)
-      }
-    } catch (err: any) {
-      setError(err.message || "Ocurrió un error inesperado durante el registro.")
-    } finally {
-      setLoading(false)
+    } else {
+      toast({
+        title: "Registro exitoso",
+        description: "Por favor, revisa tu correo electrónico para confirmar tu cuenta.",
+      })
+      // Optionally redirect to a confirmation page or login
     }
+    setLoading(false)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-950">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 dark:bg-gray-950">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">Registrarse</CardTitle>
-          <CardDescription>Crea una cuenta para empezar a usar la plataforma.</CardDescription>
+          <div className="flex justify-center mb-4">
+            <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer Logo" width={100} height={100} className="dark:invert" />
+          </div>
+          <CardTitle className="text-2xl font-bold">Crear una Cuenta</CardTitle>
+          <CardDescription>Ingresa tus datos para crear una nueva cuenta.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
@@ -102,7 +72,7 @@ export default function RegisterPage() {
                 <Input
                   id="first-name"
                   type="text"
-                  placeholder="Juan"
+                  placeholder="John"
                   required
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -113,7 +83,7 @@ export default function RegisterPage() {
                 <Input
                   id="last-name"
                   type="text"
-                  placeholder="Pérez"
+                  placeholder="Doe"
                   required
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -132,6 +102,16 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="phone">Teléfono (Opcional)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1234567890"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
@@ -142,24 +122,34 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
+              <Label htmlFor="account-type">Tipo de Cuenta</Label>
+              <Select value={accountType} onValueChange={setAccountType}>
+                <SelectTrigger id="account-type">
+                  <SelectValue placeholder="Selecciona tipo de cuenta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="client">Cliente</SelectItem>
+                  <SelectItem value="advisor">Asesor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="referral-code">Código de Referido (Opcional)</Label>
               <Input
-                id="confirm-password"
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                id="referral-code"
+                type="text"
+                placeholder="ABC123XYZ"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {successMessage && <p className="text-sm text-emerald-500">{successMessage}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600" disabled={loading}>
               {loading ? "Registrando..." : "Registrarse"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             ¿Ya tienes una cuenta?{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
+            <Link href="/login" className="font-medium text-emerald-600 hover:underline">
               Iniciar Sesión
             </Link>
           </div>

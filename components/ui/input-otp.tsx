@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { OTPInput, Slot } from "input-otp"
-import { Minus } from "lucide-react"
+import { OTPInput, Slot, type OTPInputProps } from "input-otp"
+import { Dot } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const InputOTP = React.forwardRef<React.ElementRef<typeof OTPInput>, React.ComponentPropsWithoutRef<typeof OTPInput>>(
+const InputOTP = React.forwardRef<React.ElementRef<typeof OTPInput>, OTPInputProps>(
   ({ className, containerClassName, ...props }, ref) => (
     <OTPInput
       ref={ref}
@@ -18,7 +18,7 @@ const InputOTP = React.forwardRef<React.ElementRef<typeof OTPInput>, React.Compo
 )
 InputOTP.displayName = "InputOTP"
 
-const InputOTPGroup = React.forwardRef<React.ElementRef<"div">, React.ComponentPropsWithoutRef<"div">>(
+const InputOTPGroup = React.forwardRef<React.ElementRef<"div">, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => <div ref={ref} className={cn("flex items-center", className)} {...props} />,
 )
 InputOTPGroup.displayName = "InputOTPGroup"
@@ -28,41 +28,43 @@ const InputOTPSlot = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof Slot> & { index: number }
 >(({ index, className, ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext)
-  if (!inputOTPContext) {
-    throw new Error("InputOTPSlot must be used within an OTPInputProvider")
-  }
   const { char, has } = inputOTPContext.slots[index]
 
   return (
     <Slot
       ref={ref}
-      index={index}
       className={cn(
         "relative flex h-9 w-9 items-center justify-center border-y border-r border-input text-sm shadow-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
-        has && "z-10 ring-1 ring-ring",
+        has && "ring-1 ring-ring",
         className,
       )}
       {...props}
     >
       {char}
       {has && (
-        <span className="absolute inset-0 flex items-center justify-center">
-          <span className="h-4 w-4 animate-caret-blink rounded-full bg-foreground duration-500" />
-        </span>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="h-4 w-px animate-caret-blink bg-foreground duration-1000" />
+        </div>
       )}
     </Slot>
   )
 })
 InputOTPSlot.displayName = "InputOTPSlot"
 
-const InputOTPSeparator = React.forwardRef<React.ElementRef<"div">, React.ComponentPropsWithoutRef<"div">>(
+const InputOTPSeparator = React.forwardRef<React.ElementRef<"div">, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("-mx-2 flex items-center justify-center", className)} {...props}>
-      <Minus />
+    <div ref={ref} className={cn("flex items-center justify-center", className)} {...props}>
+      <Dot />
     </div>
   ),
 )
 InputOTPSeparator.displayName = "InputOTPSeparator"
 
+// Define OTPInputContext type if it's not already defined in 'input-otp'
+interface OTPInputContextValue {
+  slots: { char: string; has: boolean }[]
+}
+
+const OTPInputContext = React.createContext<OTPInputContextValue>({ slots: [] })
+
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator }
-</merged_code>

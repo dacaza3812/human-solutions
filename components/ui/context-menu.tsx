@@ -30,11 +30,9 @@ ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName
 const ContextMenuItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> &
-    Pick<ContextMenuPrimitive.MenuItemProps, "onSelect" | "disabled"> & {
-      inset?: boolean
-    }
+    Pick<ContextualMenuItemProps, "inset" | "disabled" | "shortcut">
 >(({ className, inset, ...props }, ref) => (
-  <ContextMenuPrimitive.Item
+  <ContextualMenuItem
     ref={ref}
     className={cn(
       "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
@@ -44,7 +42,32 @@ const ContextMenuItem = React.forwardRef<
     {...props}
   />
 ))
-ContextMenuItem.displayName = ContextMenuPrimitive.MenuItem.displayName
+ContextMenuItem.displayName = ContextMenuPrimitive.Item.displayName
+
+interface ContextualMenuItemProps extends React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> {
+  inset?: boolean
+  disabled?: boolean
+  shortcut?: React.ReactNode
+}
+
+const ContextualMenuItem = React.forwardRef<
+  React.ElementRef<typeof ContextMenuPrimitive.Item>,
+  ContextualMenuItemProps
+>(({ className, inset, children, shortcut, ...props }, ref) => (
+  <ContextMenuPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      inset && "pl-8",
+      className,
+    )}
+    {...props}
+  >
+    {children}
+    {shortcut && <span className="ml-auto text-xs tracking-widest text-muted-foreground">{shortcut}</span>}
+  </ContextMenuPrimitive.Item>
+))
+ContextualMenuItem.displayName = "ContextualMenuItem"
 
 const ContextMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.CheckboxItem>,
@@ -170,4 +193,3 @@ export {
   ContextMenuSubTrigger,
   ContextMenuSubContent,
 }
-</merged_code>

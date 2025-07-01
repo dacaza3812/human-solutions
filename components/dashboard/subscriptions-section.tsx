@@ -1,12 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
+import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
+import { useSearchParams } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
-import { CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { CheckCircle2, XCircle } from "lucide-react"
+
+interface Price {
+  id: string
+  name: string
+  description: string
+  price: string
+  features: string[]
+  isPopular?: boolean
+}
 
 interface Subscription {
   id: string
@@ -15,58 +25,74 @@ interface Subscription {
   price_id: string
 }
 
-interface PriceDetails {
-  productName: string
-  unitAmount: number
-  interval: string
-  priceId: string
-}
+const prices: Price[] = [
+  {
+    id: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD!,
+    name: "Estándar",
+    description: "Perfecto para pequeñas firmas.",
+    price: "$79/mes",
+    features: [
+      "Gestión de casos ilimitados",
+      "Soporte prioritario",
+      "Almacenamiento de 10GB",
+      "Acceso a plantillas premium",
+    ],
+    isPopular: true,
+  },
+  {
+    id: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM!,
+    name: "Premium",
+    description: "Para firmas grandes y equipos.",
+    price: "$199/mes",
+    features: [
+      "Todas las características de Estándar",
+      "Soporte 24/7",
+      "Almacenamiento ilimitado",
+      "Integraciones personalizadas",
+    ],
+  },
+  {
+    id: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_COLLABORATIVE!,
+    name: "Colaborativo",
+    description: "Para equipos que necesitan colaboración avanzada.",
+    price: "$149/mes",
+    features: [
+      "Gestión de casos ilimitados",
+      "Soporte prioritario",
+      "Almacenamiento de 50GB",
+      "Herramientas de colaboración en tiempo real",
+      "Reportes avanzados",
+    ],
+  },
+]
 
 export function SubscriptionsSection() {
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile } = useAuth()
+  const { createCheckoutSession } = useStripeCheckout()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
-  const [prices, setPrices] = useState<PriceDetails[]>([])
 
   useEffect(() => {
-    const fetchSubscriptionAndPrices = async () => {
-      if (authLoading || !user) return
+    const fetchSubscription = async () => {
+      if (!user) return
 
       setLoading(true)
       try {
         // Fetch user's subscription
-        const { data: subData, error: subError } = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("user_id", user.id)
-          .single()
+        const { data: subData, error: subError } = await fetch(`/api/get-subscription?user_id=${user.id}`)
+        const subscriptionData = await subData.json()
 
-        if (subError && subError.code !== "PGRST116") {
-          // PGRST116 means no rows found, which is fine for new users
+        if (subError) {
           console.error("Error fetching subscription:", subError)
           toast({
             title: "Error",
             description: "No se pudo cargar la información de la suscripción.",
             variant: "destructive",
           })
-        } else if (subData) {
-          setSubscription(subData)
-        }
-
-        // Fetch all available prices from Stripe
-        const pricesResponse = await fetch("/api/stripe/get-all-prices")
-        const pricesData = await pricesResponse.json()
-
-        if (pricesData.error) {
-          console.error("Error fetching prices:", pricesData.error)
-          toast({
-            title: "Error",
-            description: "No se pudieron cargar los planes de suscripción.",
-            variant: "destructive",
-          })
-        } else {
-          setPrices(pricesData.prices)
+        } else if (subscriptionData) {
+          setSubscription(subscriptionData)
         }
       } catch (error) {
         console.error("Unexpected error fetching data:", error)
@@ -80,214 +106,118 @@ export function SubscriptionsSection() {
       }
     }
 
-    fetchSubscriptionAndPrices()
-  }, [user, authLoading, toast])
+    fetchSubscription()
+  }, [user, toast])
 
-  const handleManageSubscription = async () => {
-    if (!user || !profile?.stripe_customer_id || !subscription?.id) {
+  useEffect(() => {
+    const status = searchParams.get("status")
+    if (status === "success") {
       toast({
-        title: "Error",
-        description: "No se pudo gestionar la suscripción. Faltan datos.",
+        title: "Suscripción Exitosa",
+        description: "Tu suscripción ha sido activada.",
+        variant: "default",
+      })
+    } else if (status === "cancelled") {
+      toast({
+        title: "Suscripción Cancelada",
+        description: "El proceso de suscripción fue cancelado.",
         variant: "destructive",
       })
-      return
-    }
-
-    setLoading(true)
-    try {
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId: profile.stripe_customer_id,
-          subscriptionId: subscription.id, // Indicate that we want a billing portal session
-        }),
-      })
-      const data = await response.json()
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "No se pudo redirigir al portal de gestión de suscripciones.",
-          variant: "destructive",
-        })
-      }
-    } catch (error: any) {
-      console.error("Error managing subscription:", error)
+    } else if (status === "error") {
       toast({
-        title: "Error",
-        description: error.message || "Ocurrió un error inesperado al gestionar la suscripción.",
+        title: "Error de Suscripción",
+        description: "Hubo un problema al procesar tu suscripción.",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [searchParams, toast])
 
   const handleSubscribe = async (priceId: string) => {
     if (!user) {
       toast({
-        title: "Error",
+        title: "Error de Autenticación",
         description: "Debes iniciar sesión para suscribirte.",
         variant: "destructive",
       })
       return
     }
-
-    setLoading(true)
-    try {
-      let customerId = profile?.stripe_customer_id
-
-      // If no Stripe customer ID, create one
-      if (!customerId) {
-        const { data: newCustomerData, error: newCustomerError } = await supabase
-          .from("profiles")
-          .select("stripe_customer_id")
-          .eq("id", user.id)
-          .single()
-
-        if (newCustomerError || !newCustomerData?.stripe_customer_id) {
-          // Create customer in Stripe if not found in DB
-          const customerResponse = await fetch("/api/stripe/create-customer", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: user.email, userId: user.id }),
-          })
-          const customerData = await customerResponse.json()
-          if (customerData.error) {
-            throw new Error(customerData.error)
-          }
-          customerId = customerData.customerId
-          // Update profile in DB with new customer ID
-          await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id)
-        } else {
-          customerId = newCustomerData.stripe_customer_id
-        }
-      }
-
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId, customerId }),
-      })
-      const data = await response.json()
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        toast({
-          title: "Error de Suscripción",
-          description: data.error || "No se pudo iniciar la sesión de pago.",
-          variant: "destructive",
-        })
-      }
-    } catch (error: any) {
-      console.error("Error during subscription:", error)
-      toast({
-        title: "Error de Suscripción",
-        description: error.message || "Ocurrió un error inesperado al procesar la suscripción.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+    await createCheckoutSession(priceId, user.id)
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <CheckCircle2 className="h-8 w-8 animate-spin text-emerald-500" />
         <p className="ml-2 text-muted-foreground">Cargando suscripciones...</p>
       </div>
     )
   }
 
-  const currentPlan = prices.find((p) => p.priceId === subscription?.price_id)
-
   return (
     <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-foreground">Gestionar Suscripción</h2>
       <Card>
         <CardHeader>
-          <CardTitle>Estado de tu Suscripción</CardTitle>
-          <CardDescription>Gestiona tu plan de suscripción actual.</CardDescription>
+          <CardTitle>Estado Actual de la Suscripción</CardTitle>
+          <CardDescription>
+            {profile?.stripe_subscription_id
+              ? "Actualmente tienes una suscripción activa."
+              : "No tienes una suscripción activa."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {subscription ? (
-            <div className="space-y-2">
-              <p className="text-lg font-semibold flex items-center">
-                Estado:{" "}
-                {subscription.status === "active" ? (
-                  <span className="ml-2 text-emerald-500 flex items-center">
-                    <CheckCircle className="h-5 w-5 mr-1" /> Activa
-                  </span>
-                ) : (
-                  <span className="ml-2 text-destructive flex items-center">
-                    <XCircle className="h-5 w-5 mr-1" /> {subscription.status}
-                  </span>
-                )}
-              </p>
-              {currentPlan && (
-                <p>
-                  Plan Actual: <span className="font-medium">{currentPlan.productName}</span> (
-                  {`$${(currentPlan.unitAmount / 100).toFixed(2)}/${currentPlan.interval}`})
-                </p>
-              )}
-              <p>
-                Fin del Periodo Actual:{" "}
-                <span className="font-medium">{new Date(subscription.current_period_end).toLocaleDateString()}</span>
-              </p>
-              <Button onClick={handleManageSubscription} className="mt-4 bg-emerald-500 hover:bg-emerald-600">
-                Gestionar Suscripción
-              </Button>
+          {profile?.stripe_subscription_id ? (
+            <div className="flex items-center gap-2 text-emerald-500">
+              <CheckCircle2 className="h-5 w-5" />
+              <span>Suscripción Activa</span>
             </div>
           ) : (
-            <div className="space-y-2">
-              <p className="text-lg font-semibold">No tienes una suscripción activa.</p>
-              <p className="text-muted-foreground">Explora nuestros planes a continuación para comenzar.</p>
+            <div className="flex items-center gap-2 text-red-500">
+              <XCircle className="h-5 w-5" />
+              <span>Sin Suscripción Activa</span>
             </div>
+          )}
+          {/* Add button to manage subscription via Stripe portal if needed */}
+          {profile?.stripe_subscription_id && (
+            <Button variant="outline" className="mt-4 bg-transparent">
+              Gestionar en Stripe
+            </Button>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Explora Nuestros Planes</CardTitle>
-          <CardDescription>Elige el plan que mejor se adapte a tus necesidades.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-3">
-          {prices.map((price) => (
-            <Card
-              key={price.priceId}
-              className={`flex flex-col ${
-                subscription?.price_id === price.priceId ? "border-2 border-emerald-500" : ""
-              }`}
-            >
-              <CardHeader>
-                <CardTitle>{price.productName}</CardTitle>
-                <CardDescription>{`$${(price.unitAmount / 100).toFixed(2)} / ${price.interval}`}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                {/* Add plan features here if available in price details */}
-                <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                  <li>Acceso a funciones básicas</li>
-                  <li>Soporte por correo electrónico</li>
-                </ul>
-              </CardContent>
-              <div className="p-4 pt-0">
-                <Button
-                  className="w-full bg-emerald-500 hover:bg-emerald-600"
-                  onClick={() => handleSubscribe(price.priceId)}
-                  disabled={loading || subscription?.price_id === price.priceId}
-                >
-                  {subscription?.price_id === price.priceId ? "Plan Actual" : "Seleccionar Plan"}
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </CardContent>
-      </Card>
+      <h2 className="text-2xl font-bold text-foreground mt-8">Nuestros Planes</h2>
+      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-3">
+        {prices.map((price) => (
+          <Card
+            key={price.id}
+            className={`flex flex-col justify-between ${price.isPopular ? "border-2 border-emerald-500" : ""}`}
+          >
+            <CardHeader>
+              <CardTitle>{price.name}</CardTitle>
+              <CardDescription>{price.description}</CardDescription>
+              <div className="text-4xl font-bold">{price.price}</div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-left">
+                {price.features.map((feature, index) => (
+                  <li key={index} className="flex items-center">
+                    <CheckCircle2 className="mr-2 h-5 w-5 text-emerald-500" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="w-full bg-emerald-500 hover:bg-emerald-600"
+                onClick={() => handleSubscribe(price.id)}
+                disabled={profile?.stripe_subscription_id === price.id} // Disable if already subscribed to this plan
+              >
+                {profile?.stripe_subscription_id === price.id ? "Plan Actual" : "Elegir Plan"}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }

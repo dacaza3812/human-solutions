@@ -3,51 +3,60 @@
 import type React from "react"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  redirectTo?: string
 }
 
-export default function ProtectedRoute({ children, redirectTo = "/login" }: ProtectedRouteProps) {
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
-    if (!loading && !user) {
-      // If not loading and no user, redirect to login
-      router.push(redirectTo)
+    // If authentication is still loading, do nothing.
+    if (loading) {
+      return
     }
-  }, [user, loading, router, redirectTo])
 
+    // If user is not logged in and not on a public route, redirect to login.
+    // Public routes are /login, /register, /reset-password, and /payment_process
+    const publicRoutes = ["/login", "/register", "/reset-password", "/payment_process"]
+    const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
+
+    if (!user && !isPublicRoute) {
+      console.log("No user found, redirecting to login.")
+      router.push("/login")
+    } else if (user && (pathname === "/login" || pathname === "/register" || pathname === "/reset-password")) {
+      // If user is logged in and tries to access login/register/reset-password, redirect to dashboard
+      console.log("User logged in, redirecting from auth page to dashboard.")
+      router.push("/dashboard")
+    }
+  }, [user, loading, router, pathname])
+
+  // Show a loading indicator while authentication status is being determined
   if (loading) {
-    // Show a loading indicator while authentication status is being determined
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          <p className="text-muted-foreground">Verificando autenticación...</p>
+          <p className="text-muted-foreground">Cargando...</p>
         </div>
       </div>
     )
   }
 
-  if (!user) {
-    // If not loading but no user, it means a redirect is in progress or about to happen
-    // This state should be brief as useEffect will trigger the redirect
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-emerald-500" />
-          <p className="text-muted-foreground">Redirigiendo al inicio de sesión...</p>
-        </div>
-      </div>
-    )
+  // Render children only if user is authenticated or on a public route
+  // This prevents rendering protected content before auth status is known
+  const publicRoutes = ["/login", "/register", "/reset-password", "/payment_process"]
+  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
+
+  if (user || isPublicRoute) {
+    return <>{children}</>
   }
 
-  // If authenticated, render the children
-  return <>{children}</>
+  // Fallback: Should ideally not be reached if redirects work correctly
+  return null
 }
