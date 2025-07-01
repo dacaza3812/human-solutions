@@ -3,14 +3,15 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-// Removed useAuth import
+import { useAuth } from "@/contexts/auth-context" // Re-imported useAuth
+import { supabase } from "@/lib/supabase" // Re-imported supabase
 import { Plus, DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
 import { UserInfoCard } from "./components/user-info-card"
 import { StatsGrid } from "./components/stats-grid"
 import { RecentActivityCard } from "./components/recent-activity-card"
 import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
 
-// Define a mock UserProfile type for consistency
+// Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
   id: string
   first_name?: string | null
@@ -22,7 +23,7 @@ interface UserProfile {
   stripe_customer_id?: string | null
 }
 
-// Define types for the mock data
+// Define tipos para los datos mock
 interface ClientCase {
   id: number
   title: string
@@ -65,6 +66,13 @@ interface AdvisorCase {
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState("overview")
+  const [referralStats, setReferralStats] = useState({
+    // Re-introduced referralStats state
+    total_referrals: 0,
+    active_referrals: 0,
+    total_earnings: 0,
+    monthly_earnings: 0,
+  })
   const [referralCode, setReferralCode] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
   const [selectedCase, setSelectedCase] = useState<AdvisorCase | null>(null)
@@ -72,17 +80,7 @@ export default function DashboardPage() {
   const [activeChat, setActiveChat] = useState<number | null>(null)
   const [clientFilter, setClientFilter] = useState("")
   const [caseFilter, setCaseFilter] = useState("all")
-  // Removed useAuth hook and its dependencies (user, profile, updateUserProfile, changePassword)
-
-  // Mock user and profile data for immediate rendering
-  const mockUser = { id: "mock-user-id", email: "mock@example.com" }
-  const mockProfile: UserProfile = {
-    id: "mock-profile-id",
-    first_name: "Usuario",
-    last_name: "Demo",
-    account_type: "client", // Default to client for dashboard content
-    referral_code: "DEMOCODE123",
-  }
+  const { user, profile, updateUserProfile, changePassword } = useAuth() // Re-introduced useAuth hook
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [dateRange, setDateRange] = useState({
@@ -90,28 +88,29 @@ export default function DashboardPage() {
     end: "2024-12-31",
   })
 
-  // State for Settings section (handlers will be stubbed or removed as they rely on useAuth)
+  // State for Settings section
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmNewPassword, setConfirmNewPassword] = useState("")
   const [passwordChangeMessage, setPasswordChangeMessage] = useState("")
   const [passwordChangeError, setPasswordChangeError] = useState("")
 
-  const [firstName, setFirstName] = useState(mockProfile.first_name || "")
-  const [lastName, setLastName] = useState(mockProfile.last_name || "")
+  const [firstName, setFirstName] = useState(profile?.first_name || "")
+  const [lastName, setLastName] = useState(profile?.last_name || "")
   const [profileUpdateMessage, setProfileUpdateMessage] = useState("")
   const [profileUpdateError, setProfileUpdateError] = useState("")
 
-  const [newReferralCode, setNewReferralCode] = useState(mockProfile.referral_code || "")
+  const [newReferralCode, setNewReferralCode] = useState(profile?.referral_code || "")
   const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
   const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
 
   useEffect(() => {
-    // Initialize form fields with mock profile data
-    setFirstName(mockProfile.first_name || "")
-    setLastName(mockProfile.last_name || "")
-    setNewReferralCode(mockProfile.referral_code || "")
-  }, []) // Empty dependency array to run once on mount
+    if (profile) {
+      setFirstName(profile.first_name || "")
+      setLastName(profile.last_name || "")
+      setNewReferralCode(profile.referral_code || "")
+    }
+  }, [profile]) // Dependency on profile to update when profile data is available
 
   // Mock data for current user's cases (client view)
   const userCases: ClientCase[] = [
@@ -241,17 +240,52 @@ export default function DashboardPage() {
   // Filter user's scheduled cases for quotes section
   const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
 
-  // Generate referral code on component mount (client-side generation, not fetching)
+  // Generate referral code on component mount
   useEffect(() => {
-    if (mockProfile && !referralCode) {
-      const firstName = mockProfile.first_name?.toLowerCase() || ""
-      const lastName = mockProfile.last_name?.toLowerCase() || ""
-      const randomNum = Math.floor(Math.random() * 1000)
-      setReferralCode(`${firstName}${lastName}${randomNum}`)
+    if (profile && !referralCode) {
+      const generateReferralCode = () => {
+        const firstName = profile.first_name?.toLowerCase() || ""
+        const lastName = profile.last_name?.toLowerCase() || ""
+        const randomNum = Math.floor(Math.random() * 1000)
+        return `${firstName}${lastName}${randomNum}`
+      }
+      setReferralCode(generateReferralCode())
     }
-  }, [mockProfile, referralCode])
+  }, [profile, referralCode])
 
-  // Removed fetchReferralStats function and its useEffect call
+  // Fetch referral stats for clients
+  useEffect(() => {
+    if (profile?.account_type === "client" && profile.id && referralCode) {
+      // Added referralCode dependency
+      fetchReferralStats()
+    }
+  }, [profile, referralCode]) // Added referralCode to dependencies
+
+  const fetchReferralStats = async () => {
+    try {
+      // Use the new SQL function to get referral stats
+      const { data, error } = await supabase.rpc("get_referral_stats", {
+        user_referral_code: referralCode,
+      })
+
+      if (error) {
+        console.error("Error fetching referral stats:", error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        const stats = data[0]
+        setReferralStats({
+          total_referrals: stats.total_referrals || 0,
+          active_referrals: stats.active_referrals || 0,
+          total_earnings: stats.total_earnings || 0,
+          monthly_earnings: stats.monthly_earnings || 0,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching referral stats:", error)
+    }
+  }
 
   const copyReferralLink = async () => {
     const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
@@ -312,7 +346,7 @@ export default function DashboardPage() {
     },
   ]
 
-  // Define stats for client - now using static/mock values for referral stats
+  // Define stats for client
   const clientStats = [
     {
       title: "Casos Activos",
@@ -323,15 +357,15 @@ export default function DashboardPage() {
     },
     {
       title: "Referidos Totales",
-      value: "5", // Static mock value
-      change: "+2", // Static mock value
+      value: referralStats.total_referrals.toString(),
+      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
       icon: UserPlus,
       color: "text-blue-400",
     },
     {
       title: "Ganancias Totales",
-      value: "$125", // Static mock value
-      change: "+$50", // Static mock value
+      value: `$${referralStats.total_earnings}`,
+      change: `+$${referralStats.monthly_earnings}`,
       icon: DollarSign,
       color: "text-purple-400",
     },
@@ -344,8 +378,8 @@ export default function DashboardPage() {
     },
   ]
 
-  // Determine which set of stats to pass based on mock profile
-  const displayStats = mockProfile.account_type === "advisor" ? advisorStats : clientStats
+  // Determine which set of stats to pass
+  const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
 
   const recentActivity = [
     {
@@ -400,29 +434,74 @@ export default function DashboardPage() {
     },
   ]
 
-  // Handlers for Settings section - now stubbed out as they rely on useAuth
+  // Handlers for Settings section
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
     setPasswordChangeMessage("")
     setPasswordChangeError("")
-    console.log("Password change functionality removed for loading optimization.")
-    setPasswordChangeError("Funcionalidad de cambio de contraseña deshabilitada en modo demo.")
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
+      return
+    }
+
+    const { error } = await changePassword(newPassword)
+
+    if (error) {
+      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
+    } else {
+      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmNewPassword("")
+    }
   }
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     setProfileUpdateMessage("")
     setProfileUpdateError("")
-    console.log("Profile update functionality removed for loading optimization.")
-    setProfileUpdateError("Funcionalidad de actualización de perfil deshabilitada en modo demo.")
+
+    if (!firstName.trim() || !lastName.trim()) {
+      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
+      return
+    }
+
+    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
+
+    if (error) {
+      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
+    } else {
+      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
+    }
   }
 
   const handleReferralCodeUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     setReferralCodeUpdateMessage("")
     setReferralCodeUpdateError("")
-    console.log("Referral code update functionality removed for loading optimization.")
-    setReferralCodeUpdateError("Funcionalidad de actualización de código de referido deshabilitada en modo demo.")
+
+    if (!newReferralCode.trim()) {
+      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
+      return
+    }
+    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
+      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
+      return
+    }
+
+    const { error } = await updateUserProfile({ referral_code: newReferralCode })
+
+    if (error) {
+      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
+    } else {
+      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
+      setReferralCode(newReferralCode)
+    }
   }
 
   return (
@@ -430,20 +509,23 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-foreground">Bienvenido, {mockProfile.first_name}</h2>
+            <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
             <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
           </div>
-          {mockProfile.account_type === "advisor" && ( // Conditional rendering based on mock profile
+          {profile?.account_type === "advisor" && (
             <Button className="bg-emerald-500 hover:bg-emerald-600">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Caso
             </Button>
           )}
         </div>
+
         {/* User Info Card */}
-        <UserInfoCard user={mockUser as any} profile={mockProfile} /> {/* Cast to any for simplicity */}
+        <UserInfoCard user={user} profile={profile} />
+
         {/* Stats Grid */}
         <StatsGrid stats={displayStats} />
+
         {/* Recent Activity */}
         <div className="grid lg:grid-cols-2 gap-6">
           <RecentActivityCard recentActivity={recentActivity} />

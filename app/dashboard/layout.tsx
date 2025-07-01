@@ -4,8 +4,8 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-// Removed ProtectedRoute import
-// Removed useAuth import
+import { ProtectedRoute } from "@/components/protected-route" // Re-imported ProtectedRoute
+import { useAuth } from "@/contexts/auth-context" // Re-imported useAuth
 import {
   Home,
   Users,
@@ -40,18 +40,11 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
-  // Removed useAuth hook and its dependencies (user, profile, signOut)
-
-  // Mock profile data for UI elements that depend on it
-  const mockProfile = {
-    first_name: "Usuario",
-    last_name: "Demo",
-    account_type: "client", // Default to client for sidebar menu
-  }
+  const { user, profile, signOut } = useAuth() // Re-introduced useAuth hook
 
   const pathname = usePathname()
 
-  // Menu items based on mock user role
+  // Menu items based on user role
   const getMenuItems = () => {
     const baseItems = [
       { id: "overview", name: "Resumen", icon: Home, href: "/dashboard" },
@@ -59,7 +52,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
       { id: "settings", name: "Configuración", icon: Settings, href: "/dashboard/settings" },
     ]
 
-    if (mockProfile.account_type === "advisor") {
+    if (profile?.account_type === "advisor") {
       return [
         ...baseItems.slice(0, 1), // Keep overview
         { id: "clients", name: "Clientes", icon: Users, href: "/dashboard/clients" },
@@ -131,13 +124,6 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
     return pathname.startsWith(href)
   }
 
-  // Placeholder for signOut functionality
-  const handleSignOut = () => {
-    console.log("Sign out functionality removed for loading optimization.")
-    // In a real app, you would redirect to login or clear session here.
-    // router.push("/login");
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -199,9 +185,9 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
               <div className="flex items-center space-x-2">
                 <div className="hidden md:flex flex-col items-end">
                   <span className="text-sm font-medium text-foreground">
-                    {mockProfile.first_name} {mockProfile.last_name}
+                    {profile?.first_name} {profile?.last_name}
                   </span>
-                  <span className="text-xs text-muted-foreground capitalize">{mockProfile.account_type}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{profile?.account_type}</span>
                 </div>
                 <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
@@ -285,7 +271,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
               <Button
                 variant="ghost"
                 className="w-full justify-start text-muted-foreground hover:text-foreground"
-                onClick={handleSignOut} // Use the placeholder signOut
+                onClick={signOut} // Re-connected signOut
               >
                 <LogOut className="w-4 h-4 mr-3" />
                 Cerrar Sesión
@@ -308,9 +294,12 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    // Removed ProtectedRoute wrapper
-    <Suspense fallback={<div>Loading...</div>}>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </Suspense>
+    <ProtectedRoute>
+      {" "}
+      {/* Re-added ProtectedRoute wrapper */}
+      <Suspense fallback={<div>Loading...</div>}>
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </Suspense>
+    </ProtectedRoute>
   )
 }
