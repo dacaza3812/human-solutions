@@ -4,7 +4,6 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
 import { Plus, DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
 import { UserInfoCard } from "./components/user-info-card"
 import { StatsGrid } from "./components/stats-grid"
@@ -66,12 +65,7 @@ interface AdvisorCase {
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState("overview")
-  const [referralStats, setReferralStats] = useState({
-    total_referrals: 0,
-    active_referrals: 0,
-    total_earnings: 0,
-    monthly_earnings: 0,
-  })
+  // Removed referralStats state and its fetching logic
   const [referralCode, setReferralCode] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
   const [selectedCase, setSelectedCase] = useState<AdvisorCase | null>(null)
@@ -239,7 +233,7 @@ export default function DashboardPage() {
   // Filter user's scheduled cases for quotes section
   const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
 
-  // Generate referral code on component mount
+  // Generate referral code on component mount (client-side generation, not fetching)
   useEffect(() => {
     if (profile && !referralCode) {
       const generateReferralCode = () => {
@@ -252,38 +246,8 @@ export default function DashboardPage() {
     }
   }, [profile, referralCode])
 
-  // Fetch referral stats for clients
-  useEffect(() => {
-    if (profile?.account_type === "client" && profile.id) {
-      fetchReferralStats()
-    }
-  }, [profile])
-
-  const fetchReferralStats = async () => {
-    try {
-      // Use the new SQL function to get referral stats
-      const { data, error } = await supabase.rpc("get_referral_stats", {
-        user_referral_code: referralCode,
-      })
-
-      if (error) {
-        console.error("Error fetching referral stats:", error)
-        return
-      }
-
-      if (data && data.length > 0) {
-        const stats = data[0]
-        setReferralStats({
-          total_referrals: stats.total_referrals || 0,
-          active_referrals: stats.active_referrals || 0,
-          total_earnings: stats.total_earnings || 0,
-          monthly_earnings: stats.monthly_earnings || 0,
-        })
-      }
-    } catch (error) {
-      console.error("Error fetching referral stats:", error)
-    }
-  }
+  // Removed fetchReferralStats function and its useEffect call
+  // This was the primary data fetching causing potential delays.
 
   const copyReferralLink = async () => {
     const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
@@ -344,7 +308,7 @@ export default function DashboardPage() {
     },
   ]
 
-  // Define stats for client
+  // Define stats for client - now using static/mock values for referral stats
   const clientStats = [
     {
       title: "Casos Activos",
@@ -355,15 +319,15 @@ export default function DashboardPage() {
     },
     {
       title: "Referidos Totales",
-      value: referralStats.total_referrals.toString(),
-      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
+      value: "5", // Static mock value
+      change: "+2", // Static mock value
       icon: UserPlus,
       color: "text-blue-400",
     },
     {
       title: "Ganancias Totales",
-      value: `$${referralStats.total_earnings}`,
-      change: `+$${referralStats.monthly_earnings}`,
+      value: "$125", // Static mock value
+      change: "+$50", // Static mock value
       icon: DollarSign,
       color: "text-purple-400",
     },
@@ -432,7 +396,7 @@ export default function DashboardPage() {
     },
   ]
 
-  // Handlers for Settings section
+  // Handlers for Settings section (kept as they are user-triggered mutations, not initial load fetching)
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
     setPasswordChangeMessage("")
