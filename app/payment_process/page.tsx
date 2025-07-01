@@ -39,7 +39,7 @@ export default function PaymentProcess() {
       }, 1000)
       return () => clearTimeout(timer)
     } else if (status === "success" && countdown === 0) {
-      router.push("/dashboard")
+      router.push("/dashboard/subscriptions")
     }
   }, [status, countdown, router])
 
@@ -70,11 +70,11 @@ export default function PaymentProcess() {
   }
 
   const handleGoToDashboard = () => {
-    router.push("/dashboard")
+    router.push("/dashboard/subscriptions")
   }
 
   const handleGoHome = () => {
-    router.push("/")
+    router.push("/dashboard/subscriptions")
   }
 
   return (
