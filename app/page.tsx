@@ -47,14 +47,14 @@ import { useRouter } from "next/navigation"
 export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [referrals, setReferrals] = useState(1)
-  const [monthlyEarnings, setMonthlyEarnings] = useState(25)
+  const [monthlyEarnings, setMonthlyEarnings] = useState(50)
 
   const router = useRouter()
   const { user } = useAuth()
   const { createCheckoutSession, loading, error } = useStripeCheckout()
 
   const calculateEarnings = (refs: number) => {
-    const directCommission = refs * 25
+    const directCommission = refs * 50 // $50 USD por cada cliente referido directamente
     const indirectCommission = Math.floor(refs * 0.3) * 12.5
     return directCommission + indirectCommission
   }
@@ -206,21 +206,21 @@ export default function SolucionesHumanas() {
     {
       id: 1,
       name: "Standard",
-      price: "$49.99",
+      price: "$99.99",
       frequency: "mensual",
       description: "Ideal para necesidades básicas de asesoría.",
-      features: ["3 consultas/mes", "Soporte por email", "Acceso a recursos básicos", "Prioridad estándar"],
+      features: ["Contacto directo con el CEO una vez por semana", "Acceso a conocimiento esotérico", "comisión de un 50% por la activación de cada plan de sus referidos"],
       buttonText: "Elegir Plan Standard",
       highlight: false,
     },
     {
       id: 2,
       name: "Premium",
-      price: "$149.99",
-      frequency: "mensual",
+      price: "$999.99",
+      frequency: "anual",
       description: "Para un soporte más completo y personalizado.",
       features: [
-        "10 consultas/mes",
+        "Pago único anual",
         "Soporte prioritario",
         "Acceso a todos los recursos",
         "Seguimiento personalizado",
@@ -231,16 +231,17 @@ export default function SolucionesHumanas() {
     },
     {
       id: 3,
-      name: "Collaborative",
-      price: "$299.99",
-      frequency: "mensual",
+      name: "Profesional Fox",
+      price: "$5000.00",
+      frequency: "anual",
       description: "Solución integral para equipos o familias.",
       features: [
+        "Asesoría de forma presencial con el CEO",
         "Consultas ilimitadas",
         "Asesor dedicado 24/7",
         "Acceso para equipos",
         "Reportes personalizados",
-        "Prioridad empresarial",
+        
       ],
       buttonText: "Elegir Plan Collaborative",
       highlight: false,
@@ -355,13 +356,11 @@ export default function SolucionesHumanas() {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
-              Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
+              Aumenta tu pensamiento agudo <span className="text-emerald-400">táctico</span>
             </h1>
 
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
-              problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
-              privacidad y confidencialidad del cliente
+              Fox Lawyer es la plataforma de asesoría personalizada donde se le enseña a usted a comprender la vida tal y como es, no como a usted le gustaría que fuera.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -383,7 +382,7 @@ export default function SolucionesHumanas() {
                 <Lock className="w-8 h-8 company-icon cursor-pointer" />
               </div>
               <p className="text-sm text-muted-foreground">
-                Confiado por empresas de rápido crecimiento en todo el mundo
+                Confidencialidad total - Respuesta rápida - Resultados medibles
               </p>
             </div>
           </div>
@@ -438,8 +437,8 @@ export default function SolucionesHumanas() {
                 <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <span className="text-2xl font-bold text-white">1</span>
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Suscripción</h3>
-                <p className="text-muted-foreground mb-6">Únete a nuestra plataforma por solo $50 USD mensuales</p>
+                <h3 className="text-xl font-bold text-foreground mb-4">Confidencialidad total</h3>
+                <p className="text-muted-foreground mb-6">Únete a nuestra plataforma por solo $100 USD mensuales</p>
                 <Card className="border-emerald-500/20 bg-emerald-500/5">
                   <CardContent className="p-4">
                     <div className="text-sm space-y-1">
@@ -460,7 +459,7 @@ export default function SolucionesHumanas() {
                 <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <FileText className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Evaluación</h3>
+                <h3 className="text-xl font-bold text-foreground mb-4">Respuesta Rápida</h3>
                 <p className="text-muted-foreground mb-6">
                   Completa un cuestionario personalizado según tu situación específica
                 </p>
@@ -477,7 +476,7 @@ export default function SolucionesHumanas() {
                 <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <Target className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Plan de Acción</h3>
+                <h3 className="text-xl font-bold text-foreground mb-4">Resultados medibles</h3>
                 <p className="text-muted-foreground mb-6">
                   Recibe un plan personalizado con pasos específicos y seguimiento
                 </p>
@@ -515,7 +514,7 @@ export default function SolucionesHumanas() {
                   <div className="p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
                     <h4 className="font-semibold text-emerald-400 mb-2">Comisión Directa - 50%</h4>
                     <p className="text-sm text-muted-foreground mb-2">
-                      $25 USD por cada cliente que refiere directamente
+                      $50% por cada cliente que refiere directamente
                     </p>
                     <div className="flex items-center text-xs text-emerald-400">
                       <BarChart3 className="w-3 h-3 mr-1" />
@@ -772,7 +771,7 @@ export default function SolucionesHumanas() {
 
           <div className="text-center mt-16">
             <h3 className="text-3xl font-bold text-foreground mb-4">
-              Transforma tu vida en un fin de semana, <span className="text-emerald-400">escala a millones</span>
+              Conviértete en un <span className="text-emerald-400">zorro</span>
             </h3>
           </div>
         </div>
@@ -818,7 +817,7 @@ export default function SolucionesHumanas() {
                   <Input id="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
                 </div>
 
-                <div>
+               {/* <div>
                   <Label htmlFor="service">Importancia</Label>
                   <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
                     <option value="">Selecciona un área</option>
@@ -827,9 +826,9 @@ export default function SolucionesHumanas() {
                     <option value="love">Relaciones Amorosas</option>
                     <option value="advisor">Quiero ser Asesor</option>
                   </select>
-                </div>
+                </div> */}
 
-                <div>
+                {/*<div>
                   <Label htmlFor="service">Área de Interés</Label>
                   <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
                     <option value="">Selecciona el nivel de priodidad</option>
@@ -837,7 +836,7 @@ export default function SolucionesHumanas() {
                     <option value="mid">Media</option>
                     <option value="high">Alta</option>
                   </select>
-                </div>
+                </div> */}
 
                 <div>
                   <Label htmlFor="message">Mensaje</Label>
