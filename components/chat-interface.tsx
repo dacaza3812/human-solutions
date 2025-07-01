@@ -1,128 +1,299 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { Input } from "@/components/ui/input"
+import type React from "react"
+
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, User, Bot } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Send,
+  Smile,
+  Paperclip,
+  FileText,
+  ImageIcon,
+  Camera,
+  Mic,
+  User,
+  Phone,
+  Video,
+  MoreVertical,
+} from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface Message {
-  id: string
-  text: string
-  sender: "user" | "bot"
+  id: number
+  sender: "client" | "advisor"
+  content: string
   timestamp: string
+  type: "text" | "file" | "image"
+  fileName?: string
 }
 
-export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState("")
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+interface ChatInterfaceProps {
+  caseId: number
+  advisorName: string
+  advisorAvatar?: string
+  currentUser: "client" | "advisor"
+}
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+export function ChatInterface({ caseId, advisorName, advisorAvatar, currentUser }: ChatInterfaceProps) {
+  const [message, setMessage] = useState("")
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 1,
+      sender: "advisor",
+      content: "Hola! Soy tu asesor asignado. ¿En qué puedo ayudarte hoy?",
+      timestamp: "10:30 AM",
+      type: "text",
+    },
+    {
+      id: 2,
+      sender: "client",
+      content: "Hola, necesito ayuda con mi situación financiera actual.",
+      timestamp: "10:32 AM",
+      type: "text",
+    },
+    {
+      id: 3,
+      sender: "advisor",
+      content: "Por supuesto, estaré encantado de ayudarte. ¿Podrías contarme más detalles sobre tu situación?",
+      timestamp: "10:33 AM",
+      type: "text",
+    },
+    {
+      id: 4,
+      sender: "client",
+      content: "Presupuesto_Familiar.pdf",
+      timestamp: "10:35 AM",
+      type: "file",
+      fileName: "Presupuesto_Familiar.pdf",
+    },
+    {
+      id: 5,
+      sender: "client",
+      content: "Aquí tienes mi presupuesto actual. Como puedes ver, tengo algunos problemas para llegar a fin de mes.",
+      timestamp: "10:35 AM",
+      type: "text",
+    },
+  ])
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
-  const handleSendMessage = () => {
-    if (input.trim()) {
+  const emojis = ["😊", "😂", "❤️", "👍", "👎", "😢", "😮", "😡", "🙏", "👏", "🎉", "💪"]
+
+  const sendMessage = () => {
+    if (message.trim()) {
       const newMessage: Message = {
-        id: Date.now().toString(),
-        text: input,
-        sender: "user",
-        timestamp: new Date().toLocaleTimeString(),
+        id: messages.length + 1,
+        sender: currentUser,
+        content: message,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        type: "text",
       }
-      setMessages((prevMessages) => [...prevMessages, newMessage])
-      setInput("")
-
-      // Simulate bot response
-      setTimeout(() => {
-        const botResponse: Message = {
-          id: Date.now().toString() + "-bot",
-          text: `Echo: ${input}`,
-          sender: "bot",
-          timestamp: new Date().toLocaleTimeString(),
-        }
-        setMessages((prevMessages) => [...prevMessages, botResponse])
-      }, 1000)
+      setMessages([...messages, newMessage])
+      setMessage("")
     }
   }
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
+
+  const handleFileUpload = (type: "file" | "image") => {
+    if (type === "file") {
+      fileInputRef.current?.click()
+    } else {
+      imageInputRef.current?.click()
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "file" | "image") => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const newMessage: Message = {
+        id: messages.length + 1,
+        sender: currentUser,
+        content: file.name,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        type: type,
+        fileName: file.name,
+      }
+      setMessages([...messages, newMessage])
+    }
+  }
+
+  const addEmoji = (emoji: string) => {
+    setMessage(message + emoji)
+  }
+
   return (
-    <Card className="flex h-[500px] w-full max-w-md flex-col">
-      <CardHeader className="border-b">
-        <CardTitle>Chat en Vivo</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 p-4">
-        <ScrollArea className="h-full pr-4">
-          <div className="flex flex-col gap-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn("flex items-start gap-3", message.sender === "user" ? "justify-end" : "justify-start")}
-              >
-                {message.sender === "bot" && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      <Bot className="h-5 w-5" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <div
-                  className={cn(
-                    "rounded-lg p-3 text-sm",
-                    message.sender === "user"
-                      ? "bg-emerald-500 text-white"
-                      : "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-50",
-                  )}
-                >
-                  <p>{message.text}</p>
-                  <span
-                    className={cn(
-                      "mt-1 block text-xs",
-                      message.sender === "user" ? "text-emerald-100" : "text-gray-500 dark:text-gray-400",
-                    )}
-                  >
-                    {message.timestamp}
-                  </span>
-                </div>
-                {message.sender === "user" && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      <User className="h-5 w-5" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
+    <Card className="h-[600px] flex flex-col border-border/40">
+      {/* Chat Header */}
+      <CardHeader className="border-b border-border/40 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={advisorAvatar || "/placeholder.svg"} />
+              <AvatarFallback>{advisorName.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold text-foreground">{advisorName}</h3>
+              <p className="text-xs text-emerald-400">En línea</p>
+            </div>
           </div>
-        </ScrollArea>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon">
+              <Phone className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon">
+              <Video className="w-4 h-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>Ver perfil</DropdownMenuItem>
+                <DropdownMenuItem>Buscar mensajes</DropdownMenuItem>
+                <DropdownMenuItem>Silenciar notificaciones</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </CardHeader>
+
+      {/* Messages Area */}
+      <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.sender === currentUser ? "justify-end" : "justify-start"}`}>
+            <div
+              className={`max-w-[70%] rounded-lg p-3 ${
+                msg.sender === currentUser ? "bg-emerald-500 text-white" : "bg-muted text-foreground"
+              }`}
+            >
+              {msg.type === "file" && (
+                <div className="flex items-center space-x-2 mb-2">
+                  <FileText className="w-4 h-4" />
+                  <span className="text-sm font-medium">{msg.fileName}</span>
+                </div>
+              )}
+              {msg.type === "image" && (
+                <div className="flex items-center space-x-2 mb-2">
+                  <ImageIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{msg.fileName}</span>
+                </div>
+              )}
+              <p className="text-sm">{msg.content}</p>
+              <p
+                className={`text-xs mt-1 ${msg.sender === currentUser ? "text-emerald-100" : "text-muted-foreground"}`}
+              >
+                {msg.timestamp}
+              </p>
+            </div>
+          </div>
+        ))}
       </CardContent>
-      <CardFooter className="border-t p-4">
-        <div className="flex w-full items-center gap-2">
-          <Input
-            placeholder="Escribe tu mensaje..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleSendMessage()
-              }
-            }}
-            className="flex-1"
-          />
-          <Button type="submit" onClick={handleSendMessage} className="bg-emerald-500 hover:bg-emerald-600">
-            <Send className="h-4 w-4" />
-            <span className="sr-only">Enviar</span>
+
+      {/* Message Input */}
+      <div className="border-t border-border/40 p-4">
+        <div className="flex items-center space-x-2">
+          {/* Attachment Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Paperclip className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" className="w-48">
+              <DropdownMenuItem onClick={() => handleFileUpload("file")}>
+                <FileText className="w-4 h-4 mr-2" />
+                Documento
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFileUpload("image")}>
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Fotos y videos
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Camera className="w-4 h-4 mr-2" />
+                Cámara
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Mic className="w-4 h-4 mr-2" />
+                Audio
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <User className="w-4 h-4 mr-2" />
+                Contacto
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Message Input */}
+          <div className="flex-1 relative">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Escribe un mensaje"
+              className="pr-10"
+            />
+
+            {/* Emoji Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                  <Smile className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2">
+                <div className="grid grid-cols-6 gap-2">
+                  {emojis.map((emoji, index) => (
+                    <Button
+                      key={index}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => addEmoji(emoji)}
+                      className="h-8 w-8 p-0"
+                    >
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Send Button */}
+          <Button onClick={sendMessage} size="icon" className="bg-emerald-500 hover:bg-emerald-600">
+            <Send className="w-4 h-4" />
           </Button>
         </div>
-      </CardFooter>
+      </div>
+
+      {/* Hidden File Inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.doc,.docx,.txt"
+        onChange={(e) => handleFileChange(e, "file")}
+      />
+      <input
+        ref={imageInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*,video/*"
+        onChange={(e) => handleFileChange(e, "image")}
+      />
     </Card>
   )
 }

@@ -1,16 +1,14 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
-
-const inter = Inter({ subsets: ["latin"] })
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Soluciones Humanas",
-  description: "Plataforma de gestión legal y asesoría",
+  title: "Fox Lawyer - Asesoría Legal Personalizada",
+  description: "Asesoría legal personalizada para resolver problemas financieros, familiares y amorosos",
     generator: 'v0.dev'
 }
 
@@ -20,13 +18,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <html lang="es" suppressHydrationWarning>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
           <AuthProvider>
             {children}
-            <Toaster />
-          </AuthProvider>
+            <SpeedInsights />
+            <Analytics />
+            </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

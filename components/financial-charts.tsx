@@ -6,50 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts"
-
-interface FinancialData {
-  month: string
-  revenue: number
-  expenses: number
-}
-
-interface PerformanceData {
-  month: string
-  cases_opened: number
-  cases_closed: number
-}
-
-const financialData: FinancialData[] = [
-  { month: "Ene", revenue: 4000, expenses: 2400 },
-  { month: "Feb", revenue: 3000, expenses: 1398 },
-  { month: "Mar", revenue: 2000, expenses: 9800 },
-  { month: "Abr", revenue: 2780, expenses: 3908 },
-  { month: "May", revenue: 1890, expenses: 4800 },
-  { month: "Jun", revenue: 2390, expenses: 3800 },
-  { month: "Jul", revenue: 3490, expenses: 4300 },
-]
-
-const performanceData: PerformanceData[] = [
-  { month: "Ene", cases_opened: 10, cases_closed: 8 },
-  { month: "Feb", cases_opened: 12, cases_closed: 10 },
-  { month: "Mar", cases_opened: 8, cases_closed: 7 },
-  { month: "Abr", cases_opened: 15, cases_closed: 12 },
-  { month: "May", cases_opened: 11, cases_closed: 9 },
-  { month: "Jun", cases_opened: 14, cases_closed: 13 },
-  { month: "Jul", cases_opened: 16, cases_closed: 15 },
-]
 
 // Mock financial data
 const monthlyEarnings = [
@@ -142,40 +98,11 @@ const transactionData = [
   },
 ]
 
-const chartData = [
-  {
-    name: "Enero",
-    Ingresos: 2000,
-    Gastos: 1200,
-  },
-  {
-    name: "Febrero",
-    Ingresos: 2500,
-    Gastos: 1500,
-  },
-  {
-    name: "Marzo",
-    Ingresos: 1800,
-    Gastos: 1000,
-  },
-  {
-    name: "Abril",
-    Ingresos: 3000,
-    Gastos: 1800,
-  },
-  {
-    name: "Mayo",
-    Ingresos: 2200,
-    Gastos: 1300,
-  },
-  {
-    name: "Junio",
-    Ingresos: 2800,
-    Gastos: 1600,
-  },
-]
+interface FinancialChartsProps {
+  dateRange: { start: string; end: string }
+}
 
-export function FinancialCharts() {
+export function FinancialCharts({ dateRange }: FinancialChartsProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
 
@@ -261,12 +188,6 @@ export function FinancialCharts() {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <FinancialOverviewChart />
-        <CasePerformanceChart />
       </div>
 
       {/* Monthly Earnings Chart */}
@@ -424,51 +345,5 @@ export function FinancialCharts() {
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-export function FinancialOverviewChart() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Resumen Financiero Mensual</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={financialData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="revenue" fill="#22c55e" name="Ingresos" />
-            <Bar dataKey="expenses" fill="#ef4444" name="Gastos" />
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  )
-}
-
-export function CasePerformanceChart() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Rendimiento de Casos</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={performanceData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Line type="monotone" dataKey="cases_opened" stroke="#22c55e" name="Casos Abiertos" />
-            <Line type="monotone" dataKey="cases_closed" stroke="#3b82f6" name="Casos Cerrados" />
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
   )
 }

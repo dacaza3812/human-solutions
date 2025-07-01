@@ -40,21 +40,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
-  const { user, profile, signOut, loading } = useAuth()
-
+  const { user, profile, signOut } = useAuth()
   const pathname = usePathname()
-
-  // Show loading state if auth is still loading
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          <p className="text-muted-foreground">Cargando dashboard...</p>
-        </div>
-      </div>
-    )
-  }
 
   // Menu items based on user role
   const getMenuItems = () => {
@@ -307,16 +294,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ProtectedRoute>
-      <Suspense
-        fallback={
-          <div className="min-h-screen flex items-center justify-center bg-background">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-              <p className="text-muted-foreground">Cargando...</p>
-            </div>
-          </div>
-        }
-      >
+      <Suspense fallback={<div>Loading...</div>}>
         <DashboardLayoutContent>{children}</DashboardLayoutContent>
       </Suspense>
     </ProtectedRoute>

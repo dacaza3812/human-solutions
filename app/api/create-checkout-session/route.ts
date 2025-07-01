@@ -3,72 +3,70 @@ import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-10",
+  apiVersion: "2024-06-20",
 })
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { priceId, userId } = await req.json()
+    const { planId } = await request.json()
 
-    if (!priceId || !userId) {
-      return NextResponse.json({ error: "Price ID and User ID are required" }, { status: 400 })
+    // Get the user from the request headers or session
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader) {
+      return NextResponse.json({ error: "No authorization header" }, { status: 401 })
     }
 
-    // Fetch user's profile to get stripe_customer_id
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("stripe_customer_id")
-      .eq("id", userId)
-      .single()
+    const token = authHeader.replace("Bearer ", "")
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token)
 
-    if (profileError || !profile) {
-      console.error("Error fetching user profile:", profileError)
-      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
+    if (userError || !user) {
+      return NextResponse.json({ error: "Invalid user" }, { status: 401 })
     }
 
-    let customerId = profile.stripe_customer_id
+    // Get plan details from database
+    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
 
-    // If no customer ID, create one
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        metadata: { userId: userId },
-      })
-      customerId = customer.id
-
-      // Update user's profile with new customer ID
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", userId)
-
-      if (updateError) {
-        console.error("Error updating customer ID in profile:", updateError)
-        return NextResponse.json({ error: "Failed to update customer ID" }, { status: 500 })
-      }
+    if (planError || !plan) {
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 })
     }
 
+    // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
+      payment_method_types: ["card"],
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: plan.name,
+              description: plan.description,
+            },
+            unit_amount: Math.round(plan.price * 100), // Convert to cents
+            recurring: {
+              interval: "month",
+            },
+          },
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/session-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/cancel-subscription?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment_process?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/?canceled=true`,
+      customer_email: user.email,
       metadata: {
-        userId: userId,
-        priceId: priceId,
+        userId: user.id,
+        planId: planId.toString(),
       },
     })
 
-    return NextResponse.json({ sessionId: session.id, url: session.url })
+    return NextResponse.json({ sessionId: session.id })
   } catch (error) {
     console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
+    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
   }
 }
