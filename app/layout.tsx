@@ -23,11 +23,11 @@ export default function RootLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
           <AuthProvider>
-   {/* render directo, sin Suspense en el root */}
-   {children}
-   <SpeedInsights />
-   <Analytics />
- </AuthProvider>
+            {/* render directo, sin Suspense en el root */}
+            {children}
+            <SpeedInsights />
+            <Analytics />
+          </AuthProvider>
 
         </ThemeProvider>
       </body>
