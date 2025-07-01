@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
+import { BarChart, LineChart } from "@tremor/react"
 
 // Mock financial data
 const monthlyEarnings = [
@@ -98,11 +99,40 @@ const transactionData = [
   },
 ]
 
-interface FinancialChartsProps {
-  dateRange: { start: string; end: string }
-}
+const chartData = [
+  {
+    name: "Enero",
+    Ingresos: 2000,
+    Gastos: 1200,
+  },
+  {
+    name: "Febrero",
+    Ingresos: 2500,
+    Gastos: 1500,
+  },
+  {
+    name: "Marzo",
+    Ingresos: 1800,
+    Gastos: 1000,
+  },
+  {
+    name: "Abril",
+    Ingresos: 3000,
+    Gastos: 1800,
+  },
+  {
+    name: "Mayo",
+    Ingresos: 2200,
+    Gastos: 1300,
+  },
+  {
+    name: "Junio",
+    Ingresos: 2800,
+    Gastos: 1600,
+  },
+]
 
-export function FinancialCharts({ dateRange }: FinancialChartsProps) {
+export function FinancialCharts() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
 
@@ -186,6 +216,40 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
                 <Users className="w-6 h-6 text-purple-400" />
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingresos vs. Gastos Mensuales</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarChart
+              data={chartData}
+              index="name"
+              categories={["Ingresos", "Gastos"]}
+              colors={["emerald", "rose"]}
+              yAxisWidth={48}
+              className="h-60"
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Tendencia de Ingresos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LineChart
+              data={chartData}
+              index="name"
+              categories={["Ingresos"]}
+              colors={["emerald"]}
+              yAxisWidth={48}
+              className="h-60"
+            />
           </CardContent>
         </Card>
       </div>

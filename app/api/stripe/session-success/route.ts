@@ -1,92 +1,70 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2024-04-10",
 })
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+export async function GET(req: NextRequest) {
+  const sessionId = req.nextUrl.searchParams.get("session_id")
 
-export async function POST(request: NextRequest) {
+  if (!sessionId) {
+    return NextResponse.redirect(new URL("/dashboard/subscriptions?status=error", process.env.NEXT_PUBLIC_BASE_URL))
+  }
+
   try {
-    const { sessionId } = await request.json()
-
-    if (!sessionId) {
-      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
-    }
-
-    // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId)
 
-    if (!session) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 })
+    if (session.status === "complete" && session.customer && session.subscription) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (user) {
+        // Update user's profile with Stripe customer ID and subscription ID
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: session.subscription as string,
+            account_type: "client", // Assuming successful payment means client account
+          })
+          .eq("id", user.id)
+
+        if (profileError) {
+          console.error("Error updating user profile with Stripe info:", profileError)
+          return NextResponse.redirect(
+            new URL("/dashboard/subscriptions?status=error", process.env.NEXT_PUBLIC_BASE_URL),
+          )
+        }
+
+        // Optionally, update the subscription status in your database
+        const { error: subscriptionError } = await supabase.from("subscriptions").upsert(
+          {
+            user_id: user.id,
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: session.subscription as string,
+            status: "active",
+            current_period_start: new Date(session.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(session.current_period_end * 1000).toISOString(),
+            price_id: session.line_items?.data[0]?.price?.id,
+          },
+          { onConflict: "user_id" },
+        )
+
+        if (subscriptionError) {
+          console.error("Error upserting subscription:", subscriptionError)
+          return NextResponse.redirect(
+            new URL("/dashboard/subscriptions?status=error", process.env.NEXT_PUBLIC_BASE_URL),
+          )
+        }
+      }
     }
 
-    // Check if payment was successful
-    if (session.payment_status !== "paid") {
-      return NextResponse.json({ error: "Payment not completed" }, { status: 400 })
-    }
-
-    const userId = session.metadata?.userId
-    const planId = session.metadata?.planId
-
-    if (!userId || !planId) {
-      return NextResponse.json({ error: "Missing user or plan information" }, { status: 400 })
-    }
-
-    // Get plan details
-    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
-
-    if (planError || !plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 })
-    }
-
-    // Update user profile with subscription info
-    const subscriptionEndDate = new Date()
-    subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        plan_id: planId,
-        subscription_status: "active",
-        stripe_customer_id: session.customer,
-        stripe_subscription_id: session.subscription,
-        subscription_start_date: new Date().toISOString(),
-        subscription_end_date: subscriptionEndDate.toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId)
-
-    if (profileError) {
-      console.error("Error updating profile:", profileError)
-      return NextResponse.json({ error: "Error updating user profile" }, { status: 500 })
-    }
-
-    // Record the payment
-    const { error: paymentError } = await supabase.from("payments").insert({
-      user_id: userId,
-      plan_id: planId,
-      stripe_payment_intent_id: session.payment_intent,
-      stripe_checkout_session_id: sessionId,
-      amount: session.amount_total ? session.amount_total / 100 : plan.price,
-      currency: session.currency || "usd",
-      status: "succeeded",
-      created_at: new Date().toISOString(),
-    })
-
-    if (paymentError) {
-      console.error("Error recording payment:", paymentError)
-      // Don't return error here as the subscription is already active
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Payment verified and subscription activated",
-    })
+    return NextResponse.redirect(new URL("/dashboard/subscriptions?status=success", process.env.NEXT_PUBLIC_BASE_URL))
   } catch (error) {
-    console.error("Error verifying payment:", error)
-    return NextResponse.json({ error: "Error verifying payment" }, { status: 500 })
+    console.error("Error retrieving checkout session:", error)
+    return NextResponse.redirect(new URL("/dashboard/subscriptions?status=error", process.env.NEXT_PUBLIC_BASE_URL))
   }
 }

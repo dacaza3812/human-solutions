@@ -2,47 +2,12 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
 import { useAuth } from "@/contexts/auth-context"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Heart,
-  DollarSign,
-  Users,
-  FileText,
-  Calendar,
-  Upload,
-  CheckCircle,
-  Menu,
-  Shield,
-  Zap,
-  Target,
-  TrendingUp,
-  MessageCircle,
-  Award,
-  Globe,
-  Smartphone,
-  Laptop,
-  Database,
-  Lock,
-  BarChart3,
-  ArrowRight,
-  X,
-  MessageCircleQuestion,
-  CircleDashed,
-  FacebookIcon,
-  InstagramIcon,
-  TwitterIcon,
-  Loader2,
-  AlertCircle,
-} from "lucide-react"
+import { Heart, DollarSign, Users, CheckCircle, Shield, Zap, Target } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -248,707 +213,256 @@ export default function SolucionesHumanas() {
   ]
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
-              <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
-            </div>
-
-            <div className="flex items-center space-x-6">
-              {/* Desktop Navigation */}
-              <nav className="hidden md:flex space-x-8">
-                {navigation.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {item.name}
-                  </a>
-                ))}
-              </nav>
-
-              <div className="flex items-center space-x-3">
-                <ThemeToggle />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hidden md:inline-flex border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  Dashboard
-                </Button>
-              </div>
-
-              {/* Mobile Menu Button */}
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
-                <Menu className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-col min-h-screen">
+      <header className="px-4 lg:px-6 h-14 flex items-center justify-between bg-background border-b">
+        <Link className="flex items-center justify-center" href="#">
+          <img src="/fox-lawyer-logo.png" alt="Fox Lawyer Logo" className="h-8 w-auto" />
+          <span className="sr-only">Soluciones Humanas</span>
+        </Link>
+        <nav className="ml-auto flex gap-4 sm:gap-6">
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#features">
+            Características
+          </Link>
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#pricing">
+            Precios
+          </Link>
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#contact">
+            Contacto
+          </Link>
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/login">
+            Iniciar Sesión
+          </Link>
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/register">
+            Registrarse
+          </Link>
+        </nav>
       </header>
-
-      {/* Mobile Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 bg-background md:hidden">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-4 border-b border-border/40">
-              <div className="flex items-center space-x-2">
-                <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
-                <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-auto p-6">
-              <nav className="flex flex-col space-y-6">
-                {navigation.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    className="text-lg font-medium text-foreground hover:text-emerald-400 transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
+      <main className="flex-1">
+        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
+          <div className="container px-4 md:px-6">
+            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
+              <div className="flex flex-col justify-center space-y-4">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
+                    Gestión Legal Simplificada para Asesores y Clientes
+                  </h1>
+                  <p className="max-w-[600px] text-gray-200 md:text-xl">
+                    Nuestra plataforma conecta a asesores legales con clientes, agilizando la gestión de casos, la
+                    comunicación y el seguimiento de pagos.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-md bg-white px-8 text-sm font-medium text-emerald-600 shadow transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50"
+                    href="/register"
                   >
-                    {item.name}
-                  </a>
-                ))}
-              </nav>
-            </div>
-            <div className="p-6 border-t border-border/40">
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white font-medium"
-                onClick={() => {
-                  router.push("/dashboard")
-                  setMobileMenuOpen(false)
-                }}
-              >
-                Dashboard
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hero Section */}
-      <section id="inicio" className="py-24 px-4">
-        <div className="container mx-auto text-center">
-          <div className="max-w-4xl mx-auto">
-            {/* Mobile Logo - Only visible on mobile devices */}
-            <div className="md:hidden mb-8">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-20 h-20 mx-auto" />
-            </div>
-
-            {/* Announcement Banner */}
-            <div className="inline-flex items-center space-x-2 bg-card border border-border/40 rounded-full px-4 py-2 mb-8">
-              <span className="text-sm text-muted-foreground">Asesoría Personalizada</span>
-              <Button variant="link" className="text-sm p-0 h-auto text-emerald-400 hover:text-emerald-300">
-                Toma la encuesta <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
-            </div>
-
-            <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
-              Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
-            </h1>
-
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
-              problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
-              privacidad y confidencialidad del cliente
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8">
-                Comienza tu transformación
-              </Button>
-              <Button size="lg" variant="outline" className="border-border/40">
-                Solicita una demo
-              </Button>
-            </div>
-
-            {/* Trusted by section */}
-            <div className="space-y-4">
-              <div className="flex justify-center items-center space-x-8 md:space-x-12">
-                <Globe className="w-8 h-8 company-icon cursor-pointer" />
-                <Smartphone className="w-8 h-8 company-icon cursor-pointer" />
-                <Laptop className="w-8 h-8 company-icon cursor-pointer" />
-                <Database className="w-8 h-8 company-icon cursor-pointer" />
-                <Lock className="w-8 h-8 company-icon cursor-pointer" />
+                    Comenzar Ahora
+                  </Link>
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-white bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-white hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white disabled:pointer-events-none disabled:opacity-50"
+                    href="#features"
+                  >
+                    Saber Más
+                  </Link>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Confiado por empresas de rápido crecimiento en todo el mundo
-              </p>
+              <img
+                alt="Hero"
+                className="mx-auto aspect-[3/2] overflow-hidden rounded-xl object-cover lg:order-last lg:aspect-auto"
+                height="400"
+                src="/supabase-hero.png"
+                width="600"
+              />
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Features Grid Section */}
-      <section className="py-24 px-4">
-        <div className="container mx-auto">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="feature-card border-border/40 bg-card/50 cursor-pointer">
+        </section>
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-800">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-foreground">
+                  Características Clave
+                </h2>
+                <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+                  Diseñado para optimizar la colaboración y la eficiencia en la gestión legal.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-2 lg:gap-12">
+              <img
+                alt="Features"
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover object-center sm:w-full lg:order-last"
+                height="310"
+                src="/supabase-features.png"
+                width="550"
+              />
+              <div className="flex flex-col justify-center space-y-4">
+                <ul className="grid gap-6">
+                  <li>
+                    <div className="grid gap-1">
+                      <h3 className="text-xl font-bold text-foreground">Gestión de Casos Integral</h3>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Centraliza todos tus casos, documentos y comunicaciones en un solo lugar.
+                      </p>
+                    </div>
+                  </li>
+                  <li>
+                    <div className="grid gap-1">
+                      <h3 className="text-xl font-bold text-foreground">Comunicación Fluida</h3>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Mensajería en tiempo real entre asesores y clientes para una colaboración eficiente.
+                      </p>
+                    </div>
+                  </li>
+                  <li>
+                    <div className="grid gap-1">
+                      <h3 className="text-xl font-bold text-foreground">Seguimiento de Pagos</h3>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Gestiona facturas, pagos y suscripciones de forma segura y automatizada.
+                      </p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="pricing" className="w-full py-12 md:py-24 lg:py-32 bg-white dark:bg-gray-950">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-foreground">Planes Flexibles</h2>
+                <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+                  Elige el plan que mejor se adapte a tus necesidades, ya seas asesor o cliente.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-sm items-start gap-8 sm:max-w-4xl sm:grid-cols-2 md:gap-12 lg:max-w-5xl lg:grid-cols-3 py-12">
+              <Card className="flex flex-col justify-between h-full">
                 <CardHeader>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
-                      <feature.icon className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  </div>
-                  <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
+                  <CardTitle className="text-2xl font-bold text-foreground">Básico</CardTitle>
+                  <p className="text-gray-500 dark:text-gray-400">Ideal para clientes individuales.</p>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
-                  <ul className="space-y-2">
-                    {feature.features.map((item, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 text-sm">
-                        <CheckCircle className="w-3 h-3 text-emerald-400" />
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
+                <CardContent className="flex flex-col flex-grow">
+                  <div className="text-4xl font-bold text-foreground">
+                    $25<span className="text-lg font-normal text-gray-500">/mes</span>
+                  </div>
+                  <ul className="grid gap-2 py-4 text-gray-500 dark:text-gray-400 flex-grow">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Acceso a 1 asesor
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Gestión de 3 casos activos
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Soporte estándar
+                    </li>
                   </ul>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Process Section */}
-      <section id="proceso" className="py-24 px-4 bg-card/20">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Proceso de Transformación</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Tres pasos simples hacia tu crecimiento personal y financiero
-            </p>
-          </div>
-
-          <div className="max-w-5xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="text-center group">
-                <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                  <span className="text-2xl font-bold text-white">1</span>
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Suscripción</h3>
-                <p className="text-muted-foreground mb-6">Únete a nuestra plataforma por solo $50 USD mensuales</p>
-                <Card className="border-emerald-500/20 bg-emerald-500/5">
-                  <CardContent className="p-4">
-                    <div className="text-sm space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Para el asesor:</span>
-                        <span className="font-semibold text-emerald-400">$25</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Para la plataforma:</span>
-                        <span className="font-semibold text-emerald-400">$25</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="text-center group">
-                <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                  <FileText className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Evaluación</h3>
-                <p className="text-muted-foreground mb-6">
-                  Completa un cuestionario personalizado según tu situación específica
-                </p>
-                <Card className="border-blue-500/20 bg-blue-500/5">
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">
-                      Análisis detallado de tu situación actual y objetivos
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="text-center group">
-                <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                  <Target className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Plan de Acción</h3>
-                <p className="text-muted-foreground mb-6">
-                  Recibe un plan personalizado con pasos específicos y seguimiento
-                </p>
-                <Card className="border-purple-500/20 bg-purple-500/5">
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Estrategias personalizadas con métricas de progreso</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Compensation Plan */}
-      <section id="compensacion" className="py-24 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Genera Ingresos Ayudando a Otros</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Únete a nuestra red de asesores y construye un negocio sostenible
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
-            <Card className="border-border/40">
-              <CardHeader>
-                <CardTitle className="flex items-center text-emerald-400">
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  Estructura de Comisiones
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
-                    <h4 className="font-semibold text-emerald-400 mb-2">Comisión Directa - 50%</h4>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      $25 USD por cada cliente que refiere directamente
-                    </p>
-                    <div className="flex items-center text-xs text-emerald-400">
-                      <BarChart3 className="w-3 h-3 mr-1" />
-                      Pago inmediato al confirmar suscripción
-                    </div>
-                  </div>
-
-                  <div className="p-4 h-80 rounded-lg border border-purple-500/20 bg-purple-500/5">
-                    <h4 className="font-semibold text-purple-400 mb-2">Bonos de Liderazgo</h4>
-                    <p className="text-sm text-muted-foreground mb-2">Incentivos adicionales por volumen y mentorías</p>
-                    <div className="flex items-center text-xs text-purple-400">
-                      <Award className="w-3 h-3 mr-1" />
-                      Hasta $500 USD adicionales mensuales
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2 mt-2">
-                      ¡Potencia tu impacto y multiplica tus ingresos con nuestro programa Bonos de Liderazgo ! Diseñado
-                      para aquellos que no solo destacan por su desempeño individual.
-                    </p>
-
-                    <div className="flex items-center text-xs text-purple-400">
-                      <MessageCircleQuestion className="w-3 h-3 mr-1" />
-                      ¿Qué ofrece?
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground mt-2 ml-2">
-                      <CircleDashed className="w-3 h-3 mr-1 text-purple-400" />
-                      Bonos por volumen
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground mt-2 ml-2">
-                      <CircleDashed className="w-3 h-3 mr-1 text-purple-400" />
-                      Bonos por mentoría
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground mt-2 ml-2">
-                      <CircleDashed className="w-3 h-3 mr-1 text-purple-400" />
-                      Reconocimiento mensual
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardHeader>
-                <CardTitle className="text-emerald-400">Calculadora de Ingresos</CardTitle>
-                <CardDescription>Proyecta tus ganancias mensuales</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="referrals" className="text-sm font-medium">
-                    Referidos directos por mes
-                  </Label>
-                  <Input
-                    id="referrals"
-                    type="number"
-                    value={referrals}
-                    onChange={(e) => handleReferralChange(e.target.value)}
-                    min="0"
-                    className="mt-2"
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="p-6 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-2">Ingresos mensuales estimados</p>
-                    <p className="text-4xl font-bold text-emerald-400">${monthlyEarnings.toLocaleString()} USD</p>
-                    <p className="text-xs text-muted-foreground">Basado en {referrals} referidos directos</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <p>• Cálculos incluyen comisiones directas</p>
-                  <p>• Resultados pueden variar según desempeño</p>
-                  <p>• No incluye bonos de liderazgo adicionales</p>
-                </div>
-
-                <Button className="w-full bg-emerald-500 hover:bg-emerald-600">Comenzar como Asesor</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Subscription Plans Section */}
-      <section id="planes" className="py-24 px-4 bg-card/20">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Nuestros Planes de Suscripción</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Elige el plan que mejor se adapte a tus necesidades y comienza tu transformación.
-            </p>
-          </div>
-
-          {/* Error Alert */}
-          {error && (
-            <div className="max-w-2xl mx-auto mb-8">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {plans.map((plan, index) => (
-              <Card
-                key={index}
-                className={`border-border/40 ${
-                  plan.highlight ? "border-emerald-500 ring-2 ring-emerald-500" : ""
-                } bg-card/50 hover:bg-card/80 transition-colors flex flex-col`}
-              >
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl font-bold text-foreground">{plan.name}</CardTitle>
-                  <CardDescription className="text-muted-foreground">{plan.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-between p-6 pt-0">
-                  <div className="text-center mb-6">
-                    <p className="text-5xl font-bold text-foreground">
-                      {plan.price}
-                      <span className="text-lg text-muted-foreground">/{plan.frequency}</span>
-                    </p>
-                  </div>
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${
-                      plan.highlight
-                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                        : "bg-muted-foreground hover:bg-muted-foreground/80 text-white"
-                    }`}
-                    size="lg"
-                    onClick={() => handlePlanSelection(plan.id)}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : (
-                      plan.buttonText
-                    )}
+                  <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white mt-auto" asChild>
+                    <Link href="/payment_process?priceId=price_1PZ410Rz02y202y202y202y2">Elegir Plan</Link>
                   </Button>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-
-          {!user && (
-            <div className="text-center mt-8">
-              <p className="text-sm text-muted-foreground">
-                ¿No tienes cuenta?{" "}
-                <Button variant="link" className="p-0 h-auto text-emerald-400" onClick={() => router.push("/register")}>
-                  Regístrate aquí
-                </Button>
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Framework Integration Section */}
-      <section className="py-24 px-4 bg-card/20">
-        <div className="container mx-auto text-center">
-          <div className="max-w-4xl mx-auto">
-            <p className="text-sm text-muted-foreground mb-4">
-              Úsalo con cualquier enfoque.{" "}
-              <span className="text-emerald-400">Los mejores productos integrados como plataforma.</span>
-            </p>
-
-            <h2 className="text-4xl font-bold text-foreground mb-16">
-              Usa Fox Lawyer con <span className="text-emerald-400">cualquier metodología</span>
-            </h2>
-
-            <div className="flex justify-center items-center space-x-8 md:space-x-12 opacity-60 mb-16">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <Heart className="w-6 h-6" />
-              </div>
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <Users className="w-6 h-6" />
-              </div>
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <DollarSign className="w-6 h-6" />
-              </div>
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <Shield className="w-6 h-6" />
-              </div>
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <Target className="w-6 h-6" />
-              </div>
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
-
-            <p className="text-sm text-muted-foreground">HISTORIAS DE CLIENTES</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section with Spotlight Effect */}
-      <section className="py-24 px-4 spotlight-bg relative overflow-hidden">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Únete a la comunidad</h2>
-            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Descubre lo que nuestra comunidad tiene que decir sobre su experiencia con Fox Lawyer.
-            </p>
-
-            <div className="flex justify-center space-x-4 mb-12">
-              <Button variant="outline" size="sm" className="border-border/40">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Discusiones GitHub
-              </Button>
-              <Button variant="outline" size="sm" className="border-border/40">
-                Discord
-              </Button>
-            </div>
-          </div>
-
-          {/* Infinite Scrolling Testimonials */}
-          <div className="relative">
-            <div className="flex space-x-6 animate-scroll">
-              {duplicatedTestimonials.map((testimonial, index) => (
-                <Card
-                  key={index}
-                  className="flex-shrink-0 w-80 border-border/40 bg-card/80 backdrop-blur-sm hover:bg-card/90 transition-colors"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-medium">{testimonial.avatar}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium text-foreground truncate">{testimonial.name}</p>
-                          {testimonial.verified && <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{testimonial.username}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{testimonial.content}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          <div className="text-center mt-16">
-            <h3 className="text-3xl font-bold text-foreground mb-4">
-              Transforma tu vida en un fin de semana, <span className="text-emerald-400">escala a millones</span>
-            </h3>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Form */}
-      <section id="contacto" className="py-24 px-4 bg-card/20">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Comienza Tu Transformación</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Únete a miles de personas que ya han transformado sus vidas
-            </p>
-          </div>
-
-          <div className="max-w-2xl mx-auto">
-            <Card className="border-border/40">
-              <CardHeader>
-                <CardTitle className="text-center text-emerald-400">Formulario de Contacto</CardTitle>
-                <CardDescription className="text-center">
-                  Completa el formulario y nos pondremos en contacto contigo
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">Nombre</Label>
-                    <Input id="firstName" placeholder="Tu nombre" className="mt-1" />
+              <Card className="flex flex-col justify-between h-full border-2 border-emerald-500">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-foreground">Estándar</CardTitle>
+                  <p className="text-gray-500 dark:text-gray-400">Para clientes y asesores en crecimiento.</p>
+                </CardHeader>
+                <CardContent className="flex flex-col flex-grow">
+                  <div className="text-4xl font-bold text-foreground">
+                    $75<span className="text-lg font-normal text-gray-500">/mes</span>
                   </div>
-                  <div>
-                    <Label htmlFor="lastName">Apellido</Label>
-                    <Input id="lastName" placeholder="Tu apellido" className="mt-1" />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="email">Correo Electrónico</Label>
-                  <Input id="email" type="email" placeholder="tu@email.com" className="mt-1" />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input id="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
-                </div>
-
-                <div>
-                  <Label htmlFor="service">Importancia</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona un área</option>
-                    <option value="financial">Asesoría Financiera</option>
-                    <option value="family">Relaciones Familiares</option>
-                    <option value="love">Relaciones Amorosas</option>
-                    <option value="advisor">Quiero ser Asesor</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="service">Área de Interés</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona el nivel de priodidad</option>
-                    <option value="lov">Baja</option>
-                    <option value="mid">Media</option>
-                    <option value="high">Alta</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="message">Mensaje</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Cuéntanos sobre tu situación y objetivos..."
-                    rows={4}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="file">Subir Documento (opcional)</Label>
-                  <div className="mt-1">
-                    <Input id="file" type="file" className="hidden" />
-                    <Button
-                      variant="outline"
-                      onClick={() => document.getElementById("file")?.click()}
-                      className="w-full border-dashed"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Seleccionar archivo
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600">Enviar Mensaje</Button>
-                  <Button variant="outline" className="flex-1 border-border/40">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Agendar Consulta
+                  <ul className="grid gap-2 py-4 text-gray-500 dark:text-gray-400 flex-grow">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Acceso a 5 asesores
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Gestión ilimitada de casos
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Soporte prioritario
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Reportes avanzados
+                    </li>
+                  </ul>
+                  <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white mt-auto" asChild>
+                    <Link href="/payment_process?priceId=price_1PZ410Rz02y202y202y202y2">Elegir Plan</Link>
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border/40 py-12 px-4">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-1">
-              <div className="flex items-center space-x-2 mb-4">
-                <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-6 h-6" />
-                <h4 className="text-lg font-bold text-foreground">Fox Lawyer</h4>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Transformando vidas a través de asesoría legal personalizada y profesional.
-              </p>
-            </div>
-
-            <div>
-              <h5 className="font-semibold mb-4 text-foreground">Servicios</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Asesoría Financiera
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Relaciones Familiares
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Relaciones Amorosas
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Programa de Asesores
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h5 className="font-semibold mb-4 text-foreground">Contacto</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>contacto@foxlawyer.com</li>
-                <li>+52 123 456 7890</li>
-                <li>Lun - Vie: 9:00 - 18:00</li>
-                <li>Sáb: 9:00 - 14:00</li>
-              </ul>
-            </div>
-
-            <div>
-              <h5 className="font-semibold mb-4 text-foreground">Síguenos</h5>
-              <div className="flex space-x-3">
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
-                  <FacebookIcon />
-                </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
-                  <InstagramIcon />
-                </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
-                  <TwitterIcon />
-                </Button>
-              </div>
+                </CardContent>
+              </Card>
+              <Card className="flex flex-col justify-between h-full">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-foreground">Premium</CardTitle>
+                  <p className="text-gray-500 dark:text-gray-400">Solución completa para firmas y equipos.</p>
+                </CardHeader>
+                <CardContent className="flex flex-col flex-grow">
+                  <div className="text-4xl font-bold text-foreground">
+                    $150<span className="text-lg font-normal text-gray-500">/mes</span>
+                  </div>
+                  <ul className="grid gap-2 py-4 text-gray-500 dark:text-gray-400 flex-grow">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Acceso ilimitado a asesores
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Gestión ilimitada de casos
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Soporte 24/7
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Integraciones personalizadas
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      Capacitación exclusiva
+                    </li>
+                  </ul>
+                  <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white mt-auto" asChild>
+                    <Link href="/payment_process?priceId=price_1PZ410Rz02y202y202y202y2">Elegir Plan</Link>
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </div>
-
-          <Separator className="my-8" />
-
-          <div className="text-center text-sm text-muted-foreground">
-            <p>© 2025 Fox Lawyer. Todos los derechos reservados.</p>
+        </section>
+        <section id="contact" className="w-full py-12 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-800">
+          <div className="container px-4 md:px-6 text-center">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-foreground">Contáctanos</h2>
+            <p className="max-w-[700px] mx-auto mt-4 text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+              ¿Tienes preguntas o necesitas una demostración? Estamos aquí para ayudarte.
+            </p>
+            <div className="mt-8 flex justify-center">
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white" asChild>
+                <Link href="mailto:info@solucioneshumanas.com">Enviar un Correo</Link>
+              </Button>
+            </div>
           </div>
-        </div>
+        </section>
+      </main>
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t bg-background">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          &copy; 2024 Soluciones Humanas. Todos los derechos reservados.
+        </p>
+        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+          <Link className="text-xs hover:underline underline-offset-4 text-gray-500 dark:text-gray-400" href="#">
+            Términos de Servicio
+          </Link>
+          <Link className="text-xs hover:underline underline-offset-4 text-gray-500 dark:text-gray-400" href="#">
+            Política de Privacidad
+          </Link>
+        </nav>
       </footer>
     </div>
   )

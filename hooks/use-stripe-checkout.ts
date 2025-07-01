@@ -1,44 +1,79 @@
 "use client"
 
 import { useState } from "react"
-import { loadStripe } from "@stripe/stripe-js"
+import { useToast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 
-// Cambiar de 'const useStripeCheckout = () => {' a 'export function useStripeCheckout() {'
-// Y eliminar la línea 'export default useStripeCheckout' al final del archivo.
-export function useStripeCheckout() {
+export const useStripeCheckout = () => {
   const [loading, setLoading] = useState(false)
-  const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+  const { toast } = useToast()
+  const { user, profile } = useAuth()
 
-  const { user, session } = useAuth()
+  const createCheckoutSession = async (priceId: string) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para proceder con el pago.",
+        variant: "destructive",
+      })
+      return
+    }
 
-  const createCheckoutSession = async (planId: string) => {
     setLoading(true)
     try {
+      let customerId = profile?.stripe_customer_id
+
+      // If no Stripe customer ID, create one
+      if (!customerId) {
+        const { data: newCustomerData, error: newCustomerError } = await supabase
+          .from("profiles")
+          .select("stripe_customer_id")
+          .eq("id", user.id)
+          .single()
+
+        if (newCustomerError || !newCustomerData?.stripe_customer_id) {
+          // Create customer in Stripe if not found in DB
+          const customerResponse = await fetch("/api/stripe/create-customer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: user.email, userId: user.id }),
+          })
+          const customerData = await customerResponse.json()
+          if (customerData.error) {
+            throw new Error(customerData.error)
+          }
+          customerId = customerData.customerId
+          // Update profile in DB with new customer ID
+          await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id)
+        } else {
+          customerId = newCustomerData.stripe_customer_id
+        }
+      }
+
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
-        },
-        body: JSON.stringify({ planId, userId: user?.id }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId, customerId }),
       })
-
       const data = await response.json()
 
-      if (!response.ok) {
-        // Usar response.ok para verificar el estado HTTP
-        throw new Error(data.message || "Error al crear la sesión de pago")
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast({
+          title: "Error de Pago",
+          description: data.error || "No se pudo iniciar la sesión de pago.",
+          variant: "destructive",
+        })
       }
-
-      const stripe = await stripePromise
-      if (!stripe) {
-        throw new Error("Error al cargar Stripe")
-      }
-      stripe.redirectToCheckout({ sessionId: data.sessionId })
     } catch (error: any) {
-      console.error("Error creating checkout session:", error.message)
-      alert(error.message)
+      console.error("Error during checkout:", error)
+      toast({
+        title: "Error de Pago",
+        description: error.message || "Ocurrió un error inesperado al procesar el pago.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }

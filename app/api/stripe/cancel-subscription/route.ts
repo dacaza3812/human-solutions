@@ -54,3 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }
+
+export async function GET() {
+  return NextResponse.redirect(new URL("/dashboard/subscriptions?status=cancelled", process.env.NEXT_PUBLIC_BASE_URL))
+}

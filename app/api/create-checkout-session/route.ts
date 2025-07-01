@@ -1,72 +1,46 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2024-04-10",
 })
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { planId } = await request.json()
+    const { priceId, customerId, subscriptionId } = await req.json()
 
-    // Get the user from the request headers or session
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader) {
-      return NextResponse.json({ error: "No authorization header" }, { status: 401 })
+    if (!priceId) {
+      return NextResponse.json({ error: "Price ID is required" }, { status: 400 })
     }
 
-    const token = authHeader.replace("Bearer ", "")
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token)
+    let session
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Invalid user" }, { status: 401 })
-    }
-
-    // Get plan details from database
-    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
-
-    if (planError || !plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 })
-    }
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: plan.name,
-              description: plan.description,
-            },
-            unit_amount: Math.round(plan.price * 100), // Convert to cents
-            recurring: {
-              interval: "month",
-            },
+    if (subscriptionId) {
+      // If a subscription ID is provided, create a billing portal session
+      session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/subscriptions`,
+      })
+    } else {
+      // Otherwise, create a checkout session for a new subscription
+      session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
           },
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment_process?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/?canceled=true`,
-      customer_email: user.email,
-      metadata: {
-        userId: user.id,
-        planId: planId.toString(),
-      },
-    })
+        ],
+        mode: "subscription",
+        success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/session-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/cancel-subscription`,
+        customer: customerId || undefined, // Use existing customer if provided
+      })
+    }
 
-    return NextResponse.json({ sessionId: session.id })
-  } catch (error) {
+    return NextResponse.json({ sessionId: session.id, url: session.url })
+  } catch (error: any) {
     console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

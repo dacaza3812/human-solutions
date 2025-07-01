@@ -1,216 +1,125 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2024-04-10",
 })
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
+  const buf = await req.text()
+  const sig = req.headers.get("stripe-signature")
+
+  let event: Stripe.Event
+
   try {
-    const body = await request.text()
-    const signature = request.headers.get("stripe-signature")!
-
-    let event: Stripe.Event
-
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err)
-      return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 })
-    }
-
-    switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session)
-        break
-      case "invoice.payment_succeeded":
-        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
-        break
-      case "customer.subscription.updated":
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
-        break
-      case "customer.subscription.deleted":
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
-        break
-      default:
-        console.log(`Unhandled event type: ${event.type}`)
-    }
-
-    return NextResponse.json({ received: true })
-  } catch (error) {
-    console.error("Webhook error:", error)
-    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 })
+    event = stripe.webhooks.constructEvent(buf, sig!, webhookSecret)
+  } catch (err: any) {
+    console.error(`Webhook Error: ${err.message}`)
+    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
   }
+
+  // Handle the event
+  switch (event.type) {
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted":
+      const subscription = event.data.object as Stripe.Subscription
+      const userId = await getUserIdFromStripeCustomerId(subscription.customer as string)
+
+      if (userId) {
+        const { error } = await supabase.from("subscriptions").upsert(
+          {
+            user_id: userId,
+            stripe_customer_id: subscription.customer as string,
+            stripe_subscription_id: subscription.id,
+            status: subscription.status,
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            price_id: subscription.items.data[0]?.price.id,
+          },
+          { onConflict: "user_id" },
+        )
+
+        if (error) {
+          console.error("Error upserting subscription:", error)
+          return NextResponse.json({ error: "Database update failed" }, { status: 500 })
+        }
+
+        // Update user's account_type based on subscription status
+        const newAccountType = subscription.status === "active" ? "client" : "free"
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ account_type: newAccountType })
+          .eq("id", userId)
+
+        if (profileError) {
+          console.error("Error updating user profile account type:", profileError)
+          return NextResponse.json({ error: "Profile update failed" }, { status: 500 })
+        }
+      }
+      break
+    case "checkout.session.completed":
+      const checkoutSession = event.data.object as Stripe.Checkout.Session
+      // This event is already handled by the success_url redirect,
+      // but can be used as a fallback or for additional logic.
+      break
+    case "invoice.payment_succeeded":
+      const invoice = event.data.object as Stripe.Invoice
+
+      try {
+        // Get user by Stripe customer ID
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("stripe_customer_id", invoice.customer as string)
+          .single()
+
+        if (profileError || !profile) {
+          console.error("User not found for customer:", invoice.customer as string)
+          return
+        }
+
+        // Create payment record for recurring payment
+        const { error: paymentError } = await supabase.from("payments").insert({
+          user_id: profile.id,
+          plan_id: profile.plan_id,
+          stripe_invoice_id: invoice.id,
+          amount: (invoice.amount_paid || 0) / 100,
+          currency: invoice.currency || "usd",
+          status: "succeeded",
+          payment_method: "card",
+        })
+
+        if (paymentError) {
+          console.error("Error creating payment record:", paymentError)
+        }
+
+        console.log(`Recurring payment processed for user ${profile.id}`)
+      } catch (error) {
+        console.error("Error handling invoice payment succeeded:", error)
+      }
+      break
+    default:
+      console.log(`Unhandled event type ${event.type}`)
+  }
+
+  return NextResponse.json({ received: true }, { status: 200 })
 }
 
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
-  const userId = session.metadata?.userId
-  const planId = session.metadata?.planId
+async function getUserIdFromStripeCustomerId(stripeCustomerId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("stripe_customer_id", stripeCustomerId)
+    .single()
 
-  if (!userId || !planId) {
-    console.error("Missing metadata in checkout session")
-    return
+  if (error) {
+    console.error("Error fetching user ID from Stripe customer ID:", error)
+    return null
   }
 
-  try {
-    // Get subscription details
-    const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
-
-    // Update user profile with subscription info
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        plan_id: Number.parseInt(planId),
-        subscription_status: "active",
-        stripe_subscription_id: subscription.id,
-        subscription_start_date: new Date(subscription.current_period_start * 1000).toISOString(),
-        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-      })
-      .eq("id", userId)
-
-    if (profileError) {
-      console.error("Error updating profile:", profileError)
-      return
-    }
-
-    // Create payment record
-    const { error: paymentError } = await supabase.from("payments").insert({
-      user_id: userId,
-      plan_id: Number.parseInt(planId),
-      stripe_payment_intent_id: session.payment_intent as string,
-      amount: (session.amount_total || 0) / 100,
-      currency: session.currency || "usd",
-      status: "succeeded",
-      payment_method: "card",
-    })
-
-    if (paymentError) {
-      console.error("Error creating payment record:", paymentError)
-    }
-
-    console.log(`Subscription activated for user ${userId}`)
-  } catch (error) {
-    console.error("Error handling checkout session completed:", error)
-  }
-}
-
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  const customerId = invoice.customer as string
-
-  try {
-    // Get user by Stripe customer ID
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("stripe_customer_id", customerId)
-      .single()
-
-    if (profileError || !profile) {
-      console.error("User not found for customer:", customerId)
-      return
-    }
-
-    // Create payment record for recurring payment
-    const { error: paymentError } = await supabase.from("payments").insert({
-      user_id: profile.id,
-      plan_id: profile.plan_id,
-      stripe_invoice_id: invoice.id,
-      amount: (invoice.amount_paid || 0) / 100,
-      currency: invoice.currency || "usd",
-      status: "succeeded",
-      payment_method: "card",
-    })
-
-    if (paymentError) {
-      console.error("Error creating payment record:", paymentError)
-    }
-
-    console.log(`Recurring payment processed for user ${profile.id}`)
-  } catch (error) {
-    console.error("Error handling invoice payment succeeded:", error)
-  }
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const customerId = subscription.customer as string
-
-  try {
-    // Get user by Stripe customer ID
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("stripe_customer_id", customerId)
-      .single()
-
-    if (profileError || !profile) {
-      console.error("User not found for customer:", customerId)
-      return
-    }
-
-    // Update subscription status
-    const status =
-      subscription.status === "active"
-        ? "active"
-        : subscription.status === "past_due"
-          ? "past_due"
-          : subscription.status === "canceled"
-            ? "cancelled"
-            : "inactive"
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        subscription_status: status,
-        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-      })
-      .eq("id", profile.id)
-
-    if (updateError) {
-      console.error("Error updating subscription status:", updateError)
-    }
-
-    console.log(`Subscription updated for user ${profile.id}: ${status}`)
-  } catch (error) {
-    console.error("Error handling subscription updated:", error)
-  }
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const customerId = subscription.customer as string
-
-  try {
-    // Get user by Stripe customer ID
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("stripe_customer_id", customerId)
-      .single()
-
-    if (profileError || !profile) {
-      console.error("User not found for customer:", customerId)
-      return
-    }
-
-    // Update subscription status to cancelled
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        subscription_status: "cancelled",
-        subscription_cancelled_at: new Date().toISOString(),
-      })
-      .eq("id", profile.id)
-
-    if (updateError) {
-      console.error("Error updating subscription status:", updateError)
-    }
-
-    console.log(`Subscription cancelled for user ${profile.id}`)
-  } catch (error) {
-    console.error("Error handling subscription deleted:", error)
-  }
+  return data?.id || null
 }
