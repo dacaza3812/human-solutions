@@ -3,14 +3,14 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
+// Removed useAuth import
 import { Plus, DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
 import { UserInfoCard } from "./components/user-info-card"
 import { StatsGrid } from "./components/stats-grid"
 import { RecentActivityCard } from "./components/recent-activity-card"
 import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
 
-// Define un tipo para el perfil de usuario si no existe
+// Define a mock UserProfile type for consistency
 interface UserProfile {
   id: string
   first_name?: string | null
@@ -22,7 +22,7 @@ interface UserProfile {
   stripe_customer_id?: string | null
 }
 
-// Define tipos para los datos mock
+// Define types for the mock data
 interface ClientCase {
   id: number
   title: string
@@ -65,7 +65,6 @@ interface AdvisorCase {
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState("overview")
-  // Removed referralStats state and its fetching logic
   const [referralCode, setReferralCode] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
   const [selectedCase, setSelectedCase] = useState<AdvisorCase | null>(null)
@@ -73,7 +72,17 @@ export default function DashboardPage() {
   const [activeChat, setActiveChat] = useState<number | null>(null)
   const [clientFilter, setClientFilter] = useState("")
   const [caseFilter, setCaseFilter] = useState("all")
-  const { user, profile, updateUserProfile, changePassword } = useAuth()
+  // Removed useAuth hook and its dependencies (user, profile, updateUserProfile, changePassword)
+
+  // Mock user and profile data for immediate rendering
+  const mockUser = { id: "mock-user-id", email: "mock@example.com" }
+  const mockProfile: UserProfile = {
+    id: "mock-profile-id",
+    first_name: "Usuario",
+    last_name: "Demo",
+    account_type: "client", // Default to client for dashboard content
+    referral_code: "DEMOCODE123",
+  }
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [dateRange, setDateRange] = useState({
@@ -81,29 +90,28 @@ export default function DashboardPage() {
     end: "2024-12-31",
   })
 
-  // State for Settings section
+  // State for Settings section (handlers will be stubbed or removed as they rely on useAuth)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmNewPassword, setConfirmNewPassword] = useState("")
   const [passwordChangeMessage, setPasswordChangeMessage] = useState("")
   const [passwordChangeError, setPasswordChangeError] = useState("")
 
-  const [firstName, setFirstName] = useState(profile?.first_name || "")
-  const [lastName, setLastName] = useState(profile?.last_name || "")
+  const [firstName, setFirstName] = useState(mockProfile.first_name || "")
+  const [lastName, setLastName] = useState(mockProfile.last_name || "")
   const [profileUpdateMessage, setProfileUpdateMessage] = useState("")
   const [profileUpdateError, setProfileUpdateError] = useState("")
 
-  const [newReferralCode, setNewReferralCode] = useState(profile?.referral_code || "")
+  const [newReferralCode, setNewReferralCode] = useState(mockProfile.referral_code || "")
   const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
   const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
 
   useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name || "")
-      setLastName(profile.last_name || "")
-      setNewReferralCode(profile.referral_code || "")
-    }
-  }, [profile])
+    // Initialize form fields with mock profile data
+    setFirstName(mockProfile.first_name || "")
+    setLastName(mockProfile.last_name || "")
+    setNewReferralCode(mockProfile.referral_code || "")
+  }, []) // Empty dependency array to run once on mount
 
   // Mock data for current user's cases (client view)
   const userCases: ClientCase[] = [
@@ -235,19 +243,15 @@ export default function DashboardPage() {
 
   // Generate referral code on component mount (client-side generation, not fetching)
   useEffect(() => {
-    if (profile && !referralCode) {
-      const generateReferralCode = () => {
-        const firstName = profile.first_name?.toLowerCase() || ""
-        const lastName = profile.last_name?.toLowerCase() || ""
-        const randomNum = Math.floor(Math.random() * 1000)
-        return `${firstName}${lastName}${randomNum}`
-      }
-      setReferralCode(generateReferralCode())
+    if (mockProfile && !referralCode) {
+      const firstName = mockProfile.first_name?.toLowerCase() || ""
+      const lastName = mockProfile.last_name?.toLowerCase() || ""
+      const randomNum = Math.floor(Math.random() * 1000)
+      setReferralCode(`${firstName}${lastName}${randomNum}`)
     }
-  }, [profile, referralCode])
+  }, [mockProfile, referralCode])
 
   // Removed fetchReferralStats function and its useEffect call
-  // This was the primary data fetching causing potential delays.
 
   const copyReferralLink = async () => {
     const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
@@ -340,8 +344,8 @@ export default function DashboardPage() {
     },
   ]
 
-  // Determine which set of stats to pass
-  const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
+  // Determine which set of stats to pass based on mock profile
+  const displayStats = mockProfile.account_type === "advisor" ? advisorStats : clientStats
 
   const recentActivity = [
     {
@@ -396,74 +400,29 @@ export default function DashboardPage() {
     },
   ]
 
-  // Handlers for Settings section (kept as they are user-triggered mutations, not initial load fetching)
+  // Handlers for Settings section - now stubbed out as they rely on useAuth
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
     setPasswordChangeMessage("")
     setPasswordChangeError("")
-
-    if (newPassword !== confirmNewPassword) {
-      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
-      return
-    }
-    if (newPassword.length < 6) {
-      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
-      return
-    }
-
-    const { error } = await changePassword(newPassword)
-
-    if (error) {
-      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
-    } else {
-      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmNewPassword("")
-    }
+    console.log("Password change functionality removed for loading optimization.")
+    setPasswordChangeError("Funcionalidad de cambio de contraseña deshabilitada en modo demo.")
   }
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     setProfileUpdateMessage("")
     setProfileUpdateError("")
-
-    if (!firstName.trim() || !lastName.trim()) {
-      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
-      return
-    }
-
-    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
-
-    if (error) {
-      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
-    } else {
-      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
-    }
+    console.log("Profile update functionality removed for loading optimization.")
+    setProfileUpdateError("Funcionalidad de actualización de perfil deshabilitada en modo demo.")
   }
 
   const handleReferralCodeUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     setReferralCodeUpdateMessage("")
     setReferralCodeUpdateError("")
-
-    if (!newReferralCode.trim()) {
-      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
-      return
-    }
-    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
-      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
-      return
-    }
-
-    const { error } = await updateUserProfile({ referral_code: newReferralCode })
-
-    if (error) {
-      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
-    } else {
-      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
-      setReferralCode(newReferralCode)
-    }
+    console.log("Referral code update functionality removed for loading optimization.")
+    setReferralCodeUpdateError("Funcionalidad de actualización de código de referido deshabilitada en modo demo.")
   }
 
   return (
@@ -471,23 +430,20 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
+            <h2 className="text-3xl font-bold text-foreground">Bienvenido, {mockProfile.first_name}</h2>
             <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
           </div>
-          {profile?.account_type === "advisor" && (
+          {mockProfile.account_type === "advisor" && ( // Conditional rendering based on mock profile
             <Button className="bg-emerald-500 hover:bg-emerald-600">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Caso
             </Button>
           )}
         </div>
-
         {/* User Info Card */}
-        <UserInfoCard user={user} profile={profile} />
-
+        <UserInfoCard user={mockUser as any} profile={mockProfile} /> {/* Cast to any for simplicity */}
         {/* Stats Grid */}
         <StatsGrid stats={displayStats} />
-
         {/* Recent Activity */}
         <div className="grid lg:grid-cols-2 gap-6">
           <RecentActivityCard recentActivity={recentActivity} />
