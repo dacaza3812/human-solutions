@@ -295,11 +295,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ProtectedRoute>
-      {" "}
-      {/* Re-added ProtectedRoute wrapper */}
-      <Suspense fallback={<div>Loading...</div>}>
-        <DashboardLayoutContent>{children}</DashboardLayoutContent>
-      </Suspense>
+      {/* ✅ render directo, sin Suspense */}
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
     </ProtectedRoute>
   )
 }
