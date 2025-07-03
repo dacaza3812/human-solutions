@@ -517,8 +517,6 @@ CREATE TABLE IF NOT EXISTS public.inquiries (
   last_name TEXT,
   email TEXT NOT NULL,
   phone TEXT,
-  service_area TEXT,
-  priority TEXT CHECK (priority IN ('low', 'medium', 'high')),
   message TEXT NOT NULL,
   file_url TEXT, -- URL to uploaded file if any
   status TEXT DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'resolved', 'archived')),

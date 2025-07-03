@@ -12,7 +12,7 @@ import { RecentActivityCard } from "./components/recent-activity-card"
 import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { InquiriesSection } from "./components/inquiries-section" // Import the new component
+// InquiriesSection is now a separate page, no longer imported here
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -533,16 +533,17 @@ export default function DashboardPage() {
           <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
         </div>
 
-        {/* Tabs for different sections */}
+        {/* Tabs for different sections (removed Inquiries tab) */}
         <div className="mt-6">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-5">
+              {" "}
+              {/* Adjusted grid-cols */}
               <TabsTrigger value="overview">Resumen</TabsTrigger>
               <TabsTrigger value="cases">Casos</TabsTrigger>
               <TabsTrigger value="appointments">Citas</TabsTrigger>
               <TabsTrigger value="messages">Mensajes</TabsTrigger>
               <TabsTrigger value="settings">Configuración</TabsTrigger>
-              {profile?.account_type === "advisor" && <TabsTrigger value="inquiries">Contactos</TabsTrigger>}
             </TabsList>
             <TabsContent value="overview" className="mt-4">
               <Card>
@@ -594,11 +595,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            {profile?.account_type === "advisor" && (
-              <TabsContent value="inquiries" className="mt-4">
-                <InquiriesSection />
-              </TabsContent>
-            )}
           </Tabs>
         </div>
       </div>

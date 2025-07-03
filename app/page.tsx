@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,7 +18,6 @@ import {
   DollarSign,
   Users,
   FileText,
-  Calendar,
   Upload,
   CheckCircle,
   Menu,
@@ -41,6 +42,7 @@ import {
   TwitterIcon,
   Loader2,
   AlertCircle,
+  File,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -53,13 +55,16 @@ export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [referrals, setReferrals] = useState(1)
   const [monthlyEarnings, setMonthlyEarnings] = useState(25)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const router = useRouter()
   const { user } = useAuth()
   const { createCheckoutSession, loading, error } = useStripeCheckout()
   const { toast } = useToast()
 
-  const [formState, formAction] = useActionState(submitContactForm, {
+  const [formState, formAction, isPending] = useActionState(submitContactForm, {
     success: false,
     message: "",
   })
@@ -94,6 +99,20 @@ export default function SolucionesHumanas() {
     }
 
     await createCheckoutSession(planId)
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null
+    setSelectedFile(file)
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFilePreviewUrl(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    } else {
+      setFilePreviewUrl(null)
+    }
   }
 
   const navigation = [
@@ -846,45 +865,10 @@ export default function SolucionesHumanas() {
                   </div>
 
                   <div>
-                    <Label htmlFor="phone">Teléfono</Label>
+                    <Label htmlFor="phone">Teléfono (opcional)</Label>
                     <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
                     {formState.errors?.phone && (
                       <p className="text-red-500 text-sm mt-1">{formState.errors.phone[0]}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="serviceArea">Área de Interés</Label>
-                    <select
-                      id="serviceArea"
-                      name="serviceArea"
-                      className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm"
-                    >
-                      <option value="">Selecciona un área</option>
-                      <option value="financial">Asesoría Financiera</option>
-                      <option value="family">Relaciones Familiares</option>
-                      <option value="love">Relaciones Amorosas</option>
-                      <option value="advisor">Quiero ser Asesor</option>
-                    </select>
-                    {formState.errors?.serviceArea && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.serviceArea[0]}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="priority">Nivel de Prioridad</Label>
-                    <select
-                      id="priority"
-                      name="priority"
-                      className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm"
-                    >
-                      <option value="">Selecciona el nivel de prioridad</option>
-                      <option value="low">Baja</option>
-                      <option value="medium">Media</option>
-                      <option value="high">Alta</option>
-                    </select>
-                    {formState.errors?.priority && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.priority[0]}</p>
                     )}
                   </div>
 
@@ -905,29 +889,55 @@ export default function SolucionesHumanas() {
                   <div>
                     <Label htmlFor="file">Subir Documento (opcional)</Label>
                     <div className="mt-1">
-                      <Input id="file" name="file" type="file" className="hidden" />
+                      <Input
+                        id="file"
+                        name="file"
+                        type="file"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                      />
                       <Button
-                        type="button" // Important: prevent form submission
+                        type="button"
                         variant="outline"
-                        onClick={() => document.getElementById("file")?.click()}
+                        onClick={() => fileInputRef.current?.click()}
                         className="w-full border-dashed"
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Seleccionar archivo
+                        {selectedFile ? selectedFile.name : "Seleccionar archivo"}
                       </Button>
                       {formState.errors?.file && (
                         <p className="text-red-500 text-sm mt-1">{formState.errors.file[0]}</p>
+                      )}
+                      {filePreviewUrl && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          {selectedFile?.type.startsWith("image/") ? (
+                            <Image
+                              src={filePreviewUrl || "/placeholder.svg"}
+                              alt="File preview"
+                              width={64}
+                              height={64}
+                              className="rounded-md object-cover"
+                            />
+                          ) : (
+                            <File className="h-16 w-16 text-muted-foreground" />
+                          )}
+                          <span className="text-sm text-muted-foreground">{selectedFile?.name}</span>
+                        </div>
                       )}
                     </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <Button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600">
-                      Enviar Mensaje
-                    </Button>
-                    <Button variant="outline" className="flex-1 border-border/40 bg-transparent">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Agendar Consulta
+                    <Button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600" disabled={isPending}>
+                      {isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        "Enviar Mensaje"
+                      )}
                     </Button>
                   </div>
                 </form>
