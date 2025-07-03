@@ -1,13 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { createClient } from "@supabase/supabase-js"
-import { Database } from "@/database.types"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-05-28.basil",
+  apiVersion: "2024-06-20",
 })
 
-const supabase = createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get plan details
-    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", Number(planId)).single()
+    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
 
     if (planError || !plan) {
       return NextResponse.json({ error: "Plan not found" }, { status: 404 })
@@ -57,7 +56,6 @@ export async function POST(request: NextRequest) {
         subscription_start_date: new Date().toISOString(),
         subscription_end_date: subscriptionEndDate.toISOString(),
         updated_at: new Date().toISOString(),
-
       })
       .eq("id", userId)
 
@@ -76,8 +74,6 @@ export async function POST(request: NextRequest) {
       currency: session.currency || "usd",
       status: "succeeded",
       created_at: new Date().toISOString(),
-      payment_method: session.payment_method_types?.[0] || "card",
-      stripe_invoice_id: session.invoice,
     })
 
     if (paymentError) {

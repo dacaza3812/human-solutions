@@ -507,7 +507,57 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =================================================================================================
--- 5. Final Verification (Optional - for testing purposes)
+-- 5. Contact Inquiries Table
+-- =================================================================================================
+
+-- Create inquiries table
+CREATE TABLE IF NOT EXISTS public.inquiries (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  first_name TEXT,
+  last_name TEXT,
+  email TEXT NOT NULL,
+  phone TEXT,
+  message TEXT NOT NULL,
+  file_url TEXT, -- URL to uploaded file if any
+  status TEXT DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'resolved', 'archived')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS on inquiries table
+ALTER TABLE public.inquiries ENABLE ROW LEVEL SECURITY;
+
+-- Policies for inquiries table
+DROP POLICY IF EXISTS "Allow public insert for inquiries" ON public.inquiries;
+DROP POLICY IF EXISTS "Advisors can view all inquiries" ON public.inquiries;
+DROP POLICY IF EXISTS "Advisors can update inquiry status" ON public.inquiries;
+
+CREATE POLICY "Allow public insert for inquiries" ON public.inquiries
+  FOR INSERT WITH CHECK (true); -- Anyone can submit an inquiry
+
+CREATE POLICY "Advisors can view all inquiries" ON public.inquiries
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND account_type = 'advisor')
+  );
+
+CREATE POLICY "Advisors can update inquiry status" ON public.inquiries
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND account_type = 'advisor')
+  );
+
+-- Trigger for updating 'updated_at' on inquiries table
+DROP TRIGGER IF EXISTS handle_inquiries_updated_at ON public.inquiries;
+CREATE TRIGGER handle_inquiries_updated_at
+  BEFORE UPDATE ON public.inquiries
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- Indexes for inquiries table for better performance
+CREATE INDEX IF NOT EXISTS idx_inquiries_email ON public.inquiries(email);
+CREATE INDEX IF NOT EXISTS idx_inquiries_status ON public.inquiries(status);
+CREATE INDEX IF NOT EXISTS idx_inquiries_created_at ON public.inquiries(created_at);
+
+-- =================================================================================================
+-- 6. Final Verification (Optional - for testing purposes)
 -- =================================================================================================
 
 -- Verify tables exist
@@ -516,7 +566,7 @@ SELECT
   table_type
 FROM information_schema.tables 
 WHERE table_schema = 'public' 
-  AND table_name IN ('profiles', 'referrals', 'plans', 'payments');
+  AND table_name IN ('profiles', 'referrals', 'plans', 'payments', 'inquiries');
 
 -- Verify functions exist
 SELECT 
@@ -547,7 +597,8 @@ WHERE trigger_schema = 'public'
     'handle_profiles_updated_at',
     'handle_referrals_updated_at',
     'handle_plans_updated_at',
-    'handle_payments_updated_at'
+    'handle_payments_updated_at',
+    'handle_inquiries_updated_at'
   );
 
 -- Test referral code generation (example)

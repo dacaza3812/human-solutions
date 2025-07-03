@@ -3,9 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/supabase"
 import { Share2, Gift, UserPlus, Users, DollarSign, TrendingUp, CheckCircle, Copy } from "lucide-react"
-import { useEffect, useState } from "react"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -42,36 +40,6 @@ export function ReferralsSection({
   copyReferralLink,
   referralStats,
 }: ReferralsSectionProps) {
-  const [stats, setStats] = useState<ReferralStats>({
-    total_referrals: 0,
-    active_referrals: 0,
-    total_earnings: 0,
-    monthly_earnings: 0,
-  })
-  useEffect(() => {
-    if (!referralCode) return
-
-    async function loadStats() {
-      const { data, error } = await supabase
-        .rpc("get_referral_stats", { user_referral_code: referralCode })
-
-      if (error) {
-        console.error("Error fetching referral stats:", error)
-        return
-      }
-      // data es un array con un solo objeto
-      const row = (data as ReferralStats[])[0] || {}
-      console.log(JSON.stringify(row, null, 2))
-      setStats({
-        total_referrals: row.total_referrals,
-        active_referrals: row.active_referrals,
-        total_earnings: row.total_earnings,
-        monthly_earnings: row.monthly_earnings,
-      })
-    }
-
-    loadStats()
-  }, [referralCode])
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -144,7 +112,7 @@ export function ReferralsSection({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Referidos</p>
-                <p className="text-2xl font-bold text-foreground">{stats.total_referrals}</p>
+                <p className="text-2xl font-bold text-foreground">{referralStats.total_referrals}</p>
                 <p className="text-sm text-emerald-400">Todos los tiempos</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
@@ -159,7 +127,7 @@ export function ReferralsSection({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Referidos Activos</p>
-                <p className="text-2xl font-bold text-foreground">{stats.active_referrals}</p>
+                <p className="text-2xl font-bold text-foreground">{referralStats.active_referrals}</p>
                 <p className="text-sm text-blue-400">Usuarios activos</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -174,7 +142,7 @@ export function ReferralsSection({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Ganancias Totales</p>
-                <p className="text-2xl font-bold text-foreground">${stats.total_earnings}</p>
+                <p className="text-2xl font-bold text-foreground">${referralStats.total_earnings}</p>
                 <p className="text-sm text-purple-400">USD ganados</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
@@ -189,7 +157,7 @@ export function ReferralsSection({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Este Mes</p>
-                <p className="text-2xl font-bold text-foreground">${stats.monthly_earnings}</p>
+                <p className="text-2xl font-bold text-foreground">${referralStats.monthly_earnings}</p>
                 <p className="text-sm text-orange-400">Ganancias mensuales</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">

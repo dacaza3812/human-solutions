@@ -41,7 +41,6 @@ export default function Register() {
       setReferralCode(refCode)
     }
   }, [searchParams])
-  
 
   // Redirect if already logged in
   useEffect(() => {

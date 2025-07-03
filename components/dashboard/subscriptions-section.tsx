@@ -85,7 +85,7 @@ const plans = [
 ]
 
 export function SubscriptionsSection() {
-  const { session, profile } = useAuth()
+  const { user, profile } = useAuth()
   const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripeCheckout()
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -129,10 +129,7 @@ export function SubscriptionsSection() {
         throw profileError
       }
 
-      if (profileData && profileData.subscription_status === "cancelled") {
-        setSubscriptionInfo(null) // Treat as no active subscription for UI purposes
-        setShowPlans(true) // Immediately show plans if canceled
-      } else if (profileData && profileData.plans) {
+      if (profileData && profileData.plans) {
         setSubscriptionInfo({
           plan_id: profileData.plan_id,
           plan_name: profileData.plans.name,
@@ -145,10 +142,8 @@ export function SubscriptionsSection() {
           stripe_customer_id: profileData.stripe_customer_id,
           stripe_subscription_id: profileData.stripe_subscription_id,
         })
-        setShowPlans(false) // Hide plans if there's an active subscription
       } else {
         setSubscriptionInfo(null)
-        setShowPlans(false) // For truly new users, they'll click "Ver Planes Disponibles"
       }
     } catch (err: any) {
       console.error("Error fetching subscription info:", err)
@@ -159,7 +154,7 @@ export function SubscriptionsSection() {
   }
 
   const handlePlanSelection = async (planId: number) => {
-    await createCheckoutSession(planId.toString())
+    await createCheckoutSession(planId)
   }
 
   const handleCancelSubscription = async () => {
@@ -169,10 +164,8 @@ export function SubscriptionsSection() {
     try {
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscriptionInfo.stripe_subscription_id,
@@ -186,7 +179,6 @@ export function SubscriptionsSection() {
 
       // Actualizar la información de suscripción
       await fetchSubscriptionInfo()
-      setShowPlans(false)
     } catch (err: any) {
       console.error("Error canceling subscription:", err)
       setError(err.message || "Error al cancelar la suscripción") // Muestra el mensaje de error específico
@@ -201,7 +193,7 @@ export function SubscriptionsSection() {
         return (
           <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">Activa</Badge>
         )
-      case "cancelled":
+      case "canceled":
         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">Cancelada</Badge>
       case "past_due":
         return (
@@ -378,7 +370,7 @@ export function SubscriptionsSection() {
                 variant="outline"
                 onClick={handleCancelSubscription}
                 disabled={cancelLoading || subscriptionInfo.subscription_status !== "active"}
-                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white bg-transparent"
+                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white"
               >
                 {cancelLoading ? (
                   <>
