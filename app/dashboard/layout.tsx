@@ -1,302 +1,218 @@
-"use client"
-
 import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { ProtectedRoute } from "@/components/protected-route"
-import { useAuth } from "@/contexts/auth-context"
-import {
-  Home,
-  Users,
-  FileText,
-  Settings,
-  BarChart3,
-  Calendar,
-  MessageCircle,
-  Bell,
-  Search,
-  LogOut,
-  Menu,
-  X,
-  User,
-  UserPlus,
-  CalendarDays,
-  PieChart,
-  CreditCard,
-  TestTube,
-} from "lucide-react"
-import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { Home, Package2, Settings, ShoppingCart, Users, BookOpenText, MessageSquare } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { AuthProvider } from "@/contexts/auth-context"
+import { Toaster } from "@/components/ui/toaster"
+import Image from "next/image"
 import { Suspense } from "react"
 
-interface DashboardLayoutProps {
-  children: React.ReactNode
-}
-
-function DashboardLayoutContent({ children }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [showSearchResults, setShowSearchResults] = useState(false)
-  const { user, profile, signOut } = useAuth()
-  const pathname = usePathname()
-
-  // Menu items based on user role
-  const getMenuItems = () => {
-    const baseItems = [
-      { id: "overview", name: "Resumen", icon: Home, href: "/dashboard" },
-      { id: "test", name: "Prueba", icon: TestTube, href: "/dashboard/test" },
-      { id: "settings", name: "Configuración", icon: Settings, href: "/dashboard/settings" },
-    ]
-
-    if (profile?.account_type === "advisor") {
-      return [
-        ...baseItems.slice(0, 1), // Keep overview
-        { id: "clients", name: "Clientes", icon: Users, href: "/dashboard/clients" },
-        { id: "cases", name: "Casos", icon: FileText, href: "/dashboard/cases" },
-        { id: "financial", name: "Vista Financiera", icon: PieChart, href: "/dashboard/financial" },
-        { id: "analytics", name: "Análisis", icon: BarChart3, href: "/dashboard/analytics" },
-        { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
-        { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
-        ...baseItems.slice(1), // Keep test and settings
-      ]
-    } else {
-      // Client menu
-      return [
-        ...baseItems.slice(0, 1), // Keep overview
-        { id: "subscriptions", name: "Suscripciones", icon: CreditCard, href: "/dashboard/subscriptions" },
-        { id: "referrals", name: "Referidos", icon: UserPlus, href: "/dashboard/referrals" },
-        { id: "cases", name: "Mis Casos", icon: FileText, href: "/dashboard/cases" },
-        { id: "quotes", name: "Citas", icon: CalendarDays, href: "/dashboard/quotes" },
-        { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
-        { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
-        ...baseItems.slice(1), // Keep test and settings
-      ]
-    }
-  }
-
-  const sidebarItems = getMenuItems()
-
-  // Datos de ejemplo para la búsqueda
-  const searchableData = [
-    { type: "client", name: "María González", description: "Cliente - Asesoría financiera", id: "1" },
-    { type: "client", name: "Carlos Rodríguez", description: "Cliente - Mediación familiar", id: "2" },
-    { type: "client", name: "Ana Martínez", description: "Cliente - Planificación presupuestaria", id: "3" },
-    { type: "case", name: "Caso #1234", description: "Mediación familiar - En progreso", id: "4" },
-    { type: "case", name: "Caso #1235", description: "Asesoría financiera - Completado", id: "5" },
-    { type: "appointment", name: "Consulta 10:00 AM", description: "Ana Martínez - Hoy", id: "6" },
-    { type: "appointment", name: "Consulta 2:30 PM", description: "Familia Rodríguez - Hoy", id: "7" },
-  ]
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-
-    if (query.trim() === "") {
-      setSearchResults([])
-      setShowSearchResults(false)
-      return
-    }
-
-    const results = searchableData.filter(
-      (item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.description.toLowerCase().includes(query.toLowerCase()),
-    )
-
-    setSearchResults(results)
-    setShowSearchResults(true)
-  }
-
-  const handleSearchResultClick = (result: any) => {
-    setSearchQuery(result.name)
-    setShowSearchResults(false)
-    console.log("Resultado seleccionado:", result)
-  }
-
-  // Check if current path matches menu item
-  const isActiveRoute = (href: string) => {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard"
-    }
-    return pathname.startsWith(href)
-  }
-
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
-              <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
-            </Link>
-
-            <div className="flex items-center space-x-4">
-              {/* Search Bar with Results - Fixed Icon Position */}
-              <div className="hidden md:flex items-center space-x-2 relative">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-                  <Input
-                    placeholder="Buscar clientes, casos, citas..."
-                    className="w-64 pl-10"
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onFocus={() => searchQuery && setShowSearchResults(true)}
-                    onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
-                  />
-
-                  {/* Search Results Dropdown */}
-                  {showSearchResults && searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.id}
-                          onClick={() => handleSearchResultClick(result)}
-                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
-                        >
-                          <div className="font-medium text-sm text-foreground">{result.name}</div>
-                          <div className="text-xs text-muted-foreground">{result.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* No Results Message */}
-                  {showSearchResults && searchResults.length === 0 && searchQuery.trim() !== "" && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 p-3">
-                      <div className="text-sm text-muted-foreground text-center">
-                        No se encontraron resultados para "{searchQuery}"
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <ThemeToggle />
-
-              {/* User Profile Dropdown */}
-              <div className="flex items-center space-x-2">
-                <div className="hidden md:flex flex-col items-end">
-                  <span className="text-sm font-medium text-foreground">
-                    {profile?.first_name} {profile?.last_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground capitalize">{profile?.account_type}</span>
-                </div>
-                <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              </div>
-
-              {/* Mobile Menu Button */}
-              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                <Menu className="h-5 w-5" />
-              </Button>
+    <AuthProvider>
+      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+        <div className="hidden border-r bg-muted/40 md:block">
+          <div className="flex h-full max-h-screen flex-col gap-2">
+            <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+              <Link href="/" className="flex items-center gap-2 font-semibold">
+                <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer Logo" width={24} height={24} />
+                <span className="">Soluciones Humanas</span>
+              </Link>
+              <ThemeToggle className="ml-auto" />
+            </div>
+            <div className="flex-1">
+              <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <Home className="h-4 w-4" />
+                  Dashboard
+                </Link>
+                <Link
+                  href="/dashboard/cases"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <BookOpenText className="h-4 w-4" />
+                  Casos
+                </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Mensajes
+                  <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">6</Badge>
+                </Link>
+                <Link
+                  href="/dashboard/subscriptions"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  Suscripciones
+                </Link>
+                <Link
+                  href="/dashboard/referrals"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <Users className="h-4 w-4" />
+                  Referidos
+                </Link>
+                <Link
+                  href="/dashboard/inquiries" // New link for inquiries
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <BookOpenText className="h-4 w-4" /> {/* Reusing icon, consider a different one if available */}
+                  Contactos
+                </Link>
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <Settings className="h-4 w-4" />
+                  Configuración
+                </Link>
+              </nav>
+            </div>
+            <div className="mt-auto p-4">
+              <Card>
+                <CardHeader className="p-2 pt-0 md:p-4">
+                  <CardTitle>Actualiza a Pro</CardTitle>
+                  <CardDescription>
+                    Desbloquea todas las funciones y obtén acceso ilimitado a nuestra plataforma.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
+                  <Button size="sm" className="w-full">
+                    Actualizar
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={`${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-40 w-64 bg-card border-r border-border/40 transition-transform duration-300 ease-in-out`}
-        >
-          <div className="flex flex-col h-full">
-            <div className="p-6">
-              <div className="flex items-center justify-between lg:hidden">
-                <span className="text-lg font-semibold">Menú</span>
-                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-                  <X className="h-5 w-5" />
+        <div className="flex flex-col">
+          <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0 md:hidden bg-transparent">
+                  <Home className="h-5 w-5" />
+                  <span className="sr-only">Toggle navigation menu</span>
                 </Button>
-              </div>
-
-              {/* Mobile Search */}
-              <div className="lg:hidden mt-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-                  <Input
-                    placeholder="Buscar..."
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                  />
-
-                  {/* Mobile Search Results */}
-                  {showSearchResults && searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.id}
-                          onClick={() => handleSearchResultClick(result)}
-                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
-                        >
-                          <div className="font-medium text-sm text-foreground">{result.name}</div>
-                          <div className="text-xs text-muted-foreground">{result.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              </SheetTrigger>
+              <SheetContent side="left" className="flex flex-col">
+                <nav className="grid gap-2 text-lg font-medium">
+                  <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
+                    <Package2 className="h-6 w-6" />
+                    <span className="sr-only">Acme Inc</span>
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Home className="h-5 w-5" />
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/dashboard/cases"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <BookOpenText className="h-5 w-5" />
+                    Casos
+                  </Link>
+                  <Link
+                    href="/dashboard/messages"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <MessageSquare className="h-5 w-5" />
+                    Mensajes
+                    <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">6</Badge>
+                  </Link>
+                  <Link
+                    href="/dashboard/subscriptions"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    Suscripciones
+                  </Link>
+                  <Link
+                    href="/dashboard/referrals"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Users className="h-5 w-5" />
+                    Referidos
+                  </Link>
+                  <Link
+                    href="/dashboard/inquiries" // New link for inquiries
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <BookOpenText className="h-5 w-5" />
+                    Contactos
+                  </Link>
+                  <Link
+                    href="/dashboard/settings"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Settings className="h-5 w-5" />
+                    Configuración
+                  </Link>
+                </nav>
+                <div className="mt-auto">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Actualiza a Pro</CardTitle>
+                      <CardDescription>
+                        Desbloquea todas las funciones y obtén acceso ilimitado a nuestra plataforma.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button size="sm" className="w-full">
+                        Actualizar
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
-            </div>
-
-            <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-              {sidebarItems.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActiveRoute(item.href)
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </Link>
-              ))}
-            </nav>
-
-            <div className="p-4 border-t border-border/40">
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-muted-foreground hover:text-foreground"
-                onClick={signOut}
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                Cerrar Sesión
-              </Button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1">{children}</main>
+              </SheetContent>
+            </Sheet>
+            {/* <div className="w-full flex-1">
+              <form>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search products..."
+                    className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
+                  />
+                </div>
+              </form>
+            </div> */}
+            {/* <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="icon" className="rounded-full">
+                  <CircleUser className="h-5 w-5" />
+                  <span className="sr-only">Toggle user menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem>Support</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Logout</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu> */}
+          </header>
+          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+            <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+          </main>
+        </div>
       </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-    </div>
-  )
-}
-
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  return (
-    <ProtectedRoute>
-      <Suspense fallback={<div>Loading...</div>}>
-        <DashboardLayoutContent>{children}</DashboardLayoutContent>
-      </Suspense>
-    </ProtectedRoute>
+      <Toaster />
+    </AuthProvider>
   )
 }

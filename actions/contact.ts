@@ -1,7 +1,8 @@
 "use server"
 
-import { supabase } from "@/lib/supabase"
+import { supabaseServer } from "@/lib/supabase-server" // Corrected import
 import { revalidatePath } from "next/cache"
+import { v4 as uuidv4 } from "uuid"
 
 interface FormState {
   success: boolean
@@ -11,8 +12,6 @@ interface FormState {
     lastName?: string[]
     email?: string[]
     phone?: string[]
-    serviceArea?: string[]
-    priority?: string[]
     message?: string[]
     file?: string[]
   }
@@ -23,10 +22,8 @@ export async function submitContactForm(prevState: FormState, formData: FormData
   const lastName = formData.get("lastName") as string
   const email = formData.get("email") as string
   const phone = formData.get("phone") as string
-  const serviceArea = formData.get("serviceArea") as string
-  const priority = formData.get("priority") as string
   const message = formData.get("message") as string
-  const file = formData.get("file") as File | null // Handle file input
+  const file = formData.get("file") as File | null
 
   const errors: FormState["errors"] = {}
 
@@ -48,24 +45,36 @@ export async function submitContactForm(prevState: FormState, formData: FormData
   }
 
   let fileUrl: string | null = null
-  // NOTE: For a real application, you would upload the file to a storage service
-  // like Vercel Blob or Supabase Storage here and get a public URL.
-  // For this example, we'll just store a placeholder if a file was provided.
   if (file && file.size > 0) {
-    // In a real scenario, you'd upload the file and get its URL
-    // Example: const { data, error: uploadError } = await supabase.storage.from('inquiry-files').upload(...)
-    // For now, we'll just indicate a file was present.
-    fileUrl = `placeholder-file-url/${file.name}`
+    const fileExtension = file.name.split(".").pop()
+    const fileName = `${uuidv4()}.${fileExtension}`
+    const filePath = `inquiries/${fileName}`
+
+    // Use supabaseServer for privileged operations like file uploads
+    const { data: uploadData, error: uploadError } = await supabaseServer.storage
+      .from("inquiry-files") // Ensure this bucket exists in your Supabase project
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error("Error uploading file:", uploadError)
+      return { success: false, message: `Error al subir el archivo: ${uploadError.message}` }
+    }
+
+    // Get public URL for the uploaded file
+    const { data: publicUrlData } = supabaseServer.storage.from("inquiry-files").getPublicUrl(filePath)
+    fileUrl = publicUrlData.publicUrl
   }
 
   try {
-    const { data, error } = await supabase.from("inquiries").insert({
+    const { data, error } = await supabaseServer.from("inquiries").insert({
+      // Use supabaseServer here too
       first_name: firstName,
       last_name: lastName,
       email,
       phone: phone || null,
-      service_area: serviceArea || null,
-      priority: priority || null,
       message,
       file_url: fileUrl,
       status: "new", // Default status
@@ -77,7 +86,7 @@ export async function submitContactForm(prevState: FormState, formData: FormData
     }
 
     revalidatePath("/") // Revalidate the landing page if needed
-    revalidatePath("/dashboard/contactos") // Revalidate the new dashboard section
+    revalidatePath("/dashboard/inquiries") // Revalidate the new dashboard section
 
     return { success: true, message: "¡Tu mensaje ha sido enviado exitosamente! Nos pondremos en contacto pronto." }
   } catch (e: any) {
