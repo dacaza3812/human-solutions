@@ -10,6 +10,9 @@ import { UserInfoCard } from "./components/user-info-card"
 import { StatsGrid } from "./components/stats-grid"
 import { RecentActivityCard } from "./components/recent-activity-card"
 import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { InquiriesSection } from "./components/inquiries-section" // Import the new component
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -528,6 +531,75 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-2 gap-6">
           <RecentActivityCard recentActivity={recentActivity} />
           <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
+        </div>
+
+        {/* Tabs for different sections */}
+        <div className="mt-6">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+              <TabsTrigger value="overview">Resumen</TabsTrigger>
+              <TabsTrigger value="cases">Casos</TabsTrigger>
+              <TabsTrigger value="appointments">Citas</TabsTrigger>
+              <TabsTrigger value="messages">Mensajes</TabsTrigger>
+              <TabsTrigger value="settings">Configuración</TabsTrigger>
+              {profile?.account_type === "advisor" && <TabsTrigger value="inquiries">Contactos</TabsTrigger>}
+            </TabsList>
+            <TabsContent value="overview" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resumen General</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido del resumen general.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="cases" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gestión de Casos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de gestión de casos.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="appointments" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Próximas Citas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de próximas citas.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="messages" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Mensajes Recientes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de mensajes recientes.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="settings" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configuración de la Cuenta</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de configuración de la cuenta.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            {profile?.account_type === "advisor" && (
+              <TabsContent value="inquiries" className="mt-4">
+                <InquiriesSection />
+              </TabsContent>
+            )}
+          </Tabs>
         </div>
       </div>
     </div>

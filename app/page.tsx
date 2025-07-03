@@ -43,6 +43,11 @@ import {
   AlertCircle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { useActionState } from "react"
+import { submitContactForm } from "@/actions/contact"
+import { useToast } from "@/components/ui/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 
 export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -52,6 +57,23 @@ export default function SolucionesHumanas() {
   const router = useRouter()
   const { user } = useAuth()
   const { createCheckoutSession, loading, error } = useStripeCheckout()
+  const { toast } = useToast()
+
+  const [formState, formAction] = useActionState(submitContactForm, {
+    success: false,
+    message: "",
+  })
+
+  // Show toast notification based on form submission result
+  useState(() => {
+    if (formState.message) {
+      toast({
+        title: formState.success ? "Éxito" : "Error",
+        description: formState.message,
+        variant: formState.success ? "default" : "destructive",
+      })
+    }
+  }, [formState.message, formState.success, toast])
 
   const calculateEarnings = (refs: number) => {
     const directCommission = refs * 25
@@ -254,7 +276,7 @@ export default function SolucionesHumanas() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
+              <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={32} height={32} />
               <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
             </div>
 
@@ -277,7 +299,7 @@ export default function SolucionesHumanas() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden md:inline-flex border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                  className="hidden md:inline-flex border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white bg-transparent"
                   onClick={() => router.push("/dashboard")}
                 >
                   Dashboard
@@ -299,7 +321,7 @@ export default function SolucionesHumanas() {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b border-border/40">
               <div className="flex items-center space-x-2">
-                <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
+                <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={32} height={32} />
                 <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
@@ -324,7 +346,7 @@ export default function SolucionesHumanas() {
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white font-medium"
+                className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white font-medium bg-transparent"
                 onClick={() => {
                   router.push("/dashboard")
                   setMobileMenuOpen(false)
@@ -343,7 +365,7 @@ export default function SolucionesHumanas() {
           <div className="max-w-4xl mx-auto">
             {/* Mobile Logo - Only visible on mobile devices */}
             <div className="md:hidden mb-8">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-20 h-20 mx-auto" />
+              <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={80} height={80} className="mx-auto" />
             </div>
 
             {/* Announcement Banner */}
@@ -368,7 +390,7 @@ export default function SolucionesHumanas() {
               <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8">
                 Comienza tu transformación
               </Button>
-              <Button size="lg" variant="outline" className="border-border/40">
+              <Button size="lg" variant="outline" className="border-border/40 bg-transparent">
                 Solicita una demo
               </Button>
             </div>
@@ -732,11 +754,11 @@ export default function SolucionesHumanas() {
             </p>
 
             <div className="flex justify-center space-x-4 mb-12">
-              <Button variant="outline" size="sm" className="border-border/40">
+              <Button variant="outline" size="sm" className="border-border/40 bg-transparent">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Discusiones GitHub
               </Button>
-              <Button variant="outline" size="sm" className="border-border/40">
+              <Button variant="outline" size="sm" className="border-border/40 bg-transparent">
                 Discord
               </Button>
             </div>
@@ -797,80 +819,118 @@ export default function SolucionesHumanas() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">Nombre</Label>
-                    <Input id="firstName" placeholder="Tu nombre" className="mt-1" />
+                <form action={formAction} className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">Nombre</Label>
+                      <Input id="firstName" name="firstName" placeholder="Tu nombre" className="mt-1" />
+                      {formState.errors?.firstName && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.firstName[0]}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Apellido</Label>
+                      <Input id="lastName" name="lastName" placeholder="Tu apellido" className="mt-1" />
+                      {formState.errors?.lastName && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.lastName[0]}</p>
+                      )}
+                    </div>
                   </div>
+
                   <div>
-                    <Label htmlFor="lastName">Apellido</Label>
-                    <Input id="lastName" placeholder="Tu apellido" className="mt-1" />
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input id="email" name="email" type="email" placeholder="tu@ejemplo.com" className="mt-1" />
+                    {formState.errors?.email && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.email[0]}</p>
+                    )}
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="email">Correo Electrónico</Label>
-                  <Input id="email" type="email" placeholder="tu@email.com" className="mt-1" />
-                </div>
+                  <div>
+                    <Label htmlFor="phone">Teléfono</Label>
+                    <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
+                    {formState.errors?.phone && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.phone[0]}</p>
+                    )}
+                  </div>
 
-                <div>
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input id="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
-                </div>
-
-                <div>
-                  <Label htmlFor="service">Importancia</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona un área</option>
-                    <option value="financial">Asesoría Financiera</option>
-                    <option value="family">Relaciones Familiares</option>
-                    <option value="love">Relaciones Amorosas</option>
-                    <option value="advisor">Quiero ser Asesor</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="service">Área de Interés</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona el nivel de priodidad</option>
-                    <option value="lov">Baja</option>
-                    <option value="mid">Media</option>
-                    <option value="high">Alta</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="message">Mensaje</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Cuéntanos sobre tu situación y objetivos..."
-                    rows={4}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="file">Subir Documento (opcional)</Label>
-                  <div className="mt-1">
-                    <Input id="file" type="file" className="hidden" />
-                    <Button
-                      variant="outline"
-                      onClick={() => document.getElementById("file")?.click()}
-                      className="w-full border-dashed"
+                  <div>
+                    <Label htmlFor="serviceArea">Área de Interés</Label>
+                    <select
+                      id="serviceArea"
+                      name="serviceArea"
+                      className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm"
                     >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Seleccionar archivo
+                      <option value="">Selecciona un área</option>
+                      <option value="financial">Asesoría Financiera</option>
+                      <option value="family">Relaciones Familiares</option>
+                      <option value="love">Relaciones Amorosas</option>
+                      <option value="advisor">Quiero ser Asesor</option>
+                    </select>
+                    {formState.errors?.serviceArea && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.serviceArea[0]}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="priority">Nivel de Prioridad</Label>
+                    <select
+                      id="priority"
+                      name="priority"
+                      className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm"
+                    >
+                      <option value="">Selecciona el nivel de prioridad</option>
+                      <option value="low">Baja</option>
+                      <option value="medium">Media</option>
+                      <option value="high">Alta</option>
+                    </select>
+                    {formState.errors?.priority && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.priority[0]}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="message">Mensaje</Label>
+                    <Textarea
+                      id="message"
+                      name="message"
+                      placeholder="Cuéntanos sobre tu situación y objetivos..."
+                      rows={4}
+                      className="mt-1"
+                    />
+                    {formState.errors?.message && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.message[0]}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="file">Subir Documento (opcional)</Label>
+                    <div className="mt-1">
+                      <Input id="file" name="file" type="file" className="hidden" />
+                      <Button
+                        type="button" // Important: prevent form submission
+                        variant="outline"
+                        onClick={() => document.getElementById("file")?.click()}
+                        className="w-full border-dashed"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Seleccionar archivo
+                      </Button>
+                      {formState.errors?.file && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.file[0]}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600">
+                      Enviar Mensaje
+                    </Button>
+                    <Button variant="outline" className="flex-1 border-border/40 bg-transparent">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Agendar Consulta
                     </Button>
                   </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600">Enviar Mensaje</Button>
-                  <Button variant="outline" className="flex-1 border-border/40">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Agendar Consulta
-                  </Button>
-                </div>
+                </form>
               </CardContent>
             </Card>
           </div>
@@ -883,7 +943,7 @@ export default function SolucionesHumanas() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-1">
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-6 h-6" />
+                <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={24} height={24} />
                 <h4 className="text-lg font-bold text-foreground">Fox Lawyer</h4>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
@@ -930,13 +990,13 @@ export default function SolucionesHumanas() {
             <div>
               <h5 className="font-semibold mb-4 text-foreground">Síguenos</h5>
               <div className="flex space-x-3">
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
+                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
                   <FacebookIcon />
                 </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
+                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
                   <InstagramIcon />
                 </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
+                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
                   <TwitterIcon />
                 </Button>
               </div>
@@ -950,6 +1010,7 @@ export default function SolucionesHumanas() {
           </div>
         </div>
       </footer>
+      <Toaster />
     </div>
   )
 }
