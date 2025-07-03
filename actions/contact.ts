@@ -1,6 +1,6 @@
 "use server"
 
-import { supabase } from "@/lib/supabase"
+import { supabaseServer } from "@/lib/supabase-server" // Corrected import
 import { revalidatePath } from "next/cache"
 import { v4 as uuidv4 } from "uuid"
 
@@ -50,7 +50,8 @@ export async function submitContactForm(prevState: FormState, formData: FormData
     const fileName = `${uuidv4()}.${fileExtension}`
     const filePath = `inquiries/${fileName}`
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    // Use supabaseServer for privileged operations like file uploads
+    const { data: uploadData, error: uploadError } = await supabaseServer.storage
       .from("inquiry-files") // Ensure this bucket exists in your Supabase project
       .upload(filePath, file, {
         cacheControl: "3600",
@@ -63,12 +64,13 @@ export async function submitContactForm(prevState: FormState, formData: FormData
     }
 
     // Get public URL for the uploaded file
-    const { data: publicUrlData } = supabase.storage.from("inquiry-files").getPublicUrl(filePath)
+    const { data: publicUrlData } = supabaseServer.storage.from("inquiry-files").getPublicUrl(filePath)
     fileUrl = publicUrlData.publicUrl
   }
 
   try {
-    const { data, error } = await supabase.from("inquiries").insert({
+    const { data, error } = await supabaseServer.from("inquiries").insert({
+      // Use supabaseServer here too
       first_name: firstName,
       last_name: lastName,
       email,

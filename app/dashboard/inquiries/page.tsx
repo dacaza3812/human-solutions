@@ -1,23 +1,15 @@
 "use client"
 
-import { Label } from "@/components/ui/label"
-
-import { AlertDescription } from "@/components/ui/alert"
-
-import { Alert } from "@/components/ui/alert"
-
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { format } from "date-fns"
+import { EyeIcon, DownloadIcon, XIcon, CheckCircleIcon, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { supabase } from "@/lib/supabase"
-import { Loader2, XCircle, Search, Eye, Download } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { toast } from "@/components/ui/use-toast"
 import Image from "next/image"
 
 interface Inquiry {
@@ -25,9 +17,9 @@ interface Inquiry {
   first_name: string
   last_name: string
   email: string
-  phone?: string
+  phone: string | null
   message: string
-  file_url?: string
+  file_url: string | null
   status: "new" | "in_progress" | "resolved" | "archived"
   created_at: string
 }
@@ -35,279 +27,213 @@ interface Inquiry {
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [filterStatus, setFilterStatus] = useState<string>("new")
-  const [searchTerm, setSearchTerm] = useState<string>("")
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState<Inquiry["status"] | "">("")
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     fetchInquiries()
-  }, [filterStatus, searchTerm])
+  }, [])
 
   const fetchInquiries = async () => {
     setLoading(true)
-    setError(null)
-    try {
-      let query = supabase.from("inquiries").select("*")
-
-      if (filterStatus !== "all") {
-        query = query.eq("status", filterStatus)
-      }
-
-      if (searchTerm) {
-        query = query.or(
-          `first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,message.ilike.%${searchTerm}%`,
-        )
-      }
-
-      query = query.order("created_at", { ascending: false })
-
-      const { data, error } = await query
-
-      if (error) {
-        throw error
-      }
-      setInquiries(data || [])
-    } catch (err: any) {
-      console.error("Error fetching inquiries:", err)
-      setError("Error al cargar las consultas: " + err.message)
-    } finally {
-      setLoading(false)
+    const { data, error } = await supabase.from("inquiries").select("*").order("created_at", { ascending: false })
+    if (error) {
+      console.error("Error fetching inquiries:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los mensajes.",
+        variant: "destructive",
+      })
+    } else {
+      setInquiries(data as Inquiry[])
     }
+    setLoading(false)
   }
 
-  const updateInquiryStatus = async (id: string, newStatus: Inquiry["status"]) => {
-    try {
-      const { error } = await supabase
-        .from("inquiries")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq("id", id)
-
-      if (error) {
-        throw error
-      }
-      fetchInquiries() // Re-fetch to update the list
-      if (selectedInquiry && selectedInquiry.id === id) {
-        setSelectedInquiry((prev) => (prev ? { ...prev, status: newStatus } : null))
-      }
-    } catch (err: any) {
-      console.error("Error updating inquiry status:", err)
-      setError("Error al actualizar el estado de la consulta: " + err.message)
-    }
-  }
-
-  const getStatusBadgeVariant = (status: Inquiry["status"]) => {
-    switch (status) {
-      case "new":
-        return "default"
-      case "in_progress":
-        return "secondary"
-      case "resolved":
-        return "success"
-      case "archived":
-        return "outline"
-      default:
-        return "default"
-    }
-  }
-
-  const openInquiryModal = (inquiry: Inquiry) => {
+  const handleOpenModal = (inquiry: Inquiry) => {
     setSelectedInquiry(inquiry)
+    setCurrentStatus(inquiry.status)
     setIsModalOpen(true)
   }
 
-  const closeInquiryModal = () => {
+  const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedInquiry(null)
+    setCurrentStatus("")
+  }
+
+  const handleStatusChange = async (newStatus: Inquiry["status"]) => {
+    if (!selectedInquiry) return
+
+    setIsUpdatingStatus(true)
+    const { error } = await supabase.from("inquiries").update({ status: newStatus }).eq("id", selectedInquiry.id)
+
+    if (error) {
+      console.error("Error updating inquiry status:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado del mensaje.",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Éxito",
+        description: "Estado del mensaje actualizado correctamente.",
+        action: <CheckCircleIcon className="text-green-500" />,
+      })
+      setCurrentStatus(newStatus)
+      // Optimistically update the list or refetch
+      setInquiries((prev) => prev.map((inq) => (inq.id === selectedInquiry.id ? { ...inq, status: newStatus } : inq)))
+      setSelectedInquiry((prev) => (prev ? { ...prev, status: newStatus } : null))
+    }
+    setIsUpdatingStatus(false)
+  }
+
+  const getStatusBadgeClass = (status: Inquiry["status"]) => {
+    switch (status) {
+      case "new":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
+      case "resolved":
+        return "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+      case "archived":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+      default:
+        return ""
+    }
   }
 
   const isImageFile = (url: string) => {
     const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"]
-    const extension = url.substring(url.lastIndexOf(".")).toLowerCase()
-    return imageExtensions.includes(extension)
+    const extension = url.split(".").pop()?.toLowerCase()
+    return extension && imageExtensions.includes(`.${extension}`)
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-        <p className="ml-2 text-muted-foreground">Cargando consultas...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          <XCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Cargando mensajes...</span>
       </div>
     )
   }
 
   return (
-    <div className="p-6">
+    <div className="grid gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="font-semibold text-lg md:text-2xl">Mensajes de Contacto</h1>
+      </div>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">Consultas de Contacto</CardTitle>
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar consultas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 w-[200px]"
-              />
-            </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filtrar por estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="new">Nuevas</SelectItem>
-                <SelectItem value="in_progress">En Progreso</SelectItem>
-                <SelectItem value="resolved">Resueltas</SelectItem>
-                <SelectItem value="archived">Archivadas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <CardHeader>
+          <CardTitle>Todos los Mensajes</CardTitle>
         </CardHeader>
         <CardContent>
           {inquiries.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No hay consultas para mostrar.</p>
+            <p className="text-center text-muted-foreground">No hay mensajes de contacto para mostrar.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead>Mensaje</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inquiries.map((inquiry) => (
+                  <TableRow key={inquiry.id}>
+                    <TableCell className="font-medium">
+                      {inquiry.first_name} {inquiry.last_name}
+                    </TableCell>
+                    <TableCell>{inquiry.email}</TableCell>
+                    <TableCell>{format(new Date(inquiry.created_at), "dd/MM/yyyy HH:mm")}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full ${getStatusBadgeClass(inquiry.status)}`}>
+                        {inquiry.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" onClick={() => handleOpenModal(inquiry)}>
+                        <EyeIcon className="h-4 w-4 mr-2" />
+                        Ver
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {inquiries.map((inquiry) => (
-                    <TableRow key={inquiry.id}>
-                      <TableCell className="font-medium">
-                        {inquiry.first_name} {inquiry.last_name}
-                      </TableCell>
-                      <TableCell>{inquiry.email}</TableCell>
-                      <TableCell>{inquiry.phone || "N/A"}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{inquiry.message}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadgeVariant(inquiry.status)}>
-                          {inquiry.status.charAt(0).toUpperCase() + inquiry.status.slice(1).replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{format(new Date(inquiry.created_at), "dd MMM yyyy HH:mm", { locale: es })}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openInquiryModal(inquiry)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
-
       {selectedInquiry && (
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogTrigger asChild>
+            <Button variant="outline">Abrir Modal</Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Detalles de la Consulta</DialogTitle>
-              <DialogDescription>
-                Información completa sobre la consulta de {selectedInquiry.first_name}.
-              </DialogDescription>
+              <DialogTitle>Mensaje de Contacto</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Nombre:</Label>
-                <span className="col-span-3">
-                  {selectedInquiry.first_name} {selectedInquiry.last_name}
-                </span>
+            <div className="flex flex-col gap-4">
+              <div>
+                <strong>Nombre:</strong> {selectedInquiry.first_name} {selectedInquiry.last_name}
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Email:</Label>
-                <span className="col-span-3">{selectedInquiry.email}</span>
+              <div>
+                <strong>Email:</strong> {selectedInquiry.email}
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Teléfono:</Label>
-                <span className="col-span-3">{selectedInquiry.phone || "N/A"}</span>
+              <div>
+                <strong>Fecha:</strong> {format(new Date(selectedInquiry.created_at), "dd/MM/yyyy HH:mm")}
               </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label className="text-right">Mensaje:</Label>
-                <p className="col-span-3 whitespace-pre-wrap">{selectedInquiry.message}</p>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Fecha:</Label>
-                <span className="col-span-3">
-                  {format(new Date(selectedInquiry.created_at), "dd MMM yyyy HH:mm", { locale: es })}
-                </span>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Estado:</Label>
-                <Select
-                  value={selectedInquiry.status}
-                  onValueChange={(newStatus) => updateInquiryStatus(selectedInquiry.id, newStatus as Inquiry["status"])}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
+              <div>
+                <strong>Estado:</strong>
+                <Select value={currentStatus} onValueChange={handleStatusChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">Nueva</SelectItem>
+                    <SelectItem value="new">Nuevo</SelectItem>
                     <SelectItem value="in_progress">En Progreso</SelectItem>
-                    <SelectItem value="resolved">Resuelta</SelectItem>
-                    <SelectItem value="archived">Archivada</SelectItem>
+                    <SelectItem value="resolved">Resuelto</SelectItem>
+                    <SelectItem value="archived">Archivado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <strong>Mensaje:</strong> {selectedInquiry.message}
+              </div>
               {selectedInquiry.file_url && (
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label className="text-right">Archivo:</Label>
-                  <div className="col-span-3 flex flex-col space-y-2">
-                    {isImageFile(selectedInquiry.file_url) ? (
-                      <Image
-                        src={selectedInquiry.file_url || "/placeholder.svg"}
-                        alt="Archivo adjunto"
-                        width={200}
-                        height={200}
-                        className="max-w-full h-auto rounded-md border"
-                      />
-                    ) : (
-                      <div className="flex items-center space-x-2 text-muted-foreground">
-                        <File className="h-5 w-5" />
-                        <span>{selectedInquiry.file_url.split("/").pop()}</span>
-                      </div>
-                    )}
-                    <a
-                      href={selectedInquiry.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-emerald-500 hover:underline flex items-center"
-                    >
-                      <Download className="h-4 w-4 mr-1" />
-                      Descargar Archivo
+                <div>
+                  <strong>Archivo Adjunto:</strong>
+                  {isImageFile(selectedInquiry.file_url) ? (
+                    <Image
+                      src={selectedInquiry.file_url || "/placeholder.svg"}
+                      alt="Archivo Adjunto"
+                      width={200}
+                      height={200}
+                    />
+                  ) : (
+                    <a href={selectedInquiry.file_url} download>
+                      <Button variant="outline">
+                        <DownloadIcon className="h-4 w-4 mr-2" />
+                        Descargar
+                      </Button>
                     </a>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
-            <div className="flex justify-end">
-              <Button onClick={closeInquiryModal}>Cerrar</Button>
-            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCloseModal}>
+                <XIcon className="h-4 w-4 mr-2" />
+                Cerrar
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
