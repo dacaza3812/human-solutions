@@ -1,218 +1,154 @@
 import type React from "react"
-import Link from "next/link"
-import { Home, Package2, Settings, ShoppingCart, Users, BookOpenText, MessageSquare } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { getSupabaseServerClient } from "@/lib/supabase-server"
+import { redirect } from "next/navigation"
+import { Sidebar } from "@/components/ui/sidebar"
+import { HomeIcon, UsersIcon, MessageSquareIcon, SettingsIcon, FileQuestionIcon } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { AuthProvider } from "@/contexts/auth-context"
-import { Toaster } from "@/components/ui/toaster"
 import Image from "next/image"
-import { Suspense } from "react"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { MenuIcon } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import Link from "next/link"
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login")
+  }
+
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, username, avatar_url")
+    .eq("id", user.id)
+    .single()
+
+  if (profileError || !profileData) {
+    console.error("Error fetching profile:", profileError)
+    // Handle error, maybe redirect to a profile setup page or show a generic error
+    redirect("/login") // Or a more appropriate error page
+  }
+
+  const userRole = profileData.role
+  const username = profileData.username || user.email
+  const avatarUrl = profileData.avatar_url || "/placeholder-user.jpg"
+
+  const navigationItems = [
+    {
+      href: "/dashboard",
+      icon: HomeIcon,
+      text: "Dashboard",
+      roles: ["client", "advisor"],
+    },
+    {
+      href: "/dashboard/cases",
+      icon: FileQuestionIcon,
+      text: "Casos",
+      roles: ["client", "advisor"],
+    },
+    {
+      href: "/dashboard/messages",
+      icon: MessageSquareIcon,
+      text: "Mensajes",
+      roles: ["client", "advisor"],
+    },
+    {
+      href: "/dashboard/inquiries", // New inquiries route
+      icon: FileQuestionIcon, // Using FileQuestionIcon for inquiries, can be changed
+      text: "Contactos",
+      roles: ["advisor"], // Only advisors can see this
+    },
+    {
+      href: "/dashboard/referrals",
+      icon: UsersIcon,
+      text: "Referidos",
+      roles: ["advisor"],
+    },
+    {
+      href: "/dashboard/subscriptions",
+      icon: HomeIcon, // Placeholder, consider a more relevant icon
+      text: "Suscripciones",
+      roles: ["client", "advisor"],
+    },
+    {
+      href: "/dashboard/settings",
+      icon: SettingsIcon,
+      text: "Configuración",
+      roles: ["client", "advisor"],
+    },
+  ]
+
+  const filteredNavigation = navigationItems.filter((item) => item.roles.includes(userRole))
+
   return (
-    <AuthProvider>
-      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-        <div className="hidden border-r bg-muted/40 md:block">
-          <div className="flex h-full max-h-screen flex-col gap-2">
-            <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-              <Link href="/" className="flex items-center gap-2 font-semibold">
-                <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer Logo" width={24} height={24} />
-                <span className="">Soluciones Humanas</span>
-              </Link>
-              <ThemeToggle className="ml-auto" />
-            </div>
-            <div className="flex-1">
-              <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <Home className="h-4 w-4" />
-                  Dashboard
+    <div className="flex min-h-screen w-full">
+      {/* Desktop Sidebar */}
+      <Sidebar navigation={filteredNavigation} userRole={userRole} className="hidden lg:flex" />
+
+      <div className="flex flex-col flex-1">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="outline" className="lg:hidden bg-transparent">
+                <MenuIcon className="h-5 w-5" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="sm:max-w-xs">
+              <nav className="grid gap-6 text-lg font-medium">
+                <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
+                  <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={24} height={24} />
+                  <span>Fox Lawyer</span>
                 </Link>
-                <Link
-                  href="/dashboard/cases"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <BookOpenText className="h-4 w-4" />
-                  Casos
-                </Link>
-                <Link
-                  href="/dashboard/messages"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Mensajes
-                  <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">6</Badge>
-                </Link>
-                <Link
-                  href="/dashboard/subscriptions"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  Suscripciones
-                </Link>
-                <Link
-                  href="/dashboard/referrals"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <Users className="h-4 w-4" />
-                  Referidos
-                </Link>
-                <Link
-                  href="/dashboard/inquiries" // New link for inquiries
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <BookOpenText className="h-4 w-4" /> {/* Reusing icon, consider a different one if available */}
-                  Contactos
-                </Link>
-                <Link
-                  href="/dashboard/settings"
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <Settings className="h-4 w-4" />
-                  Configuración
-                </Link>
+                {filteredNavigation.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.text}
+                  </Link>
+                ))}
               </nav>
-            </div>
-            <div className="mt-auto p-4">
-              <Card>
-                <CardHeader className="p-2 pt-0 md:p-4">
-                  <CardTitle>Actualiza a Pro</CardTitle>
-                  <CardDescription>
-                    Desbloquea todas las funciones y obtén acceso ilimitado a nuestra plataforma.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
-                  <Button size="sm" className="w-full">
-                    Actualizar
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="shrink-0 md:hidden bg-transparent">
-                  <Home className="h-5 w-5" />
-                  <span className="sr-only">Toggle navigation menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="flex flex-col">
-                <nav className="grid gap-2 text-lg font-medium">
-                  <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
-                    <Package2 className="h-6 w-6" />
-                    <span className="sr-only">Acme Inc</span>
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Home className="h-5 w-5" />
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/dashboard/cases"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <BookOpenText className="h-5 w-5" />
-                    Casos
-                  </Link>
-                  <Link
-                    href="/dashboard/messages"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <MessageSquare className="h-5 w-5" />
-                    Mensajes
-                    <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">6</Badge>
-                  </Link>
-                  <Link
-                    href="/dashboard/subscriptions"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                    Suscripciones
-                  </Link>
-                  <Link
-                    href="/dashboard/referrals"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Users className="h-5 w-5" />
-                    Referidos
-                  </Link>
-                  <Link
-                    href="/dashboard/inquiries" // New link for inquiries
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <BookOpenText className="h-5 w-5" />
-                    Contactos
-                  </Link>
-                  <Link
-                    href="/dashboard/settings"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Settings className="h-5 w-5" />
-                    Configuración
-                  </Link>
-                </nav>
-                <div className="mt-auto">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Actualiza a Pro</CardTitle>
-                      <CardDescription>
-                        Desbloquea todas las funciones y obtén acceso ilimitado a nuestra plataforma.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button size="sm" className="w-full">
-                        Actualizar
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </SheetContent>
-            </Sheet>
-            {/* <div className="w-full flex-1">
-              <form>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search products..."
-                    className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
-                  />
-                </div>
-              </form>
-            </div> */}
-            {/* <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full">
-                  <CircleUser className="h-5 w-5" />
-                  <span className="sr-only">Toggle user menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuItem>Support</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Logout</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu> */}
-          </header>
-          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-            <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
-          </main>
-        </div>
+            </SheetContent>
+          </Sheet>
+          <div className="relative ml-auto flex-1 md:grow-0">{/* Search or other header content */}</div>
+          <ThemeToggle />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar>
+                  <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={username || "User"} />
+                  <AvatarFallback>{username ? username[0].toUpperCase() : "U"}</AvatarFallback>
+                </Avatar>
+                <span className="sr-only">Toggle user menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Mi Perfil</DropdownMenuItem>
+              <DropdownMenuItem>Configuración</DropdownMenuItem>
+              <DropdownMenuItem>Soporte</DropdownMenuItem>
+              <DropdownMenuItem>
+                <form action="/auth/sign-out" method="post" className="w-full">
+                  <button type="submit" className="w-full text-left">
+                    Cerrar Sesión
+                  </button>
+                </form>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 p-4 sm:px-6 sm:py-0">{children}</main>
       </div>
-      <Toaster />
-    </AuthProvider>
+    </div>
   )
 }

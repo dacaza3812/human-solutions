@@ -1,96 +1,124 @@
 "use server"
 
-import { supabaseServer } from "@/lib/supabase-server" // Corrected import
-import { revalidatePath } from "next/cache"
+import { z } from "zod"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 import { v4 as uuidv4 } from "uuid"
 
-interface FormState {
-  success: boolean
-  message: string
-  errors?: {
-    firstName?: string[]
-    lastName?: string[]
-    email?: string[]
-    phone?: string[]
-    message?: string[]
-    file?: string[]
-  }
-}
+const contactFormSchema = z.object({
+  firstName: z.string().min(1, "El nombre es requerido."),
+  lastName: z.string().min(1, "El apellido es requerido."),
+  email: z.string().email("Correo electrónico inválido."),
+  phone: z.string().optional(),
+  message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres."),
+  file: z
+    .instanceof(File)
+    .optional()
+    .refine((file) => {
+      if (file) {
+        // Max file size 5MB
+        return file.size <= 5 * 1024 * 1024
+      }
+      return true
+    }, "El archivo debe ser menor de 5MB."),
+})
 
-export async function submitContactForm(prevState: FormState, formData: FormData): Promise<FormState> {
-  const firstName = formData.get("firstName") as string
-  const lastName = formData.get("lastName") as string
-  const email = formData.get("email") as string
-  const phone = formData.get("phone") as string
-  const message = formData.get("message") as string
-  const file = formData.get("file") as File | null
+export async function submitContactForm(prevState: any, formData: FormData) {
+  const cookieStore = cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role key for server-side operations like storage uploads
+    {
+      cookies: {
+        get: (name: string) => cookieStore.get(name)?.value,
+        set: (name: string, value: string, options: any) => cookieStore.set(name, value, options),
+        remove: (name: string) => cookieStore.delete(name), // Corrected the remove function
+      },
+    },
+  )
 
-  const errors: FormState["errors"] = {}
+  const parsed = contactFormSchema.safeParse({
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    message: formData.get("message"),
+    file: formData.get("file") instanceof File && formData.get("file")?.size > 0 ? formData.get("file") : undefined,
+  })
 
-  if (!firstName || firstName.trim() === "") {
-    errors.firstName = ["El nombre es requerido."]
-  }
-  if (!lastName || lastName.trim() === "") {
-    errors.lastName = ["El apellido es requerido."]
-  }
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = ["El correo electrónico es inválido."]
-  }
-  if (!message || message.trim() === "") {
-    errors.message = ["El mensaje es requerido."]
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { success: false, message: "Por favor, corrige los errores en el formulario.", errors }
-  }
-
-  let fileUrl: string | null = null
-  if (file && file.size > 0) {
-    const fileExtension = file.name.split(".").pop()
-    const fileName = `${uuidv4()}.${fileExtension}`
-    const filePath = `inquiries/${fileName}`
-
-    // Use supabaseServer for privileged operations like file uploads
-    const { data: uploadData, error: uploadError } = await supabaseServer.storage
-      .from("inquiry-files") // Ensure this bucket exists in your Supabase project
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      })
-
-    if (uploadError) {
-      console.error("Error uploading file:", uploadError)
-      return { success: false, message: `Error al subir el archivo: ${uploadError.message}` }
+  if (!parsed.success) {
+    console.error("Validation errors:", parsed.error.flatten().fieldErrors)
+    return {
+      success: false,
+      message: "Error de validación. Por favor, revisa los campos.",
+      errors: parsed.error.flatten().fieldErrors,
     }
+  }
 
-    // Get public URL for the uploaded file
-    const { data: publicUrlData } = supabaseServer.storage.from("inquiry-files").getPublicUrl(filePath)
-    fileUrl = publicUrlData.publicUrl
+  const { firstName, lastName, email, phone, message, file } = parsed.data
+  let fileUrl: string | null = null
+
+  if (file) {
+    const fileExtension = file.name.split(".").pop()
+    const filePath = `${uuidv4()}.${fileExtension}` // Generate a unique file name
+    try {
+      const { data, error: uploadError } = await supabase.storage
+        .from("inquiry-files") // Ensure this bucket exists in Supabase Storage
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError)
+        return {
+          success: false,
+          message: `Error al subir el archivo: ${uploadError.message}`,
+          errors: {},
+        }
+      }
+      fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/inquiry-files/${filePath}`
+    } catch (e) {
+      console.error("Caught error during file upload:", e)
+      return {
+        success: false,
+        message: "Error inesperado al subir el archivo.",
+        errors: {},
+      }
+    }
   }
 
   try {
-    const { data, error } = await supabaseServer.from("inquiries").insert({
-      // Use supabaseServer here too
+    const { error: dbError } = await supabase.from("inquiries").insert({
       first_name: firstName,
       last_name: lastName,
       email,
-      phone: phone || null,
+      phone,
       message,
       file_url: fileUrl,
-      status: "new", // Default status
+      status: "new",
     })
 
-    if (error) {
-      console.error("Error inserting inquiry:", error)
-      return { success: false, message: `Error al enviar el formulario: ${error.message}` }
+    if (dbError) {
+      console.error("Error inserting inquiry:", dbError)
+      return {
+        success: false,
+        message: `Error al enviar el mensaje: ${dbError.message}`,
+        errors: {},
+      }
     }
 
-    revalidatePath("/") // Revalidate the landing page if needed
-    revalidatePath("/dashboard/inquiries") // Revalidate the new dashboard section
-
-    return { success: true, message: "¡Tu mensaje ha sido enviado exitosamente! Nos pondremos en contacto pronto." }
-  } catch (e: any) {
-    console.error("Unexpected error:", e)
-    return { success: false, message: `Ocurrió un error inesperado: ${e.message}` }
+    return {
+      success: true,
+      message: "¡Mensaje enviado con éxito! Nos pondremos en contacto pronto.",
+      errors: {},
+    }
+  } catch (e) {
+    console.error("Caught error during database insertion:", e)
+    return {
+      success: false,
+      message: "Error inesperado al enviar el mensaje.",
+      errors: {},
+    }
   }
 }

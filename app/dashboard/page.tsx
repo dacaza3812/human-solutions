@@ -1,18 +1,21 @@
 "use client"
-
-import type React from "react"
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
-import { Plus, DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
+import { getSupabaseServerClient } from "@/lib/supabase-server"
+import { redirect } from "next/navigation"
 import { UserInfoCard } from "./components/user-info-card"
-import { StatsGrid } from "./components/stats-grid"
 import { RecentActivityCard } from "./components/recent-activity-card"
 import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-// InquiriesSection is now a separate page, no longer imported here
+import { StatsGrid } from "./components/stats-grid"
+import { ClientCasesSection } from "./components/client-cases-section"
+import { AdvisorCasesSection } from "./components/advisor-cases-section"
+import { AdvisorClientsSection } from "./components/advisor-clients-section"
+import { MessagesSection } from "./components/messages-section"
+import { QuotesSection } from "./components/quotes-section"
+import { FinancialOverviewSection } from "./components/financial-overview-section"
+import { ReferralsSection } from "./components/referrals-section"
+import { SubscriptionsSection } from "./components/subscriptions-section"
+import { SettingsSection } from "./components/settings-section"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -26,48 +29,33 @@ interface UserProfile {
   stripe_customer_id?: string | null
 }
 
-// Define tipos para los datos mock
-interface ClientCase {
-  id: number
-  title: string
-  type: string
-  status: string
-  advisor: string
-  advisorAvatar: string
-  description: string
-  createdDate: string
-  nextAppointment: string | null
-  progress: number
-}
+export default async function DashboardPage() {
+  const supabase = getSupabaseServerClient()
 
-interface AdvisorClient {
-  id: number
-  name: string
-  email: string
-  phone: string
-  avatar: string
-  totalCases: number
-  activeCases: number
-  completedCases: number
-  joinDate: string
-  lastActivity: string
-}
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-interface AdvisorCase {
-  id: number
-  clientName: string
-  clientId: number
-  title: string
-  type: string
-  status: string
-  priority: string
-  createdDate: string
-  dueDate: string
-  description: string
-  progress: number
-}
+  if (!user) {
+    redirect("/login")
+  }
 
-export default function DashboardPage() {
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, username, avatar_url")
+    .eq("id", user.id)
+    .single()
+
+  if (profileError || !profileData) {
+    console.error("Error fetching profile:", profileError)
+    // Handle error, maybe redirect to a profile setup page or show a generic error
+    redirect("/login") // Or a more appropriate error page
+  }
+
+  const userRole = profileData.role
+  const username = profileData.username || user.email
+  const avatarUrl = profileData.avatar_url || "/placeholder-user.jpg"
+
   const [activeView, setActiveView] = useState("overview")
   const [referralStats, setReferralStats] = useState({
     total_referrals: 0,
@@ -77,14 +65,14 @@ export default function DashboardPage() {
   })
   const [referralCode, setReferralCode] = useState("")
   const [copySuccess, setCopySuccess] = useState(false)
-  const [selectedCase, setSelectedCase] = useState<AdvisorCase | null>(null)
-  const [selectedClient, setSelectedClient] = useState<AdvisorClient | null>(null)
-  const [activeChat, setActiveChat] = useState<number | null>(null)
+  const [selectedCase, setSelectedCase] = useState(null)
+  const [selectedClient, setSelectedClient] = useState(null)
+  const [activeChat, setActiveChat] = useState(null)
   const [clientFilter, setClientFilter] = useState("")
   const [caseFilter, setCaseFilter] = useState("all")
-  const { user, profile, updateUserProfile, changePassword } = useAuth()
+  const { updateUserProfile, changePassword } = useAuth()
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [selectedDate, setSelectedDate] = useState(new Date())
   const [dateRange, setDateRange] = useState({
     start: "2024-01-01",
     end: "2024-12-31",
@@ -97,25 +85,23 @@ export default function DashboardPage() {
   const [passwordChangeMessage, setPasswordChangeMessage] = useState("")
   const [passwordChangeError, setPasswordChangeError] = useState("")
 
-  const [firstName, setFirstName] = useState(profile?.first_name || "")
-  const [lastName, setLastName] = useState(profile?.last_name || "")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [profileUpdateMessage, setProfileUpdateMessage] = useState("")
   const [profileUpdateError, setProfileUpdateError] = useState("")
 
-  const [newReferralCode, setNewReferralCode] = useState(profile?.referral_code || "")
+  const [newReferralCode, setNewReferralCode] = useState("")
   const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
   const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
 
   useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name || "")
-      setLastName(profile.last_name || "")
-      setNewReferralCode(profile.referral_code || "")
-    }
-  }, [profile])
+    setFirstName(profileData.username || "")
+    setLastName("")
+    setNewReferralCode("")
+  }, [profileData])
 
   // Mock data for current user's cases (client view)
-  const userCases: ClientCase[] = [
+  const userCases = [
     {
       id: 1,
       title: "Asesoría Financiera Personal",
@@ -156,7 +142,7 @@ export default function DashboardPage() {
   ]
 
   // Mock data for advisor's clients
-  const advisorClients: AdvisorClient[] = [
+  const advisorClients = [
     {
       id: 1,
       name: "Juan Pérez",
@@ -196,7 +182,7 @@ export default function DashboardPage() {
   ]
 
   // Mock data for advisor's cases
-  const advisorCases: AdvisorCase[] = [
+  const advisorCases = [
     {
       id: 1,
       clientName: "Juan Pérez",
@@ -244,23 +230,22 @@ export default function DashboardPage() {
 
   // Generate referral code on component mount
   useEffect(() => {
-    if (profile && !referralCode) {
+    if (!referralCode) {
       const generateReferralCode = () => {
-        const firstName = profile.first_name?.toLowerCase() || ""
-        const lastName = profile.last_name?.toLowerCase() || ""
+        const firstName = username.toLowerCase() || ""
         const randomNum = Math.floor(Math.random() * 1000)
-        return `${firstName}${lastName}${randomNum}`
+        return `${firstName}${randomNum}`
       }
       setReferralCode(generateReferralCode())
     }
-  }, [profile, referralCode])
+  }, [referralCode, username])
 
   // Fetch referral stats for clients
   useEffect(() => {
-    if (profile?.account_type === "client" && profile.id) {
+    if (userRole === "client" && user.id) {
       fetchReferralStats()
     }
-  }, [profile])
+  }, [userRole, user])
 
   const fetchReferralStats = async () => {
     try {
@@ -299,7 +284,7 @@ export default function DashboardPage() {
     }
   }
 
-  const openChatForCase = (caseId: number) => {
+  const openChatForCase = (caseId) => {
     setActiveChat(caseId)
     setActiveView("messages")
   }
@@ -315,289 +300,39 @@ export default function DashboardPage() {
     return case_item.status.toLowerCase().includes(caseFilter.toLowerCase())
   })
 
-  // Define stats for advisor
-  const advisorStats = [
-    {
-      title: "Clientes Activos",
-      value: "124",
-      change: "+12%",
-      icon: Users,
-      color: "text-emerald-400",
-    },
-    {
-      title: "Casos Resueltos",
-      value: "89",
-      change: "+8%",
-      icon: Target,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ingresos Mensuales",
-      value: "$12,450",
-      change: "+23%",
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Satisfacción",
-      value: "98%",
-      change: "+2%",
-      icon: Award,
-      color: "text-orange-400",
-    },
-  ]
-
-  // Define stats for client
-  const clientStats = [
-    {
-      title: "Casos Activos",
-      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
-      change: "+1",
-      icon: FileText,
-      color: "text-emerald-400",
-    },
-    {
-      title: "Referidos Totales",
-      value: referralStats.total_referrals.toString(),
-      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
-      icon: UserPlus,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ganancias Totales",
-      value: `$${referralStats.total_earnings}`,
-      change: `+$${referralStats.monthly_earnings}`,
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Próximas Citas",
-      value: userScheduledCases.length.toString(),
-      change: "Esta semana",
-      icon: Calendar,
-      color: "text-orange-400",
-    },
-  ]
-
-  // Determine which set of stats to pass
-  const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
-
-  const recentActivity = [
-    {
-      id: 1,
-      type: "Nuevo Cliente",
-      description: "María González se registró para asesoría financiera",
-      time: "Hace 2 horas",
-      status: "success",
-    },
-    {
-      id: 2,
-      type: "Caso Completado",
-      description: "Caso de mediación familiar #1234 resuelto exitosamente",
-      time: "Hace 4 horas",
-      status: "completed",
-    },
-    {
-      id: 3,
-      type: "Pago Recibido",
-      description: "Pago de $150 USD recibido de Carlos Rodríguez",
-      time: "Hace 6 horas",
-      status: "payment",
-    },
-    {
-      id: 4,
-      type: "Consulta Programada",
-      description: "Nueva consulta programada para mañana a las 10:00 AM",
-      time: "Hace 1 día",
-      status: "scheduled",
-    },
-  ]
-
-  // Data for UpcomingAppointmentsCard
-  const upcomingAppointmentsData = [
-    {
-      title: "Consulta Financiera",
-      time: "10:00 AM",
-      description: "Ana Martínez - Planificación presupuestaria",
-      colorClass: "emerald",
-    },
-    {
-      title: "Mediación Familiar",
-      time: "2:30 PM",
-      description: "Familia Rodríguez - Resolución de conflictos",
-      colorClass: "blue",
-    },
-    {
-      title: "Consulta Profesional",
-      time: "4:00 PM",
-      description: "Luis Fernández - Asesoría empresarial",
-      colorClass: "purple",
-    },
-  ]
-
-  // Handlers for Settings section
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPasswordChangeMessage("")
-    setPasswordChangeError("")
-
-    if (newPassword !== confirmNewPassword) {
-      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
-      return
-    }
-    if (newPassword.length < 6) {
-      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
-      return
-    }
-
-    const { error } = await changePassword(newPassword)
-
-    if (error) {
-      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
-    } else {
-      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmNewPassword("")
-    }
-  }
-
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setProfileUpdateMessage("")
-    setProfileUpdateError("")
-
-    if (!firstName.trim() || !lastName.trim()) {
-      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
-      return
-    }
-
-    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
-
-    if (error) {
-      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
-    } else {
-      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
-    }
-  }
-
-  const handleReferralCodeUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setReferralCodeUpdateMessage("")
-    setReferralCodeUpdateError("")
-
-    if (!newReferralCode.trim()) {
-      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
-      return
-    }
-    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
-      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
-      return
-    }
-
-    const { error } = await updateUserProfile({ referral_code: newReferralCode })
-
-    if (error) {
-      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
-    } else {
-      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
-      setReferralCode(newReferralCode)
-    }
-  }
-
   return (
-    <div className="p-6">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
-            <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
-          </div>
-          {profile?.account_type === "advisor" && (
-            <Button className="bg-emerald-500 hover:bg-emerald-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Caso
-            </Button>
-          )}
-        </div>
-
-        {/* User Info Card */}
-        <UserInfoCard user={user} profile={profile} />
-
-        {/* Stats Grid */}
-        <StatsGrid stats={displayStats} />
-
-        {/* Recent Activity */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          <RecentActivityCard recentActivity={recentActivity} />
-          <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
-        </div>
-
-        {/* Tabs for different sections (removed Inquiries tab) */}
-        <div className="mt-6">
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-5">
-              {" "}
-              {/* Adjusted grid-cols */}
-              <TabsTrigger value="overview">Resumen</TabsTrigger>
-              <TabsTrigger value="cases">Casos</TabsTrigger>
-              <TabsTrigger value="appointments">Citas</TabsTrigger>
-              <TabsTrigger value="messages">Mensajes</TabsTrigger>
-              <TabsTrigger value="settings">Configuración</TabsTrigger>
-            </TabsList>
-            <TabsContent value="overview" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resumen General</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Contenido del resumen general.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="cases" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Gestión de Casos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Contenido de gestión de casos.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="appointments" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Próximas Citas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Contenido de próximas citas.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="messages" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Mensajes Recientes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Contenido de mensajes recientes.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="settings" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configuración de la Cuenta</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Contenido de configuración de la cuenta.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+    <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <UserInfoCard username={username} avatarUrl={avatarUrl} userRole={userRole} />
+        <StatsGrid userRole={userRole} />
       </div>
+
+      {userRole === "client" && (
+        <>
+          <ClientCasesSection />
+          <MessagesSection />
+          <QuotesSection />
+          <SubscriptionsSection />
+        </>
+      )}
+
+      {userRole === "advisor" && (
+        <>
+          <AdvisorCasesSection />
+          <AdvisorClientsSection />
+          <FinancialOverviewSection />
+          <ReferralsSection />
+          <MessagesSection />
+          {/* Inquiries section is now a separate page */}
+        </>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-2">
+        <RecentActivityCard />
+        <UpcomingAppointmentsCard />
+      </div>
+
+      <SettingsSection />
     </div>
   )
 }

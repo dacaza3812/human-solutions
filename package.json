@@ -54,9 +54,9 @@
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
     "next-themes": "latest",
-    "react": "^19.1.0",
+    "react": "^18",
     "react-day-picker": "latest",
-    "react-dom": "^19.1.0",
+    "react-dom": "^18",
     "react-hook-form": "latest",
     "react-resizable-panels": "latest",
     "recharts": "latest",
@@ -69,7 +69,7 @@
     "vaul": "latest",
     "vue": "latest",
     "vue-router": "latest",
-    "zod": "^3.22.4"
+    "zod": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
