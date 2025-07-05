@@ -1,5 +1,5 @@
 import type React from "react"
-import { getSupabaseServerClient } from "@/lib/supabase-server"
+import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/ui/sidebar"
 import { HomeIcon, UsersIcon, MessageSquareIcon, SettingsIcon, FileQuestionIcon } from "lucide-react"
@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = getSupabaseServerClient()
+  const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
