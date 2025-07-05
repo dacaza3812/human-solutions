@@ -2,7 +2,7 @@
 
 import { z } from "zod"
 import { Resend } from "resend"
-import { createClient } from "@/lib/supabase-server"
+import { createClient } from "@/lib/supabase-server" // Import the server-side client
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -39,12 +39,12 @@ export async function submitContactForm(
   const { firstName, lastName, email, phone, message, file } = validatedFields.data
 
   try {
-    const supabase = createClient()
+    const supabase = await createClient() // FIX: Await the creation of the Supabase client
     let fileUrl: string | null = null
 
     if (file instanceof File && file.size > 0) {
       const { data, error: uploadError } = await supabase.storage
-        .from("contact-form-uploads")
+        .from("inquiry-files") // Ensure this bucket exists in your Supabase project
         .upload(`${Date.now()}-${file.name}`, file, {
           cacheControl: "3600",
           upsert: false,
@@ -57,16 +57,19 @@ export async function submitContactForm(
           message: "Error al subir el archivo. Por favor, inténtalo de nuevo.",
         }
       }
-      fileUrl = data.path
+      // Get public URL for the uploaded file
+      const { data: publicUrlData } = supabase.storage.from("inquiry-files").getPublicUrl(data.path)
+      fileUrl = publicUrlData.publicUrl
     }
 
     const { error: dbError } = await supabase.from("inquiries").insert({
       first_name: firstName,
       last_name: lastName,
       email: email,
-      phone: phone,
+      phone: phone || null,
       message: message,
       file_url: fileUrl,
+      status: "new", // Default status
     })
 
     if (dbError) {
@@ -95,11 +98,11 @@ export async function submitContactForm(
       success: true,
       message: "Tu mensaje ha sido enviado con éxito. Nos pondremos en contacto contigo pronto.",
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Unexpected error:", error)
     return {
       success: false,
-      message: "Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.",
+      message: `Ocurrió un error inesperado: ${error.message}`,
     }
   }
 }
