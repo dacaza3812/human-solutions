@@ -1,8 +1,8 @@
 import type React from "react"
-import { getSupabaseServerClient } from "@/lib/supabase-server"
+import { createClient } from "@/lib/supabase-server" // Corrected import
 import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/ui/sidebar"
-import { HomeIcon, UsersIcon, MessageSquareIcon, SettingsIcon, FileQuestionIcon } from "lucide-react"
+import { HomeIcon, UsersIcon, MessageSquareIcon, SettingsIcon, FileQuestionIcon, ShoppingCartIcon } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = getSupabaseServerClient()
+  const supabase = createClient() // Corrected usage
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -71,7 +71,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     },
     {
       href: "/dashboard/subscriptions",
-      icon: HomeIcon, // Placeholder, consider a more relevant icon
+      icon: ShoppingCartIcon, // Placeholder, consider a more relevant icon
       text: "Suscripciones",
       roles: ["client", "advisor"],
     },

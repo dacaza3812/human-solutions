@@ -1,431 +1,400 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { format } from "date-fns"
+import { EyeIcon, PlusIcon, MessageSquareIcon, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "@/components/ui/use-toast"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  FileText,
-  Plus,
-  Search,
-  Filter,
-  Calendar,
-  User,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  MessageCircle,
-  Eye,
-  Edit,
-  MoreHorizontal,
-} from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import NewCaseForm from "@/components/new-case-form" // Import the new form component
+
+interface Case {
+  id: string
+  title: string
+  description: string
+  status: "open" | "in_progress" | "resolved" | "closed"
+  priority: "low" | "medium" | "high"
+  created_at: string
+  due_date: string | null
+  client_id: string
+  advisor_id: string | null
+  progress: number | null
+  case_type: string | null
+}
 
 export default function CasesPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [typeFilter, setTypeFilter] = useState("all")
-
-  const cases = [
-    {
-      id: 1,
-      title: "Asesoría Financiera Personal",
-      type: "Asesoría Financiera",
-      status: "En Progreso",
-      priority: "Alta",
-      client: "Juan Pérez",
-      advisor: "Dr. María González",
-      createdDate: "2024-01-15",
-      dueDate: "2024-02-15",
-      progress: 65,
-      description:
-        "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
-      lastActivity: "Hace 2 horas",
-      messages: 12,
-    },
-    {
-      id: 2,
-      title: "Mediación Familiar",
-      type: "Relaciones Familiares",
-      status: "Programada",
-      priority: "Media",
-      client: "María López",
-      advisor: "Lic. Carlos Rodríguez",
-      createdDate: "2024-01-10",
-      dueDate: "2024-01-30",
-      progress: 25,
-      description: "Resolución de conflictos familiares y mejora de la comunicación entre miembros.",
-      lastActivity: "Hace 1 día",
-      messages: 8,
-    },
-    {
-      id: 3,
-      title: "Consulta Legal Empresarial",
-      type: "Asesoría Legal",
-      status: "En Revisión",
-      priority: "Baja",
-      client: "Carlos Mendoza",
-      advisor: "Abg. Ana Martínez",
-      createdDate: "2024-01-08",
-      dueDate: "2024-01-25",
-      progress: 80,
-      description: "Consulta sobre derechos laborales y procedimientos legales para empresa.",
-      lastActivity: "Hace 3 horas",
-      messages: 15,
-    },
-    {
-      id: 4,
-      title: "Planificación Patrimonial",
-      type: "Asesoría Financiera",
-      status: "Completada",
-      priority: "Alta",
-      client: "Sofia Herrera",
-      advisor: "Dr. Luis Fernández",
-      createdDate: "2023-12-20",
-      dueDate: "2024-01-20",
-      progress: 100,
-      description: "Estructuración de patrimonio familiar y planificación sucesoria.",
-      lastActivity: "Hace 2 días",
-      messages: 22,
-    },
-    {
-      id: 5,
-      title: "Terapia de Pareja",
-      type: "Relaciones Familiares",
-      status: "En Progreso",
-      priority: "Media",
-      client: "Roberto Silva",
-      advisor: "Dra. Carmen Ruiz",
-      createdDate: "2024-01-12",
-      dueDate: "2024-02-12",
-      progress: 45,
-      description: "Sesiones de terapia para mejorar la comunicación en la pareja.",
-      lastActivity: "Hace 5 horas",
-      messages: 6,
-    },
-  ]
-
-  const caseStats = {
-    total: cases.length,
-    active: cases.filter((c) => c.status === "En Progreso").length,
-    completed: cases.filter((c) => c.status === "Completada").length,
-    pending: cases.filter((c) => c.status === "Programada" || c.status === "En Revisión").length,
-  }
-
-  const filteredCases = cases.filter((case_item) => {
-    const matchesSearch =
-      case_item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      case_item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      case_item.type.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesStatus = statusFilter === "all" || case_item.status.toLowerCase().includes(statusFilter.toLowerCase())
-    const matchesType = typeFilter === "all" || case_item.type === typeFilter
-
-    return matchesSearch && matchesStatus && matchesType
+  const [cases, setCases] = useState<Case[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedCase, setSelectedCase] = useState<Case | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false)
+  const [newCaseData, setNewCaseData] = useState({
+    title: "",
+    description: "",
+    case_type: "",
+    priority: "medium",
+    due_date: "",
   })
+  const [isSubmittingNewCase, setIsSubmittingNewCase] = useState(false)
+  const supabase = createClientComponentClient()
 
-  const getStatusColor = (status: string) => {
+  useEffect(() => {
+    fetchCases()
+  }, [])
+
+  const fetchCases = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error("Error fetching profile:", profileError)
+      setLoading(false)
+      return
+    }
+
+    let query = supabase.from("cases").select("*").order("created_at", { ascending: false })
+
+    if (profile.role === "client") {
+      query = query.eq("client_id", user.id)
+    } else if (profile.role === "advisor") {
+      query = query.or(`advisor_id.eq.${user.id},advisor_id.is.null`) // Advisors see their cases or unassigned cases
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error("Error fetching cases:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los casos.",
+        variant: "destructive",
+      })
+    } else {
+      setCases(data as Case[])
+    }
+    setLoading(false)
+  }
+
+  const handleOpenModal = (caseItem: Case) => {
+    setSelectedCase(caseItem)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedCase(null)
+  }
+
+  const handleNewCaseChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setNewCaseData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleCreateNewCase = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmittingNewCase(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para crear un caso.",
+        variant: "destructive",
+      })
+      setIsSubmittingNewCase(false)
+      return
+    }
+
+    const { error } = await supabase.from("cases").insert({
+      title: newCaseData.title,
+      description: newCaseData.description,
+      case_type: newCaseData.case_type,
+      priority: newCaseData.priority,
+      due_date: newCaseData.due_date || null,
+      client_id: user.id, // The user creating the case is the client
+      status: "open",
+      progress: 0,
+    })
+
+    if (error) {
+      console.error("Error creating new case:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo crear el nuevo caso.",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Éxito",
+        description: "Nuevo caso creado exitosamente.",
+      })
+      setIsNewCaseModalOpen(false)
+      setNewCaseData({
+        title: "",
+        description: "",
+        case_type: "",
+        priority: "medium",
+        due_date: "",
+      })
+      fetchCases() // Refresh the list
+    }
+    setIsSubmittingNewCase(false)
+  }
+
+  const getStatusBadgeClass = (status: Case["status"]) => {
     switch (status) {
-      case "En Progreso":
-        return "bg-blue-50 text-blue-700 border-blue-200"
-      case "Completada":
-        return "bg-green-50 text-green-700 border-green-200"
-      case "Programada":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200"
-      case "En Revisión":
-        return "bg-purple-50 text-purple-700 border-purple-200"
+      case "open":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
+      case "resolved":
+        return "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+      case "closed":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200"
+        return ""
     }
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "Alta":
-        return "bg-red-50 text-red-700 border-red-200"
-      case "Media":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200"
-      case "Baja":
-        return "bg-green-50 text-green-700 border-green-200"
-      default:
-        return "bg-gray-50 text-gray-700 border-gray-200"
-    }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Cargando casos...</span>
+      </div>
+    )
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Casos</h1>
-          <p className="text-muted-foreground mt-1">Gestiona todos tus casos y consultas</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filtros Avanzados
-          </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="bg-emerald-500 hover:bg-emerald-600">
-                <Plus className="w-4 h-4 mr-2" />
-                Nuevo Caso
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Crear Nuevo Caso</DialogTitle>
-                <DialogDescription>Completa los detalles para iniciar un nuevo caso o consulta.</DialogDescription>
-              </DialogHeader>
-              <NewCaseForm />
-            </DialogContent>
-          </Dialog>
-        </div>
+    <div className="grid gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="font-semibold text-lg md:text-2xl">Mis Casos</h1>
+        <Button onClick={() => setIsNewCaseModalOpen(true)}>
+          <PlusIcon className="h-4 w-4 mr-2" />
+          Nuevo Caso
+        </Button>
       </div>
-
-      <div className="space-y-6">
-        {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total de Casos</CardTitle>
-              <FileText className="h-5 w-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{caseStats.total}</div>
-              <p className="text-xs text-muted-foreground mt-1">Todos los casos</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Casos Activos</CardTitle>
-              <Clock className="h-5 w-5 text-emerald-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{caseStats.active}</div>
-              <p className="text-xs text-muted-foreground mt-1">En progreso</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Casos Completados</CardTitle>
-              <CheckCircle className="h-5 w-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{caseStats.completed}</div>
-              <p className="text-xs text-muted-foreground mt-1">Finalizados</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Casos Pendientes</CardTitle>
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{caseStats.pending}</div>
-              <p className="text-xs text-muted-foreground mt-1">Requieren atención</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filtros y Búsqueda</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por título, cliente o tipo..."
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="en progreso">En Progreso</SelectItem>
-                  <SelectItem value="completada">Completada</SelectItem>
-                  <SelectItem value="programada">Programada</SelectItem>
-                  <SelectItem value="en revisión">En Revisión</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los tipos</SelectItem>
-                  <SelectItem value="Asesoría Financiera">Asesoría Financiera</SelectItem>
-                  <SelectItem value="Relaciones Familiares">Relaciones Familiares</SelectItem>
-                  <SelectItem value="Asesoría Legal">Asesoría Legal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Cases List */}
-        <Tabs defaultValue="list" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="list">Vista de Lista</TabsTrigger>
-            <TabsTrigger value="cards">Vista de Tarjetas</TabsTrigger>
-          </TabsList>
-
-          {/* List View */}
-          <TabsContent value="list" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Lista de Casos</CardTitle>
-                <CardDescription>
-                  Mostrando {filteredCases.length} de {cases.length} casos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredCases.map((case_item) => (
-                    <div
-                      key={case_item.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4 flex-1">
-                        <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-emerald-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="font-medium truncate">{case_item.title}</h3>
-                            <Badge variant="outline" className={getPriorityColor(case_item.priority)}>
-                              {case_item.priority}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2 line-clamp-1">{case_item.description}</p>
-                          <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                            <div className="flex items-center space-x-1">
-                              <User className="w-3 h-3" />
-                              <span>{case_item.client}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>Vence: {case_item.dueDate}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <MessageCircle className="w-3 h-3" />
-                              <span>{case_item.messages} mensajes</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <Badge variant="outline" className={getStatusColor(case_item.status)}>
-                            {case_item.status}
-                          </Badge>
-                          <div className="mt-2 w-24">
-                            <Progress value={case_item.progress} className="h-2" />
-                            <span className="text-xs text-muted-foreground">{case_item.progress}%</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Cards View */}
-          <TabsContent value="cards" className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredCases.map((case_item) => (
-                <Card key={case_item.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className={getStatusColor(case_item.status)}>
-                        {case_item.status}
-                      </Badge>
-                      <Badge variant="outline" className={getPriorityColor(case_item.priority)}>
-                        {case_item.priority}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-lg">{case_item.title}</CardTitle>
-                    <CardDescription className="line-clamp-2">{case_item.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Progreso</span>
-                        <span className="font-medium">{case_item.progress}%</span>
-                      </div>
-                      <Progress value={case_item.progress} className="h-2" />
-                    </div>
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span>Cliente: {case_item.client}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span>Vence: {case_item.dueDate}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                        <span>{case_item.messages} mensajes</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                        <Eye className="w-4 h-4 mr-1" />
+      <Card>
+        <CardHeader>
+          <CardTitle>Todos los Casos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {cases.length === 0 ? (
+            <p className="text-center text-muted-foreground">No hay casos para mostrar.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Prioridad</TableHead>
+                  <TableHead>Progreso</TableHead>
+                  <TableHead>Fecha de Creación</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cases.map((caseItem) => (
+                  <TableRow key={caseItem.id}>
+                    <TableCell className="font-medium">{caseItem.title}</TableCell>
+                    <TableCell>{caseItem.case_type || "N/A"}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusBadgeClass(caseItem.status)}>{caseItem.status}</Badge>
+                    </TableCell>
+                    <TableCell>{caseItem.priority}</TableCell>
+                    <TableCell>
+                      <Progress value={caseItem.progress || 0} className="w-[60%]" />
+                      <span className="ml-2 text-sm text-muted-foreground">{caseItem.progress || 0}%</span>
+                    </TableCell>
+                    <TableCell>{format(new Date(caseItem.created_at), "dd/MM/yyyy")}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenModal(caseItem)}>
+                        <EyeIcon className="h-4 w-4 mr-2" />
                         Ver
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                        <Edit className="w-4 h-4 mr-1" />
-                        Editar
+                      <Button variant="ghost" size="sm" className="ml-2">
+                        <MessageSquareIcon className="h-4 w-4" />
+                        <span className="sr-only">Mensajes</span>
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* View Case Details Modal */}
+      {selectedCase && (
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Detalles del Caso: {selectedCase.title}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Título:</Label>
+                <span className="col-span-3 font-medium">{selectedCase.title}</span>
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right">Descripción:</Label>
+                <p className="col-span-3 text-sm text-muted-foreground">{selectedCase.description}</p>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Tipo:</Label>
+                <span className="col-span-3">{selectedCase.case_type || "N/A"}</span>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Estado:</Label>
+                <span className="col-span-3">
+                  <Badge className={getStatusBadgeClass(selectedCase.status)}>{selectedCase.status}</Badge>
+                </span>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Prioridad:</Label>
+                <span className="col-span-3">{selectedCase.priority}</span>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Progreso:</Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Progress value={selectedCase.progress || 0} className="w-[70%]" />
+                  <span className="text-sm text-muted-foreground">{selectedCase.progress || 0}%</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Fecha de Creación:</Label>
+                <span className="col-span-3">{format(new Date(selectedCase.created_at), "dd/MM/yyyy HH:mm")}</span>
+              </div>
+              {selectedCase.due_date && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Fecha Límite:</Label>
+                  <span className="col-span-3">{format(new Date(selectedCase.due_date), "dd/MM/yyyy")}</span>
+                </div>
+              )}
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCloseModal}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* New Case Modal */}
+      <Dialog open={isNewCaseModalOpen} onOpenChange={setIsNewCaseModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Caso</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateNewCase} className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Título del Caso</Label>
+              <Input
+                id="title"
+                name="title"
+                value={newCaseData.title}
+                onChange={handleNewCaseChange}
+                placeholder="Ej. Asesoría Legal para Contrato"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={newCaseData.description}
+                onChange={handleNewCaseChange}
+                placeholder="Detalla el problema o la necesidad..."
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="case_type">Tipo de Caso</Label>
+                <Input
+                  id="case_type"
+                  name="case_type"
+                  value={newCaseData.case_type}
+                  onChange={handleNewCaseChange}
+                  placeholder="Ej. Legal, Financiero, Familiar"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="priority">Prioridad</Label>
+                <Select
+                  name="priority"
+                  value={newCaseData.priority}
+                  onValueChange={(value) => handleNewCaseChange({ target: { name: "priority", value } } as any)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona prioridad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Baja</SelectItem>
+                    <SelectItem value="medium">Media</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="due_date">Fecha Límite (Opcional)</Label>
+              <Input
+                id="due_date"
+                name="due_date"
+                type="date"
+                value={newCaseData.due_date}
+                onChange={handleNewCaseChange}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsNewCaseModalOpen(false)} type="button">
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmittingNewCase}>
+                {isSubmittingNewCase ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creando...
+                  </>
+                ) : (
+                  "Crear Caso"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

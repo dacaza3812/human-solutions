@@ -2,8 +2,9 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef, useTransition } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -19,31 +20,20 @@ import {
   DollarSign,
   Users,
   FileText,
-  Upload,
   CheckCircle,
   Menu,
   Shield,
-  Zap,
   Target,
   TrendingUp,
-  MessageCircle,
   Award,
-  Globe,
-  Smartphone,
-  Laptop,
-  Database,
-  Lock,
   BarChart3,
-  ArrowRight,
   X,
   MessageCircleQuestion,
   CircleDashed,
-  FacebookIcon,
-  InstagramIcon,
-  TwitterIcon,
   Loader2,
   AlertCircle,
-  File,
+  type File,
+  CheckCircleIcon,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { submitContactForm } from "@/actions/contact"
@@ -80,7 +70,7 @@ export default function SolucionesHumanas() {
   const { createCheckoutSession, loading, error } = useStripeCheckout()
   const { toast } = useToast()
 
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
   const [formState, setFormState] = useState({
     success: false,
     message: "",
@@ -104,10 +94,27 @@ export default function SolucionesHumanas() {
   }, [formState.message, formState.success, toast])
 
   const handleContactFormSubmit = async (formData: FormData) => {
-    startTransition(async () => {
-      const result = await submitContactForm(formState, formData) // Pass prevState as first argument
-      setFormState(result)
-    })
+    setIsPending(true)
+    const result = await submitContactForm(formData)
+    setFormState(result)
+    setIsPending(false)
+
+    if (result.success) {
+      toast({
+        title: "Éxito",
+        description: result.message,
+        action: <CheckCircleIcon className="text-green-500" />,
+      })
+      contactFormRef.current?.reset() // Clear form fields on success
+      setSelectedFile(null)
+      setFilePreviewUrl(null)
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      })
+    }
   }
 
   const calculateEarnings = (refs: number) => {
@@ -156,117 +163,52 @@ export default function SolucionesHumanas() {
 
   const features = [
     {
-      icon: DollarSign,
       title: "Asesoría Financiera",
-      description: "Haz que tu salario alcance hasta el final del mes",
-      details: "Planificación para tus finanzas personales a corto, mediano y largo plazo.",
-      features: ["Generación de ingresos", "Técnicas de ahorro", "Inversión de tu capital"],
+      description: "Expertos en finanzas personales y empresariales para optimizar tus recursos.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Users,
       title: "Relaciones Familiares",
-      description: "Fortalece los vínculos familiares",
-      details: "Mejora la comunicación y resuelve conflictos en el hogar.",
-      features: ["Mediación de conflictos", "Comunicación efectiva", "Terapia familiar"],
+      description: "Mediación y apoyo para fortalecer los lazos y resolver conflictos familiares.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Heart,
-      title: "Problemas de relación",
-      description: "Construye relaciones sólidas y duraderas",
-      details: "Resolución de conflictos con familiares, amigos, parejas, compañeros o jefes",
-      features: [
-        "Como potenciar tu inteligencia interpersonal e intrapersonal",
-        "Coaching social",
-        "Comunicación asertiva",
-      ],
+      title: "Asesoría Legal",
+      description: "Orientación y representación en diversas áreas del derecho para proteger tus intereses.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Shield,
-      title: "Confidencialidad Total",
-      description: "Tu privacidad es nuestra prioridad",
-      details: "Todas las consultas son completamente confidenciales y seguras.",
-      features: ["100% confidencial", "Datos seguros", "Privacidad garantizada"],
+      title: "Desarrollo Personal",
+      description: "Coaching y herramientas para potenciar tu crecimiento y bienestar individual.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Zap,
-      title: "Respuesta Rápida",
-      description: "Obtén ayuda cuando la necesites",
-      details: "Respuestas en menos de 24 horas para casos urgentes.",
-      features: ["Respuesta < 24h", "Soporte urgente", "Disponibilidad extendida"],
-    },
-    {
-      icon: Target,
-      title: "Resultados Medibles",
-      description: "Seguimiento de tu progreso",
-      details: "Métricas claras para evaluar tu mejora y crecimiento personal.",
-      features: ["Métricas de progreso", "Evaluaciones periódicas", "Objetivos claros"],
+      title: "Salud y Bienestar",
+      description: "Programas integrales para mejorar tu salud física y mental.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
   ]
 
   const testimonials = [
     {
-      name: "María González",
-      username: "@maria_g",
-      avatar: "M",
-      content:
-        "Trabajando en mi próxima aplicación SaaS y quiero que esta sea mi trabajo de tiempo completo porque estoy muy emocionada de armarla. @Fox Lawyer y chill, si quieres 💪",
-      verified: true,
+      name: "Ana G.",
+      quote: "La asesoría financiera me ayudó a organizar mis deudas y empezar a ahorrar. ¡Totalmente recomendado!",
+      avatar: "/placeholder-user.jpg",
     },
     {
-      name: "Carlos Rodríguez",
-      username: "@carlos_r",
-      avatar: "C",
-      content:
-        "Trabajar con @Fox Lawyer ha sido una de las mejores experiencias de desarrollo que he tenido últimamente. Increíblemente fácil de configurar, gran documentación, y tantos obstáculos para saltar con la competencia. Definitivamente lo usaré en mis próximos proyectos 🔥",
-      verified: true,
+      name: "Carlos R.",
+      quote: "Gracias a la mediación familiar, pudimos resolver nuestros conflictos y mejorar la comunicación.",
+      avatar: "/placeholder-user.jpg",
     },
     {
-      name: "Ana Martínez",
-      username: "@ana_martinez",
-      avatar: "A",
-      content:
-        "Y'all @Fox Lawyer + @nextjs es increíble! 🙌 Apenas una hora en una prueba de concepto y ya tengo la mayoría de la funcionalidad en su lugar. 😍😍😍",
-      verified: true,
+      name: "Sofía M.",
+      quote: "El equipo legal fue excepcional. Me sentí apoyada y bien representada en todo momento.",
+      avatar: "/placeholder-user.jpg",
     },
     {
-      name: "Luis Fernández",
-      username: "@luis_dev",
-      avatar: "L",
-      content:
-        "Usando @Fox Lawyer realmente me impresionó el poder de la asesoría personalizada (y sql en general). A pesar de ser un poco dudoso sobre todo el tema de backend como servicio, no he perdido nada. La experiencia se siente muy robusta y segura.",
-      verified: true,
-    },
-    {
-      name: "Patricia Silva",
-      username: "@patricia_s",
-      avatar: "P",
-      content:
-        "Y gracias a @Fox Lawyer, pude pasar de la idea al lanzamiento de funciones en cuestión de horas. ¡Absolutamente increíble!",
-      verified: false,
-    },
-    {
-      name: "Roberto Jiménez",
-      username: "@roberto_coach",
-      avatar: "R",
-      content:
-        "@Fox Lawyer Poniendo un montón de consultas de API bien explicadas en una documentación auto-construida es solo un movimiento genial en general. Me gusta tener GraphQL-style en tiempo real.",
-      verified: true,
-    },
-    {
-      name: "Elena Vargas",
-      username: "@elena_design",
-      avatar: "E",
-      content:
-        "¡Increíble! Fox Lawyer es asombroso. Simplemente ejecuté mi primera consulta y funciona perfectamente. Esto vale la pena. 🚀",
-      verified: false,
-    },
-    {
-      name: "Diego Morales",
-      username: "@diego_startup",
-      avatar: "D",
-      content:
-        "Este fin de semana hice un progreso personal récord 🏆 en el tiempo que dediqué a crear una aplicación con asesoría familiar / permisos, base de datos, cdn, escalado infinito, git push para desplegar y gratis. Gracias a @Fox Lawyer",
-      verified: true,
+      name: "Javier L.",
+      quote: "Los programas de desarrollo personal me dieron las herramientas para alcanzar mis metas.",
+      avatar: "/placeholder-user.jpg",
     },
   ]
 
@@ -320,7 +262,7 @@ export default function SolucionesHumanas() {
   ]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
@@ -411,106 +353,71 @@ export default function SolucionesHumanas() {
 
       {/* Hero Section */}
       <section
-        id="inicio"
-        className="relative py-24 px-4 overflow-hidden"
+        className="relative w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-cover bg-center"
         style={{
           backgroundImage: `url('/hero-background.png')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
+          backgroundBlendMode: "multiply",
+          backgroundColor: "rgba(0, 0, 0, 0.5)", // Dark overlay for blur effect
         }}
       >
-        {/* Overlay for blur and darkening */}
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-        <div className="container mx-auto text-center relative z-10">
-          <div className="max-w-4xl mx-auto">
-            {/* Mobile Logo - Only visible on mobile devices */}
-            <div className="md:hidden mb-8">
-              <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={80} height={80} className="mx-auto" />
+        <div className="absolute inset-0 backdrop-blur-sm"></div> {/* Blur effect */}
+        <div className="container px-4 md:px-6 relative z-10">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-white">
+                Soluciones Humanas Integrales
+              </h1>
+              <p className="mx-auto max-w-[700px] text-gray-200 md:text-xl">
+                Transforma tu vida con nuestra asesoría experta en finanzas, relaciones, legalidad y desarrollo
+                personal.
+              </p>
             </div>
-
-            {/* Announcement Banner */}
-            <div className="inline-flex items-center space-x-2 bg-card border border-border/40 rounded-full px-4 py-2 mb-8">
-              <span className="text-sm text-muted-foreground">Asesoría Personalizada</span>
-              <Button variant="link" className="text-sm p-0 h-auto text-emerald-400 hover:text-emerald-300">
-                Toma la encuesta <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
-            </div>
-
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
-            </h1>
-
-            <p className="text-xl text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
-              problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
-              privacidad y confidencialidad del cliente
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8">
+            <div className="space-x-4">
+              <Link
+                className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                href="/register"
+              >
                 Comienza tu transformación
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-emerald-500/50 text-emerald-400 bg-transparent hover:bg-emerald-500 hover:text-white"
+              </Link>
+              <Link
+                className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                href="#contact"
               >
                 Solicita una demo
-              </Button>
-            </div>
-
-            {/* Trusted by section */}
-            <div className="space-y-4">
-              <div className="flex justify-center items-center space-x-8 md:space-x-12">
-                <Globe className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
-                <Smartphone className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
-                <Laptop className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
-                <Database className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
-                <Lock className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
-              </div>
-              <p className="text-sm text-gray-300">Confiado por empresas de rápido crecimiento en todo el mundo</p>
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section with Horizontal Scroll */}
-      <section className="py-24 px-4">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Nuestras Especialidades</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Descubre las áreas en las que podemos ayudarte a transformar tu vida.
-            </p>
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-muted">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="space-y-2">
+              <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Nuestras Especialidades</div>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Servicios que te transforman</h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Ofrecemos un enfoque integral para tu bienestar y éxito.
+              </p>
+            </div>
           </div>
-
-          <div className="relative overflow-hidden">
-            <div className="flex space-x-6 animate-scroll-features">
-              {duplicatedFeatures.map((feature, index) => (
-                <Card
-                  key={index}
-                  className="flex-shrink-0 w-80 feature-card border-border/40 bg-card/50 cursor-pointer"
-                >
-                  <CardHeader>
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
-                        <feature.icon className="w-4 h-4 text-emerald-400" />
-                      </div>
-                      <CardTitle className="text-lg">{feature.title}</CardTitle>
-                    </div>
-                    <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
+          <div className="mt-8 flex overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-rounded-full scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
+            <div className="flex flex-nowrap gap-6 px-2">
+              {features.map((feature, index) => (
+                <Card key={index} className="min-w-[280px] max-w-[300px] flex-shrink-0">
+                  <CardHeader className="flex flex-col items-center gap-2 text-center">
+                    <Image
+                      src={feature.icon || "/placeholder.svg"}
+                      alt={feature.title}
+                      width={64}
+                      height={64}
+                      className="mb-2"
+                    />
+                    <CardTitle>{feature.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
-                    <ul className="space-y-2">
-                      {feature.features.map((item, idx) => (
-                        <li key={idx} className="flex items-center space-x-2 text-sm">
-                          <CheckCircle className="w-3 h-3 text-emerald-400" />
-                          <span className="text-muted-foreground">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <p className="text-muted-foreground text-center">{feature.description}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -820,173 +727,92 @@ export default function SolucionesHumanas() {
       </section>
 
       {/* Testimonials Section with Spotlight Effect */}
-      <section className="py-24 px-4 spotlight-bg relative overflow-hidden">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Únete a la comunidad</h2>
-            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Descubre lo que nuestra comunidad tiene que decir sobre su experiencia con Fox Lawyer.
-            </p>
-
-            <div className="flex justify-center space-x-4 mb-12">
-              <Button variant="outline" size="sm" className="border-border/40 bg-transparent">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Discusiones GitHub
-              </Button>
-              <Button variant="outline" size="sm" className="border-border/40 bg-transparent">
-                Discord
-              </Button>
+      <section className="w-full py-12 md:py-24 lg:py-32">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="space-y-2">
+              <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Testimonios</div>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Lo que dicen nuestros clientes</h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Historias de éxito de personas que transformaron sus vidas con Soluciones Humanas.
+              </p>
             </div>
           </div>
-
-          {/* Infinite Scrolling Testimonials */}
-          <div className="relative">
-            <div className="flex space-x-6 animate-scroll">
-              {duplicatedTestimonials.map((testimonial, index) => (
-                <Card
-                  key={index}
-                  className="flex-shrink-0 w-80 border-border/40 bg-card/80 backdrop-blur-sm hover:bg-card/90 transition-colors"
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-medium">{testimonial.avatar}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium text-foreground truncate">{testimonial.name}</p>
-                          {testimonial.verified && <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{testimonial.username}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{testimonial.content}</p>
+          <div className="mt-8 flex overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-rounded-full scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
+            <div className="flex flex-nowrap gap-6 px-2">
+              {testimonials.map((testimonial, index) => (
+                <Card key={index} className="min-w-[300px] max-w-[350px] flex-shrink-0">
+                  <CardContent className="flex flex-col items-center text-center p-6">
+                    <Image
+                      src={testimonial.avatar || "/placeholder.svg"}
+                      alt={testimonial.name}
+                      width={80}
+                      height={80}
+                      className="rounded-full mb-4 object-cover"
+                    />
+                    <p className="text-lg font-semibold mb-2">"{testimonial.quote}"</p>
+                    <p className="text-muted-foreground">- {testimonial.name}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </div>
-
-          <div className="text-center mt-16">
-            <h3 className="text-3xl font-bold text-foreground mb-4">
-              Transforma tu vida en un fin de semana, <span className="text-emerald-400">escala a millones</span>
-            </h3>
-          </div>
         </div>
       </section>
 
-      {/* Contact Form */}
-      <section id="contacto" className="py-24 px-4 bg-card/20">
-        <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Comienza Tu Transformación</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Únete a miles de personas que ya han transformado sus vidas
-            </p>
-          </div>
-
-          <div className="max-w-2xl mx-auto">
-            <Card className="border-border/40">
+      {/* Contact Section */}
+      <section id="contacto" className="w-full py-12 md:py-24 lg:py-32 bg-muted">
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="space-y-2">
+              <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Contacto</div>
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Ponte en contacto con nosotros</h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                ¿Tienes preguntas o quieres agendar una consulta? Envíanos un mensaje.
+              </p>
+            </div>
+            <Card className="w-full max-w-md">
               <CardHeader>
-                <CardTitle className="text-center text-emerald-400">Formulario de Contacto</CardTitle>
-                <CardDescription className="text-center">
-                  Completa el formulario y nos pondremos en contacto contigo
-                </CardDescription>
+                <CardTitle>Formulario de Contacto</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <form ref={contactFormRef} action={handleContactFormSubmit} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Nombre</Label>
-                      <Input id="firstName" name="firstName" placeholder="Tu nombre" className="mt-1" />
-                      {formState.errors?.firstName && (
-                        <p className="text-red-500 text-sm mt-1">{formState.errors.firstName[0]}</p>
-                      )}
+              <CardContent>
+                <form ref={contactFormRef} onSubmit={handleContactFormSubmit} className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="first_name">Nombre</Label>
+                      <Input id="first_name" name="firstName" placeholder="Tu nombre" required />
                     </div>
-                    <div>
-                      <Label htmlFor="lastName">Apellido</Label>
-                      <Input id="lastName" name="lastName" placeholder="Tu apellido" className="mt-1" />
-                      {formState.errors?.lastName && (
-                        <p className="text-red-500 text-sm mt-1">{formState.errors.lastName[0]}</p>
-                      )}
+                    <div className="space-y-2">
+                      <Label htmlFor="last_name">Apellido</Label>
+                      <Input id="last_name" name="lastName" placeholder="Tu apellido" required />
                     </div>
                   </div>
-
-                  <div>
-                    <Label htmlFor="email">Correo Electrónico</Label>
-                    <Input id="email" name="email" type="email" placeholder="tu@ejemplo.com" className="mt-1" />
-                    {formState.errors?.email && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.email[0]}</p>
-                    )}
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" name="email" type="email" placeholder="tu@ejemplo.com" required />
                   </div>
-
-                  <div>
-                    <Label htmlFor="phone">Teléfono (opcional)</Label>
-                    <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
-                    {formState.errors?.phone && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.phone[0]}</p>
-                    )}
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Teléfono (Opcional)</Label>
+                    <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" />
                   </div>
-
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="message">Mensaje</Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      placeholder="Cuéntanos sobre tu situación y objetivos..."
-                      rows={4}
-                      className="mt-1"
-                    />
-                    {formState.errors?.message && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.message[0]}</p>
+                    <Textarea id="message" name="message" placeholder="Escribe tu mensaje aquí..." required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="file">Adjuntar archivo (Opcional)</Label>
+                    <Input id="file" name="file" type="file" />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isPending}>
+                    {isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      "Enviar Mensaje"
                     )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="file">Subir Documento (opcional)</Label>
-                    <div className="mt-1">
-                      <Input
-                        id="file"
-                        name="file"
-                        type="file"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full border-dashed"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {selectedFile ? selectedFile.name : "Seleccionar archivo"}
-                      </Button>
-                      {formState.errors?.file && (
-                        <p className="text-red-500 text-sm mt-1">{formState.errors.file[0]}</p>
-                      )}
-                      {filePreviewUrl && (
-                        <div className="mt-2 flex items-center space-x-2">
-                          {selectedFile?.type.startsWith("image/") ? (
-                            <Image
-                              src={filePreviewUrl || "/placeholder.svg"}
-                              alt="File preview"
-                              width={64}
-                              height={64}
-                              className="rounded-md object-cover"
-                            />
-                          ) : (
-                            <File className="h-16 w-16 text-muted-foreground" />
-                          )}
-                          <span className="text-sm text-muted-foreground">{selectedFile?.name}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <SubmitButton isPending={isPending} />
-                  </div>
+                  </Button>
                 </form>
               </CardContent>
             </Card>
@@ -995,77 +821,16 @@ export default function SolucionesHumanas() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 py-12 px-4">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-1">
-              <div className="flex items-center space-x-2 mb-4">
-                <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={24} height={24} />
-                <h4 className="text-lg font-bold text-foreground">Fox Lawyer</h4>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Transformando vidas a través de asesoría legal personalizada y profesional.
-              </p>
-            </div>
-
-            <div>
-              <h5 className="font-semibold mb-4 text-foreground">Servicios</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Asesoría Financiera
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Relaciones Familiares
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Relaciones Amorosas
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-foreground transition-colors">
-                    Programa de Asesores
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h5 className="font-semibold mb-4 text-foreground">Contacto</h5>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>contacto@foxlawyer.com</li>
-                <li>+52 123 456 7890</li>
-                <li>Lun - Vie: 9:00 - 18:00</li>
-                <li>Sáb: 9:00 - 14:00</li>
-              </ul>
-            </div>
-
-            <div>
-              <h5 className="font-semibold mb-4 text-foreground">Síguenos</h5>
-              <div className="flex space-x-3">
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
-                  <FacebookIcon />
-                </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
-                  <InstagramIcon />
-                </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
-                  <TwitterIcon />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <Separator className="my-8" />
-
-          <div className="text-center text-sm text-muted-foreground">
-            <p>© 2025 Fox Lawyer. Todos los derechos reservados.</p>
-          </div>
-        </div>
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+        <p className="text-xs text-muted-foreground">&copy; 2024 Soluciones Humanas. Todos los derechos reservados.</p>
+        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+          <Link className="text-xs hover:underline underline-offset-4" href="#">
+            Privacidad
+          </Link>
+          <Link className="text-xs hover:underline underline-offset-4" href="#">
+            Términos de Servicio
+          </Link>
+        </nav>
       </footer>
       <Toaster />
     </div>

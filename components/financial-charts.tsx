@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 
 // Mock financial data
 const monthlyEarnings = [
@@ -96,6 +98,21 @@ const transactionData = [
     category: "Mediación",
     status: "Pendiente",
   },
+]
+
+const chartData = [
+  { month: "Ene", income: 1870, expenses: 800 },
+  { month: "Feb", income: 2000, expenses: 950 },
+  { month: "Mar", income: 2200, expenses: 1100 },
+  { month: "Abr", income: 2100, expenses: 1050 },
+  { month: "May", income: 2300, expenses: 1200 },
+  { month: "Jun", income: 2500, expenses: 1300 },
+  { month: "Jul", income: 2400, expenses: 1150 },
+  { month: "Ago", income: 2600, expenses: 1400 },
+  { month: "Sep", income: 2700, expenses: 1500 },
+  { month: "Oct", income: 2800, expenses: 1600 },
+  { month: "Nov", income: 2900, expenses: 1700 },
+  { month: "Dic", income: 3000, expenses: 1800 },
 ]
 
 interface FinancialChartsProps {
@@ -234,6 +251,42 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
               <span className="text-sm text-muted-foreground">Gastos</span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Rendimiento Financiero Chart */}
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardTitle className="text-foreground">Rendimiento Financiero</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            config={{
+              income: {
+                label: "Ingresos",
+                color: "hsl(var(--chart-1))",
+              },
+              expenses: {
+                label: "Gastos",
+                color: "hsl(var(--chart-2))",
+              },
+            }}
+            className="aspect-auto h-[250px] w-full"
+          >
+            <BarChart accessibilityLayer data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tickFormatter={(value) => value.slice(0, 3)}
+              />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Bar dataKey="income" fill="var(--color-income)" radius={8} />
+              <Bar dataKey="expenses" fill="var(--color-expenses)" radius={8} />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
       </Card>
 

@@ -1,33 +1,75 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar, Clock, User } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
 
-interface UpcomingAppointmentsCardProps {
-  upcomingAppointments: {
-    title: string
-    time: string
-    description: string
-    colorClass: string // e.g., "emerald", "blue", "purple"
-  }[]
+interface Appointment {
+  title: string
+  time: string
+  description: string
+  colorClass: string // e.g., "emerald", "blue", "purple"
 }
 
-export function UpcomingAppointmentsCard({ upcomingAppointments }: UpcomingAppointmentsCardProps) {
+const upcomingAppointmentsData: Appointment[] = [
+  {
+    title: "Consulta Financiera",
+    time: "10:00 AM",
+    description: "Ana Martínez - Planificación presupuestaria",
+    colorClass: "emerald",
+  },
+  {
+    title: "Mediación Familiar",
+    time: "2:30 PM",
+    description: "Familia Rodríguez - Resolución de conflictos",
+    colorClass: "blue",
+  },
+  {
+    title: "Consulta Profesional",
+    time: "4:00 PM",
+    description: "Luis Fernández - Asesoría empresarial",
+    colorClass: "purple",
+  },
+]
+
+export function UpcomingAppointmentsCard() {
+  const getColorClasses = (color: string) => {
+    switch (color) {
+      case "emerald":
+        return "text-emerald-500 bg-emerald-100 dark:bg-emerald-800 dark:text-emerald-100"
+      case "blue":
+        return "text-blue-500 bg-blue-100 dark:bg-blue-800 dark:text-blue-100"
+      case "purple":
+        return "text-purple-500 bg-purple-100 dark:bg-purple-800 dark:text-purple-100"
+      default:
+        return "text-gray-500 bg-gray-100 dark:bg-gray-800 dark:text-gray-100"
+    }
+  }
+
   return (
-    <Card className="border-border/40">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-foreground">Próximas Citas</CardTitle>
+        <CardTitle>Próximas Citas</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {upcomingAppointments.map((appointment, index) => (
-          <div
-            key={index}
-            className={`p-4 rounded-lg border border-${appointment.colorClass}-500/20 bg-${appointment.colorClass}-500/5`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-medium text-foreground">{appointment.title}</p>
-              <span className={`text-xs text-${appointment.colorClass}-400`}>{appointment.time}</span>
+      <CardContent className="grid gap-4">
+        {upcomingAppointmentsData.map((appointment, index) => (
+          <div key={index}>
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-full ${getColorClasses(appointment.colorClass)}`}
+              >
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div className="grid gap-1">
+                <p className="text-sm font-medium leading-none">{appointment.title}</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> {appointment.time}
+                  <Separator orientation="vertical" className="h-3 mx-1" />
+                  <User className="h-3 w-3" /> {appointment.description}
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">{appointment.description}</p>
+            {index < upcomingAppointmentsData.length - 1 && <Separator className="my-4" />}
           </div>
         ))}
       </CardContent>

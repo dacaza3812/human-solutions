@@ -2,35 +2,46 @@
 
 import type React from "react"
 
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
+import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  redirectTo?: string
+  allowedRoles?: string[]
 }
 
-export function ProtectedRoute({ children, redirectTo = "/login" }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
+export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { user, loading, profile } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push(redirectTo)
+    if (!loading) {
+      if (!user) {
+        router.push("/login")
+      } else if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+        // If user is logged in but role is not allowed, redirect to dashboard or an unauthorized page
+        router.push("/dashboard") // Or a specific unauthorized page
+      }
     }
-  }, [user, loading, router, redirectTo])
+  }, [user, loading, profile, allowedRoles, router])
 
-  if (loading) {
+  if (loading || !user || (allowedRoles && !profile)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Cargando...</span>
       </div>
     )
   }
 
-  if (!user) {
-    return null
+  if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-red-500">
+        No tienes permiso para acceder a esta página.
+      </div>
+    )
   }
 
   return <>{children}</>

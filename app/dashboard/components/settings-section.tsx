@@ -1,6 +1,8 @@
 "use client"
 
 import type React from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PasswordSettings } from "./settings/password-settings"
 import { ProfileSettings } from "./settings/profile-settings"
 import { ReferralCodeSettings } from "./settings/referral-code-settings"
@@ -152,45 +154,54 @@ export function SettingsSection({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Configuración de la Cuenta</h2>
-          <p className="text-muted-foreground">Gestiona tu información personal y de seguridad</p>
-        </div>
-      </div>
-
-      <PasswordSettings
-        currentPassword={currentPassword}
-        setCurrentPassword={setCurrentPassword}
-        newPassword={newPassword}
-        setNewPassword={setNewPassword}
-        confirmNewPassword={confirmNewPassword}
-        setConfirmNewPassword={setConfirmNewPassword}
-        passwordChangeMessage={passwordChangeMessage}
-        passwordChangeError={passwordChangeError}
-        handlePasswordChange={handlePasswordChange}
-      />
-
-      <ProfileSettings
-        firstName={firstName}
-        setFirstName={setFirstName}
-        lastName={lastName}
-        setLastName={setLastName}
-        profileUpdateMessage={profileUpdateMessage}
-        profileUpdateError={profileUpdateError}
-        handleProfileUpdate={handleProfileUpdate}
-      />
-
-      {profile?.account_type === "client" && (
-        <ReferralCodeSettings
-          newReferralCode={newReferralCode}
-          setNewReferralCode={setNewReferralCode}
-          referralCodeUpdateMessage={referralCodeUpdateMessage}
-          referralCodeUpdateError={referralCodeUpdateError}
-          handleReferralCodeUpdate={handleReferralCodeUpdate}
-        />
-      )}
-    </div>
+    <Card className="col-span-full">
+      <CardHeader>
+        <CardTitle>Configuración de la Cuenta</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="profile">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="profile">Perfil</TabsTrigger>
+            <TabsTrigger value="password">Contraseña</TabsTrigger>
+            <TabsTrigger value="referral">Referidos</TabsTrigger>
+          </TabsList>
+          <TabsContent value="profile" className="mt-4">
+            <ProfileSettings
+              firstName={firstName}
+              setFirstName={setFirstName}
+              lastName={lastName}
+              setLastName={setLastName}
+              profileUpdateMessage={profileUpdateMessage}
+              profileUpdateError={profileUpdateError}
+              handleProfileUpdate={handleProfileUpdate}
+            />
+          </TabsContent>
+          <TabsContent value="password" className="mt-4">
+            <PasswordSettings
+              currentPassword={currentPassword}
+              setCurrentPassword={setCurrentPassword}
+              newPassword={newPassword}
+              setNewPassword={setNewPassword}
+              confirmNewPassword={confirmNewPassword}
+              setConfirmNewPassword={setConfirmNewPassword}
+              passwordChangeMessage={passwordChangeMessage}
+              passwordChangeError={passwordChangeError}
+              handlePasswordChange={handlePasswordChange}
+            />
+          </TabsContent>
+          <TabsContent value="referral" className="mt-4">
+            {profile?.account_type === "client" && (
+              <ReferralCodeSettings
+                newReferralCode={newReferralCode}
+                setNewReferralCode={setNewReferralCode}
+                referralCodeUpdateMessage={referralCodeUpdateMessage}
+                referralCodeUpdateError={referralCodeUpdateError}
+                handleReferralCodeUpdate={handleReferralCodeUpdate}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   )
 }

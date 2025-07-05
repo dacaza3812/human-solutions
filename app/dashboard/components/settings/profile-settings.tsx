@@ -1,62 +1,87 @@
 "use client"
 
 import type React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { UserRound } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "@/components/ui/use-toast"
+import { CheckCircleIcon, XCircleIcon, Loader2 } from "lucide-react"
 
-interface ProfileSettingsProps {
-  firstName: string
-  setFirstName: (value: string) => void
-  lastName: string
-  setLastName: (value: string) => void
-  profileUpdateMessage: string
-  profileUpdateError: string
-  handleProfileUpdate: (e: React.FormEvent) => Promise<void>
-}
+export function ProfileSettings() {
+  const { user, profile, updateUserProfile } = useAuth()
+  const [firstName, setFirstName] = useState(profile?.first_name || "")
+  const [lastName, setLastName] = useState(profile?.last_name || "")
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
 
-export function ProfileSettings({
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
-  profileUpdateMessage,
-  profileUpdateError,
-  handleProfileUpdate,
-}: ProfileSettingsProps) {
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name || "")
+      setLastName(profile.last_name || "")
+    }
+  }, [profile])
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsUpdatingProfile(true)
+
+    if (!firstName.trim() || !lastName.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre y apellido no pueden estar vacíos.",
+        variant: "destructive",
+        action: <XCircleIcon className="text-red-500" />,
+      })
+      setIsUpdatingProfile(false)
+      return
+    }
+
+    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: `Error al actualizar perfil: ${error.message}`,
+        variant: "destructive",
+        action: <XCircleIcon className="text-red-500" />,
+      })
+    } else {
+      toast({
+        title: "Éxito",
+        description: "Información de perfil actualizada exitosamente.",
+        action: <CheckCircleIcon className="text-green-500" />,
+      })
+    }
+    setIsUpdatingProfile(false)
+  }
+
   return (
-    <Card className="border-border/40">
-      <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <UserRound className="w-5 h-5 mr-2 text-blue-400" />
-          Actualizar Información de Perfil
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleProfileUpdate} className="space-y-4">
-          <div>
-            <Label htmlFor="firstName">Nombre</Label>
-            <Input
-              id="firstName"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="lastName">Apellido</Label>
-            <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-          </div>
-          {profileUpdateError && <p className="text-red-500 text-sm">{profileUpdateError}</p>}
-          {profileUpdateMessage && <p className="text-emerald-500 text-sm">{profileUpdateMessage}</p>}
-          <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
-            Guardar Cambios
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleProfileUpdate} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="first-name">Nombre</Label>
+        <Input id="first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="last-name">Apellido</Label>
+        <Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" type="email" value={user?.email || ""} disabled />
+        <p className="text-sm text-muted-foreground">El email no puede ser cambiado aquí.</p>
+      </div>
+      <Button type="submit" disabled={isUpdatingProfile}>
+        {isUpdatingProfile ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Actualizando...
+          </>
+        ) : (
+          "Actualizar Perfil"
+        )}
+      </Button>
+    </form>
   )
 }

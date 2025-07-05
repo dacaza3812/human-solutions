@@ -1,7 +1,9 @@
 "use client"
 import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+
 import { useAuth } from "@/contexts/auth-context"
-import { getSupabaseServerClient } from "@/lib/supabase-server"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs" // Use client component client for client-side data fetching
 import { redirect } from "next/navigation"
 import { UserInfoCard } from "./components/user-info-card"
 import { RecentActivityCard } from "./components/recent-activity-card"
@@ -16,6 +18,7 @@ import { FinancialOverviewSection } from "./components/financial-overview-sectio
 import { ReferralsSection } from "./components/referrals-section"
 import { SubscriptionsSection } from "./components/subscriptions-section"
 import { SettingsSection } from "./components/settings-section"
+import { Loader2 } from "lucide-react"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -29,32 +32,10 @@ interface UserProfile {
   stripe_customer_id?: string | null
 }
 
-export default async function DashboardPage() {
-  const supabase = getSupabaseServerClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/login")
-  }
-
-  const { data: profileData, error: profileError } = await supabase
-    .from("profiles")
-    .select("role, username, avatar_url")
-    .eq("id", user.id)
-    .single()
-
-  if (profileError || !profileData) {
-    console.error("Error fetching profile:", profileError)
-    // Handle error, maybe redirect to a profile setup page or show a generic error
-    redirect("/login") // Or a more appropriate error page
-  }
-
-  const userRole = profileData.role
-  const username = profileData.username || user.email
-  const avatarUrl = profileData.avatar_url || "/placeholder-user.jpg"
+export default function DashboardPage() {
+  const { user, profile, updateUserProfile, changePassword } = useAuth()
+  const supabase = createClientComponentClient() // Initialize client-side Supabase client
+  const [loadingProfile, setLoadingProfile] = useState(true)
 
   const [activeView, setActiveView] = useState("overview")
   const [referralStats, setReferralStats] = useState({
@@ -70,7 +51,6 @@ export default async function DashboardPage() {
   const [activeChat, setActiveChat] = useState(null)
   const [clientFilter, setClientFilter] = useState("")
   const [caseFilter, setCaseFilter] = useState("all")
-  const { updateUserProfile, changePassword } = useAuth()
 
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [dateRange, setDateRange] = useState({
@@ -95,10 +75,19 @@ export default async function DashboardPage() {
   const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
 
   useEffect(() => {
-    setFirstName(profileData.username || "")
-    setLastName("")
-    setNewReferralCode("")
-  }, [profileData])
+    if (profile) {
+      setFirstName(profile.first_name || "")
+      setLastName(profile.last_name || "")
+      setNewReferralCode(profile.referral_code || "")
+      setLoadingProfile(false)
+    } else if (user) {
+      // If user exists but profile is still null, it might be loading or an issue
+      // For now, assume loading and set a timeout or handle it
+      setLoadingProfile(true)
+    } else {
+      redirect("/login")
+    }
+  }, [profile, user])
 
   // Mock data for current user's cases (client view)
   const userCases = [
@@ -230,22 +219,23 @@ export default async function DashboardPage() {
 
   // Generate referral code on component mount
   useEffect(() => {
-    if (!referralCode) {
+    if (profile && !referralCode) {
       const generateReferralCode = () => {
-        const firstName = username.toLowerCase() || ""
+        const firstName = profile.first_name?.toLowerCase() || ""
+        const lastName = profile.last_name?.toLowerCase() || ""
         const randomNum = Math.floor(Math.random() * 1000)
-        return `${firstName}${randomNum}`
+        return `${firstName}${lastName}${randomNum}`
       }
       setReferralCode(generateReferralCode())
     }
-  }, [referralCode, username])
+  }, [profile, referralCode])
 
   // Fetch referral stats for clients
   useEffect(() => {
-    if (userRole === "client" && user.id) {
+    if (profile?.account_type === "client" && profile.id) {
       fetchReferralStats()
     }
-  }, [userRole, user])
+  }, [profile])
 
   const fetchReferralStats = async () => {
     try {
@@ -284,7 +274,7 @@ export default async function DashboardPage() {
     }
   }
 
-  const openChatForCase = (caseId) => {
+  const openChatForCase = (caseId: number) => {
     setActiveChat(caseId)
     setActiveView("messages")
   }
@@ -300,39 +290,65 @@ export default async function DashboardPage() {
     return case_item.status.toLowerCase().includes(caseFilter.toLowerCase())
   })
 
+  if (loadingProfile) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[calc(100vh-60px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Cargando perfil...</span>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-6">
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        <UserInfoCard username={username} avatarUrl={avatarUrl} userRole={userRole} />
-        <StatsGrid userRole={userRole} />
+    <div className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
+            <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
+          </div>
+          {profile?.account_type === "advisor" && (
+            <Button className="bg-emerald-500 hover:bg-emerald-600">
+              {/* <Plus className="w-4 h-4 mr-2" /> */}
+              Nuevo Caso
+            </Button>
+          )}
+        </div>
+
+        {/* User Info Card */}
+        <UserInfoCard user={user} profile={profile} />
+
+        {/* Stats Grid */}
+        <StatsGrid userRole={profile?.account_type || "client"} />
+
+        {/* Recent Activity */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <RecentActivityCard />
+          <UpcomingAppointmentsCard />
+        </div>
+
+        {profile?.account_type === "client" && (
+          <>
+            <ClientCasesSection />
+            <MessagesSection />
+            <QuotesSection />
+            <SubscriptionsSection />
+          </>
+        )}
+
+        {profile?.account_type === "advisor" && (
+          <>
+            <AdvisorCasesSection />
+            <AdvisorClientsSection />
+            <FinancialOverviewSection />
+            <ReferralsSection />
+            <MessagesSection />
+            {/* Inquiries section is now a separate page */}
+          </>
+        )}
+
+        <SettingsSection />
       </div>
-
-      {userRole === "client" && (
-        <>
-          <ClientCasesSection />
-          <MessagesSection />
-          <QuotesSection />
-          <SubscriptionsSection />
-        </>
-      )}
-
-      {userRole === "advisor" && (
-        <>
-          <AdvisorCasesSection />
-          <AdvisorClientsSection />
-          <FinancialOverviewSection />
-          <ReferralsSection />
-          <MessagesSection />
-          {/* Inquiries section is now a separate page */}
-        </>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-2">
-        <RecentActivityCard />
-        <UpcomingAppointmentsCard />
-      </div>
-
-      <SettingsSection />
     </div>
   )
 }

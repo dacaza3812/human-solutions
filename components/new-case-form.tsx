@@ -6,193 +6,138 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, XCircle } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DialogFooter } from "@/components/ui/dialog"
+import { Loader2 } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { toast } from "@/components/ui/use-toast"
 
-export default function NewCaseForm() {
-  const [consultationType, setConsultationType] = useState("")
-  const [clientName, setClientName] = useState("")
-  const [clientEmail, setClientEmail] = useState("")
-  const [clientPhone, setClientPhone] = useState("")
-  const [priorityLevel, setPriorityLevel] = useState("")
+interface NewCaseFormProps {
+  onSuccess: () => void
+  onCancel: () => void
+}
+
+export function NewCaseForm({ onSuccess, onCancel }: NewCaseFormProps) {
+  const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [caseType, setCaseType] = useState("")
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium")
+  const [dueDate, setDueDate] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const supabase = createClientComponentClient()
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      setSelectedFiles(Array.from(event.target.files))
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para crear un caso.",
+        variant: "destructive",
+      })
+      setIsSubmitting(false)
+      return
     }
-  }
 
-  const handleRemoveFile = (fileName: string) => {
-    setSelectedFiles(selectedFiles.filter((file) => file.name !== fileName))
-  }
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault()
-    // Here you would typically send this data to your backend
-    console.log({
-      consultationType,
-      clientName,
-      clientEmail,
-      clientPhone,
-      priorityLevel,
+    const { error } = await supabase.from("cases").insert({
+      title,
       description,
-      selectedFiles: selectedFiles.map((file) => file.name), // Just names for console log
+      case_type: caseType,
+      priority,
+      due_date: dueDate || null,
+      client_id: user.id,
+      status: "open",
+      progress: 0,
     })
-    alert("Formulario de nuevo caso enviado (simulado). Revisa la consola para ver los datos.")
-    // Reset form or close modal
+
+    if (error) {
+      console.error("Error creating new case:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo crear el nuevo caso.",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Éxito",
+        description: "Nuevo caso creado exitosamente.",
+      })
+      onSuccess() // Call the success callback
+    }
+    setIsSubmitting(false)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-4">
-      <div className="grid gap-4">
-        {/* Consultation Type */}
+    <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Título del Caso</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Ej. Asesoría Legal para Contrato"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="description">Descripción</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Detalla el problema o la necesidad..."
+          required
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="consultation-type">Tipo de Consulta</Label>
-          <Select value={consultationType} onValueChange={setConsultationType}>
-            <SelectTrigger id="consultation-type">
-              <SelectValue placeholder="Selecciona el tipo de consulta" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="formal">Formal</SelectItem>
-              <SelectItem value="informal">Informal</SelectItem>
-              <SelectItem value="comercial">Comercial</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Contact Information */}
-        <Card className="border-dashed border-2 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-lg">Datos de Contacto</CardTitle>
-            <CardDescription>Información del cliente para el caso.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="client-name">Nombre Completo</Label>
-              <Input
-                id="client-name"
-                placeholder="Nombre del cliente"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="client-email">Correo Electrónico</Label>
-              <Input
-                id="client-email"
-                type="email"
-                placeholder="cliente@ejemplo.com"
-                value={clientEmail}
-                onChange={(e) => setClientEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="client-phone">Número de Teléfono</Label>
-              <Input
-                id="client-phone"
-                type="tel"
-                placeholder="+1234567890"
-                value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Priority Level */}
-        <div className="space-y-2">
-          <Label htmlFor="priority-level">Tipo de Prioridad</Label>
-          <Select value={priorityLevel} onValueChange={setPriorityLevel}>
-            <SelectTrigger id="priority-level">
-              <SelectValue placeholder="Selecciona la prioridad" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="baja">Baja</SelectItem>
-              <SelectItem value="media">Media</SelectItem>
-              <SelectItem value="alta">Alta</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Description */}
-        <div className="space-y-2">
-          <Label htmlFor="description">Descripción</Label>
-          <Textarea
-            id="description"
-            placeholder="Describe detalladamente el caso..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={5}
-            required
+          <Label htmlFor="case-type">Tipo de Caso</Label>
+          <Input
+            id="case-type"
+            value={caseType}
+            onChange={(e) => setCaseType(e.target.value)}
+            placeholder="Ej. Legal, Financiero, Familiar"
           />
-          <p className="text-sm text-muted-foreground">
-            Nota: Para una edición de texto más avanzada (negritas, listas, etc.), se integraría un editor de texto
-            enriquecido.
-          </p>
         </div>
-
-        {/* Image Upload */}
         <div className="space-y-2">
-          <Label htmlFor="images">Imágenes (Opcional)</Label>
-          <div className="flex items-center justify-center w-full">
-            <Label
-              htmlFor="dropzone-file"
-              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/30 transition-colors"
-            >
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
-                <p className="mb-2 text-sm text-muted-foreground">
-                  <span className="font-semibold">Haz clic para subir</span> o arrastra y suelta
-                </p>
-                <p className="text-xs text-muted-foreground">PNG, JPG, GIF (Máx. 5MB por archivo)</p>
-              </div>
-              <Input
-                id="dropzone-file"
-                type="file"
-                className="hidden"
-                multiple
-                onChange={handleFileChange}
-                accept="image/*"
-              />
-            </Label>
-          </div>
-          {selectedFiles.length > 0 && (
-            <div className="mt-4 space-y-2">
-              <p className="text-sm font-medium">Archivos seleccionados:</p>
-              <ul className="space-y-1">
-                {selectedFiles.map((file, index) => (
-                  <li
-                    key={index}
-                    className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-2 rounded-md"
-                  >
-                    <span>
-                      {file.name} ({Math.round(file.size / 1024)} KB)
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveFile(file.name)}
-                      className="h-auto p-1"
-                    >
-                      <XCircle className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <Label htmlFor="priority">Prioridad</Label>
+          <Select value={priority} onValueChange={(value) => setPriority(value as "low" | "medium" | "high")}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecciona prioridad" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Baja</SelectItem>
+              <SelectItem value="medium">Media</SelectItem>
+              <SelectItem value="high">Alta</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
-
-      <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600">
-        Crear Nuevo Caso
-      </Button>
+      <div className="space-y-2">
+        <Label htmlFor="due-date">Fecha Límite (Opcional)</Label>
+        <Input id="due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel} type="button">
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creando...
+            </>
+          ) : (
+            "Crear Caso"
+          )}
+        </Button>
+      </DialogFooter>
     </form>
   )
 }

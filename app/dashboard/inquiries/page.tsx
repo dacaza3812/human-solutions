@@ -1,16 +1,15 @@
 "use client"
 
-import { Label } from "@/components/ui/label"
-
-import { getSupabaseServerClient } from "@/lib/supabase-server"
+import { useEffect, useState } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { format } from "date-fns"
+import { EyeIcon, DownloadIcon, XIcon, CheckCircleIcon, Loader2, FileText } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { EyeIcon, DownloadIcon, FileText } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { updateInquiryStatus } from "@/actions/inquiries" // We will create this action
-import { revalidatePath } from "next/cache"
+import { toast } from "@/components/ui/use-toast"
 import Image from "next/image"
 
 interface Inquiry {
@@ -25,154 +24,145 @@ interface Inquiry {
   created_at: string
 }
 
-export default async function InquiriesPage() {
-  const supabase = getSupabaseServerClient()
+export default function InquiriesPage() {
+  const [inquiries, setInquiries] = useState<Inquiry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState<Inquiry["status"] | "">("")
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const supabase = createClientComponentClient()
 
-  const { data: inquiries, error } = await supabase
-    .from("inquiries")
-    .select("*")
-    .order("created_at", { ascending: false })
+  useEffect(() => {
+    fetchInquiries()
+  }, [])
 
-  if (error) {
-    console.error("Error fetching inquiries:", error)
-    return <div className="p-4">Error al cargar las consultas.</div>
+  const fetchInquiries = async () => {
+    setLoading(true)
+    const { data, error } = await supabase.from("inquiries").select("*").order("created_at", { ascending: false })
+    if (error) {
+      console.error("Error fetching inquiries:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los mensajes.",
+        variant: "destructive",
+      })
+    } else {
+      setInquiries(data as Inquiry[])
+    }
+    setLoading(false)
   }
 
-  const handleStatusChange = async (inquiryId: string, newStatus: string) => {
-    "use server"
-    await updateInquiryStatus(inquiryId, newStatus as Inquiry["status"])
-    revalidatePath("/dashboard/inquiries")
+  const handleOpenModal = (inquiry: Inquiry) => {
+    setSelectedInquiry(inquiry)
+    setCurrentStatus(inquiry.status)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedInquiry(null)
+    setCurrentStatus("")
+  }
+
+  const handleStatusChange = async (newStatus: Inquiry["status"]) => {
+    if (!selectedInquiry) return
+
+    setIsUpdatingStatus(true)
+    const { error } = await supabase.from("inquiries").update({ status: newStatus }).eq("id", selectedInquiry.id)
+
+    if (error) {
+      console.error("Error updating inquiry status:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado del mensaje.",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Éxito",
+        description: "Estado del mensaje actualizado correctamente.",
+        action: <CheckCircleIcon className="text-green-500" />,
+      })
+      setCurrentStatus(newStatus)
+      // Optimistically update the list or refetch
+      setInquiries((prev) => prev.map((inq) => (inq.id === selectedInquiry.id ? { ...inq, status: newStatus } : inq)))
+      setSelectedInquiry((prev) => (prev ? { ...prev, status: newStatus } : null))
+    }
+    setIsUpdatingStatus(false)
+  }
+
+  const getStatusBadgeClass = (status: Inquiry["status"]) => {
+    switch (status) {
+      case "new":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
+      case "resolved":
+        return "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+      case "archived":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+      default:
+        return ""
+    }
+  }
+
+  const isImageFile = (url: string) => {
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"]
+    const extension = url.split(".").pop()?.toLowerCase()
+    return extension && imageExtensions.includes(`.${extension}`)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Cargando mensajes...</span>
+      </div>
+    )
   }
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="grid gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="font-semibold text-lg md:text-2xl">Mensajes de Contacto</h1>
+      </div>
       <Card>
         <CardHeader>
-          <CardTitle>Consultas de Contacto</CardTitle>
+          <CardTitle>Todos los Mensajes</CardTitle>
         </CardHeader>
         <CardContent>
           {inquiries.length === 0 ? (
-            <p className="text-muted-foreground">No hay consultas de contacto.</p>
+            <p className="text-center text-muted-foreground">No hay mensajes de contacto para mostrar.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Mensaje</TableHead>
-                  <TableHead>Estado</TableHead>
                   <TableHead>Fecha</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {inquiries.map((inquiry) => (
                   <TableRow key={inquiry.id}>
-                    <TableCell>
+                    <TableCell className="font-medium">
                       {inquiry.first_name} {inquiry.last_name}
                     </TableCell>
                     <TableCell>{inquiry.email}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{inquiry.message}</TableCell>
+                    <TableCell>{format(new Date(inquiry.created_at), "dd/MM/yyyy HH:mm")}</TableCell>
                     <TableCell>
-                      <Select
-                        defaultValue={inquiry.status}
-                        onValueChange={(newStatus) => handleStatusChange(inquiry.id, newStatus)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Cambiar estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">Nuevo</SelectItem>
-                          <SelectItem value="in_progress">En Progreso</SelectItem>
-                          <SelectItem value="resolved">Resuelto</SelectItem>
-                          <SelectItem value="archived">Archivado</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <span className={`px-2 py-1 rounded-full ${getStatusBadgeClass(inquiry.status)}`}>
+                        {inquiry.status}
+                      </span>
                     </TableCell>
-                    <TableCell>{new Date(inquiry.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <EyeIcon className="h-4 w-4" />
-                            <span className="sr-only">Ver detalles</span>
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
-                          <DialogHeader>
-                            <DialogTitle>Detalles de la Consulta</DialogTitle>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label className="text-right">Nombre:</Label>
-                              <span className="col-span-3">
-                                {inquiry.first_name} {inquiry.last_name}
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label className="text-right">Email:</Label>
-                              <span className="col-span-3">{inquiry.email}</span>
-                            </div>
-                            {inquiry.phone && (
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">Teléfono:</Label>
-                                <span className="col-span-3">{inquiry.phone}</span>
-                              </div>
-                            )}
-                            <div className="grid grid-cols-4 items-start gap-4">
-                              <Label className="text-right">Mensaje:</Label>
-                              <p className="col-span-3 text-sm text-muted-foreground">{inquiry.message}</p>
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label className="text-right">Estado:</Label>
-                              <Select
-                                defaultValue={inquiry.status}
-                                onValueChange={(newStatus) => handleStatusChange(inquiry.id, newStatus)}
-                              >
-                                <SelectTrigger className="w-[180px] col-span-3">
-                                  <SelectValue placeholder="Cambiar estado" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="new">Nuevo</SelectItem>
-                                  <SelectItem value="in_progress">En Progreso</SelectItem>
-                                  <SelectItem value="resolved">Resuelto</SelectItem>
-                                  <SelectItem value="archived">Archivado</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            {inquiry.file_url && (
-                              <div className="grid grid-cols-4 items-start gap-4">
-                                <Label className="text-right">Archivo:</Label>
-                                <div className="col-span-3 flex flex-col gap-2">
-                                  {inquiry.file_url.match(/\.(jpeg|jpg|gif|png|svg)$/i) ? (
-                                    <Image
-                                      src={inquiry.file_url || "/placeholder.svg"}
-                                      alt="Archivo adjunto"
-                                      width={200}
-                                      height={200}
-                                      className="max-w-full h-auto object-contain rounded-md border"
-                                    />
-                                  ) : (
-                                    <div className="flex items-center text-muted-foreground">
-                                      <FileText className="h-5 w-5 mr-2" />
-                                      <span>Archivo adjunto</span>
-                                    </div>
-                                  )}
-                                  <a
-                                    href={inquiry.file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center text-emerald-500 hover:underline"
-                                  >
-                                    <DownloadIcon className="h-4 w-4 mr-1" />
-                                    Descargar archivo
-                                  </a>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <Button variant="outline" onClick={() => handleOpenModal(inquiry)}>
+                        <EyeIcon className="h-4 w-4 mr-2" />
+                        Ver
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -181,6 +171,82 @@ export default async function InquiriesPage() {
           )}
         </CardContent>
       </Card>
+      {selectedInquiry && (
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            {/* This trigger is hidden, the button in the table row opens the dialog */}
+            <Button variant="outline" className="hidden bg-transparent">
+              Abrir Modal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Mensaje de Contacto</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              <div>
+                <strong>Nombre:</strong> {selectedInquiry.first_name} {selectedInquiry.last_name}
+              </div>
+              <div>
+                <strong>Email:</strong> {selectedInquiry.email}
+              </div>
+              <div>
+                <strong>Fecha:</strong> {format(new Date(selectedInquiry.created_at), "dd/MM/yyyy HH:mm")}
+              </div>
+              <div>
+                <strong>Estado:</strong>
+                <Select value={currentStatus} onValueChange={handleStatusChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">Nuevo</SelectItem>
+                    <SelectItem value="in_progress">En Progreso</SelectItem>
+                    <SelectItem value="resolved">Resuelto</SelectItem>
+                    <SelectItem value="archived">Archivado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <strong>Mensaje:</strong> {selectedInquiry.message}
+              </div>
+              {selectedInquiry.file_url && (
+                <div>
+                  <strong>Archivo Adjunto:</strong>
+                  {isImageFile(selectedInquiry.file_url) ? (
+                    <Image
+                      src={selectedInquiry.file_url || "/placeholder.svg"}
+                      alt="Archivo Adjunto"
+                      width={200}
+                      height={200}
+                      className="max-w-full h-auto object-contain rounded-md border"
+                    />
+                  ) : (
+                    <div className="flex items-center text-muted-foreground">
+                      <FileText className="h-5 w-5 mr-2" />
+                      <span>Archivo adjunto</span>
+                    </div>
+                  )}
+                  <a
+                    href={selectedInquiry.file_url}
+                    download
+                    className="flex items-center text-emerald-500 hover:underline mt-2"
+                  >
+                    <DownloadIcon className="h-4 w-4 mr-2" />
+                    Descargar
+                  </a>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCloseModal}>
+                <XIcon className="h-4 w-4 mr-2" />
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

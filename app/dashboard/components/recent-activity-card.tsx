@@ -1,46 +1,83 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp } from "lucide-react"
+import { Activity, CheckCircle, DollarSign, Calendar, UserPlus } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
 
-interface RecentActivityCardProps {
-  recentActivity: {
-    id: number
-    type: string
-    description: string
-    time: string
-    status: "success" | "completed" | "payment" | "scheduled"
-  }[]
+interface ActivityItem {
+  id: number
+  type: "Nuevo Cliente" | "Caso Completado" | "Pago Recibido" | "Consulta Programada"
+  description: string
+  time: string
+  status: "success" | "completed" | "payment" | "scheduled"
 }
 
-export function RecentActivityCard({ recentActivity }: RecentActivityCardProps) {
+const recentActivityData: ActivityItem[] = [
+  {
+    id: 1,
+    type: "Nuevo Cliente",
+    description: "María González se registró para asesoría financiera",
+    time: "Hace 2 horas",
+    status: "success",
+  },
+  {
+    id: 2,
+    type: "Caso Completado",
+    description: "Caso de mediación familiar #1234 resuelto exitosamente",
+    time: "Hace 4 horas",
+    status: "completed",
+  },
+  {
+    id: 3,
+    type: "Pago Recibido",
+    description: "Pago de $150 USD recibido de Carlos Rodríguez",
+    time: "Hace 6 horas",
+    status: "payment",
+  },
+  {
+    id: 4,
+    type: "Consulta Programada",
+    description: "Nueva consulta programada para mañana a las 10:00 AM",
+    time: "Hace 1 día",
+    status: "scheduled",
+  },
+]
+
+export function RecentActivityCard() {
+  const getIcon = (status: ActivityItem["status"]) => {
+    switch (status) {
+      case "success":
+        return <UserPlus className="h-5 w-5 text-green-500" />
+      case "completed":
+        return <CheckCircle className="h-5 w-5 text-blue-500" />
+      case "payment":
+        return <DollarSign className="h-5 w-5 text-purple-500" />
+      case "scheduled":
+        return <Calendar className="h-5 w-5 text-orange-500" />
+      default:
+        return <Activity className="h-5 w-5 text-gray-500" />
+    }
+  }
+
   return (
-    <Card className="border-border/40">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
-          Actividad Reciente
-        </CardTitle>
+        <CardTitle>Actividad Reciente</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {recentActivity.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border border-border/40">
-            <div
-              className={`w-2 h-2 rounded-full mt-2 ${
-                activity.status === "success"
-                  ? "bg-emerald-400"
-                  : activity.status === "completed"
-                    ? "bg-blue-400"
-                    : activity.status === "payment"
-                      ? "bg-purple-400"
-                      : "bg-orange-400"
-              }`}
-            />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">{activity.type}</p>
-              <p className="text-xs text-muted-foreground">{activity.description}</p>
-              <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+      <CardContent className="grid gap-4">
+        {recentActivityData.map((activity, index) => (
+          <div key={activity.id}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                {getIcon(activity.status)}
+              </div>
+              <div className="grid gap-1">
+                <p className="text-sm font-medium leading-none">{activity.type}</p>
+                <p className="text-sm text-muted-foreground">{activity.description}</p>
+              </div>
+              <div className="ml-auto text-xs text-muted-foreground">{activity.time}</div>
             </div>
+            {index < recentActivityData.length - 1 && <Separator className="my-4" />}
           </div>
         ))}
       </CardContent>

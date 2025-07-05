@@ -1,22 +1,14 @@
 "use client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Share2, Gift, UserPlus, Users, DollarSign, TrendingUp, CheckCircle, Copy } from "lucide-react"
 
-// Define un tipo para el perfil de usuario si no existe
-interface UserProfile {
-  id: string
-  first_name?: string | null
-  last_name?: string | null
-  account_type?: string | null
-  phone?: string | null
-  created_at?: string | null
-  referral_code?: string | null
-  stripe_customer_id?: string | null
-  // Añade cualquier otro campo de perfil que uses
-}
+import { Label } from "@/components/ui/label"
+
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { CopyIcon, CheckIcon, Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 interface ReferralStats {
   total_referrals: number
@@ -25,200 +17,172 @@ interface ReferralStats {
   monthly_earnings: number
 }
 
-interface ReferralsSectionProps {
-  profile: UserProfile | null
-  referralCode: string
-  copySuccess: boolean
-  copyReferralLink: () => Promise<void>
-  referralStats: ReferralStats
-}
+export function ReferralsSection() {
+  const [referralStats, setReferralStats] = useState<ReferralStats>({
+    total_referrals: 0,
+    active_referrals: 0,
+    total_earnings: 0,
+    monthly_earnings: 0,
+  })
+  const [referralCode, setReferralCode] = useState("")
+  const [copySuccess, setCopySuccess] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClientComponentClient()
 
-export function ReferralsSection({
-  profile,
-  referralCode,
-  copySuccess,
-  copyReferralLink,
-  referralStats,
-}: ReferralsSectionProps) {
+  useEffect(() => {
+    fetchReferralData()
+  }, [])
+
+  const fetchReferralData = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("referral_code")
+      .eq("id", user.id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error("Error fetching profile for referral:", profileError)
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el código de referido.",
+        variant: "destructive",
+      })
+      setLoading(false)
+      return
+    }
+
+    let userReferralCode = profile.referral_code
+    if (!userReferralCode) {
+      // Generate a new referral code if it doesn't exist
+      const newCode = generateUniqueReferralCode(user.id) // You might want a more robust generation
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ referral_code: newCode })
+        .eq("id", user.id)
+      if (updateError) {
+        console.error("Error updating referral code:", updateError)
+        toast({
+          title: "Error",
+          description: "No se pudo generar el código de referido.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+      userReferralCode = newCode
+    }
+    setReferralCode(userReferralCode)
+
+    // Fetch referral stats using the RPC function
+    const { data: statsData, error: statsError } = await supabase.rpc("get_referral_stats", {
+      user_referral_code: userReferralCode,
+    })
+
+    if (statsError) {
+      console.error("Error fetching referral stats:", statsError)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las estadísticas de referidos.",
+        variant: "destructive",
+      })
+    } else if (statsData && statsData.length > 0) {
+      setReferralStats(statsData[0])
+    }
+    setLoading(false)
+  }
+
+  const generateUniqueReferralCode = (userId: string) => {
+    // Simple generation, consider a more robust method for production
+    return `${userId.substring(0, 8)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase()
+  }
+
+  const copyReferralLink = async () => {
+    const referralLink = `${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${referralCode}`
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setCopySuccess(true)
+      toast({
+        title: "Copiado",
+        description: "Enlace de referido copiado al portapapeles.",
+        action: <CheckIcon className="text-green-500" />,
+      })
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error("Error copying to clipboard:", err)
+      toast({
+        title: "Error",
+        description: "No se pudo copiar el enlace.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Programa de Referidos</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2">Cargando datos de referidos...</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Programa de Referidos</h2>
-          <p className="text-muted-foreground">Gana dinero compartiendo Fox Lawyer con tus amigos</p>
-        </div>
-      </div>
-
-      {/* Referral Link Card */}
-      <Card className="border-border/40">
-        <CardHeader>
-          <CardTitle className="flex items-center text-foreground">
-            <Share2 className="w-5 h-5 mr-2 text-emerald-400" />
-            Tu Enlace de Referido
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <Card className="col-span-full lg:col-span-2">
+      <CardHeader>
+        <CardTitle>Programa de Referidos</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
-            <Label htmlFor="referralLink" className="text-sm font-medium">
-              Enlace de Referido
-            </Label>
-            <div className="flex mt-2">
-              <Input
-                id="referralLink"
-                value={`https://foxlawyer.vercel.app/register?ref=${referralCode}`}
-                readOnly
-                className="flex-1"
-              />
-              <Button
-                onClick={copyReferralLink}
-                variant="outline"
-                className="ml-2 bg-transparent"
-                disabled={copySuccess}
-              >
-                {copySuccess ? (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Copiado
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copiar
-                  </>
-                )}
-              </Button>
-            </div>
+            <p className="text-2xl font-bold">{referralStats.total_referrals}</p>
+            <p className="text-sm text-muted-foreground">Referidos Totales</p>
           </div>
-
-          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-            <div className="flex items-center space-x-2 mb-2">
-              <Gift className="w-5 h-5 text-emerald-400" />
-              <h4 className="font-semibold text-emerald-400">¿Cómo funciona?</h4>
-            </div>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Comparte tu enlace único con amigos y familiares</li>
-              <li>• Gana $25 USD por cada persona que se registre usando tu enlace</li>
-              <li>• Los pagos se procesan automáticamente cada mes</li>
-              <li>• No hay límite en la cantidad de referidos</li>
-            </ul>
+          <div>
+            <p className="text-2xl font-bold">{referralStats.active_referrals}</p>
+            <p className="text-sm text-muted-foreground">Referidos Activos</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-2xl font-bold">${referralStats.total_earnings.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Ganancias Totales</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold">${referralStats.monthly_earnings.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">Ganancias Mensuales</p>
+          </div>
+        </div>
 
-      {/* Referral Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Referidos</p>
-                <p className="text-2xl font-bold text-foreground">{referralStats.total_referrals}</p>
-                <p className="text-sm text-emerald-400">Todos los tiempos</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <UserPlus className="w-6 h-6 text-emerald-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Referidos Activos</p>
-                <p className="text-2xl font-bold text-foreground">{referralStats.active_referrals}</p>
-                <p className="text-sm text-blue-400">Usuarios activos</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Ganancias Totales</p>
-                <p className="text-2xl font-bold text-foreground">${referralStats.total_earnings}</p>
-                <p className="text-sm text-purple-400">USD ganados</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Este Mes</p>
-                <p className="text-2xl font-bold text-foreground">${referralStats.monthly_earnings}</p>
-                <p className="text-sm text-orange-400">Ganancias mensuales</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-orange-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Share Options */}
-      <Card className="border-border/40">
-        <CardHeader>
-          <CardTitle className="text-foreground">Compartir en Redes Sociales</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const text = `¡Únete a Fox Lawyer y transforma tus problemas en oportunidades! Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
-              }}
-            >
-              WhatsApp
-            </Button>
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank")
-              }}
-            >
-              Twitter
-            </Button>
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(text)}`, "_blank")
-              }}
-            >
-              Facebook
-            </Button>
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const subject = "Únete a Fox Lawyer"
-                const body = `¡Hola! Te invito a unirte a Fox Lawyer, una plataforma increíble de asesoría personalizada. Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
-              }}
-            >
-              Email
+        <div className="space-y-2">
+          <Label htmlFor="referral-link">Tu Enlace de Referido</Label>
+          <div className="flex space-x-2">
+            <Input
+              id="referral-link"
+              readOnly
+              value={`${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${referralCode}`}
+              className="flex-1"
+            />
+            <Button onClick={copyReferralLink} disabled={copySuccess}>
+              {copySuccess ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
+              <span className="sr-only">Copiar enlace</span>
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <p className="text-sm text-muted-foreground">Comparte este enlace para invitar a nuevos usuarios.</p>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

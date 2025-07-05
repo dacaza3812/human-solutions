@@ -1,164 +1,360 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ChatInterface } from "@/components/chat-interface"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { SendIcon, Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { format } from "date-fns" // Import format from date-fns
 
-// Define un tipo para el perfil de usuario si no existe
-interface UserProfile {
+interface Message {
   id: string
-  first_name?: string | null
-  last_name?: string | null
-  account_type?: string | null
-  phone?: string | null
-  created_at?: string | null
-  referral_code?: string | null
-  stripe_customer_id?: string | null
-  // Añade cualquier otro campo de perfil que uses
+  sender_id: string
+  receiver_id: string
+  content: string
+  created_at: string
+  sender_profile: {
+    first_name: string | null
+    last_name: string | null
+    avatar_url: string | null
+  } | null
 }
 
-interface ClientCase {
-  id: number
-  title: string
-  type: string
-  status: string
-  advisor: string
-  advisorAvatar: string
-  description: string
-  createdDate: string
-  nextAppointment: string | null
-  progress: number
+interface Conversation {
+  id: string
+  participant1_id: string
+  participant2_id: string
+  last_message_at: string
+  participant1_profile: {
+    first_name: string | null
+    last_name: string | null
+    avatar_url: string | null
+  } | null
+  participant2_profile: {
+    first_name: string | null
+    last_name: string | null
+    avatar_url: string | null
+  } | null
 }
 
-interface AdvisorCase {
-  id: number
-  clientName: string
-  clientId: number
-  title: string
-  type: string
-  status: string
-  priority: string
-  createdDate: string
-  dueDate: string
-  description: string
-  progress: number
-}
+export function MessagesSection() {
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  const [newMessage, setNewMessage] = useState("")
+  const [loadingConversations, setLoadingConversations] = useState(true)
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const supabase = createClientComponentClient()
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
-interface MessagesSectionProps {
-  profile: UserProfile | null
-  activeChat: number | null
-  setActiveChat: (chatId: number | null) => void
-  userCases: ClientCase[]
-  advisorCases: AdvisorCase[]
-}
+  useEffect(() => {
+    const fetchUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+        fetchConversations(user.id)
+      } else {
+        setLoadingConversations(false)
+      }
+    }
+    fetchUser()
+  }, [])
 
-export function MessagesSection({ profile, activeChat, setActiveChat, userCases, advisorCases }: MessagesSectionProps) {
+  useEffect(() => {
+    if (activeConversationId) {
+      fetchMessages(activeConversationId)
+      // Set up real-time subscription for messages
+      const channel = supabase
+        .channel(`messages:${activeConversationId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${activeConversationId}`,
+          },
+          (payload) => {
+            const newMessage = payload.new as Message
+            setMessages((prevMessages) => [...prevMessages, newMessage])
+          },
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
+    }
+  }, [activeConversationId, supabase])
+
+  const fetchConversations = async (userId: string) => {
+    setLoadingConversations(true)
+    const { data, error } = await supabase
+      .from("conversations")
+      .select(
+        `
+        id,
+        participant1_id,
+        participant2_id,
+        last_message_at,
+        participant1_profile:participant1_id(first_name, last_name, avatar_url),
+        participant2_profile:participant2_id(first_name, last_name, avatar_url)
+      `,
+      )
+      .or(`participant1_id.eq.${userId},participant2_id.eq.${userId}`)
+      .order("last_message_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching conversations:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las conversaciones.",
+        variant: "destructive",
+      })
+    } else {
+      setConversations(data as Conversation[])
+      if (data.length > 0) {
+        setActiveConversationId(data[0].id)
+      }
+    }
+    setLoadingConversations(false)
+  }
+
+  const fetchMessages = async (conversationId: string) => {
+    setLoadingMessages(true)
+    const { data, error } = await supabase
+      .from("messages")
+      .select(
+        `
+        id,
+        sender_id,
+        receiver_id,
+        content,
+        created_at,
+        sender_profile:sender_id(first_name, last_name, avatar_url)
+      `,
+      )
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true })
+
+    if (error) {
+      console.error("Error fetching messages:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los mensajes.",
+        variant: "destructive",
+      })
+    } else {
+      setMessages(data as Message[])
+    }
+    setLoadingMessages(false)
+  }
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !activeConversationId || !currentUserId) return
+
+    setIsSending(true)
+    const { data: conversationData } = await supabase
+      .from("conversations")
+      .select("participant1_id, participant2_id")
+      .eq("id", activeConversationId)
+      .single()
+
+    if (!conversationData) {
+      toast({
+        title: "Error",
+        description: "Conversación no encontrada.",
+        variant: "destructive",
+      })
+      setIsSending(false)
+      return
+    }
+
+    const receiverId =
+      conversationData.participant1_id === currentUserId
+        ? conversationData.participant2_id
+        : conversationData.participant1_id
+
+    const { error } = await supabase.from("messages").insert({
+      conversation_id: activeConversationId,
+      sender_id: currentUserId,
+      receiver_id: receiverId,
+      content: newMessage,
+    })
+
+    if (error) {
+      console.error("Error sending message:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo enviar el mensaje.",
+        variant: "destructive",
+      })
+    } else {
+      setNewMessage("")
+      // The real-time subscription will add the message to the state
+      // Also update last_message_at for the conversation
+      await supabase
+        .from("conversations")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", activeConversationId)
+      fetchConversations(currentUserId!) // Re-fetch conversations to update order
+    }
+    setIsSending(false)
+  }
+
+  const getParticipantInfo = (conversation: Conversation) => {
+    if (!currentUserId) return { name: "Cargando...", avatar: "/placeholder-user.jpg" }
+    if (conversation.participant1_id === currentUserId) {
+      return {
+        name: `${conversation.participant2_profile?.first_name || ""} ${conversation.participant2_profile?.last_name || ""}`,
+        avatar: conversation.participant2_profile?.avatar_url || "/placeholder-user.jpg",
+      }
+    } else {
+      return {
+        name: `${conversation.participant1_profile?.first_name || ""} ${conversation.participant1_profile?.last_name || ""}`,
+        avatar: conversation.participant1_profile?.avatar_url || "/placeholder-user.jpg",
+      }
+    }
+  }
+
+  if (loadingConversations) {
+    return (
+      <Card className="col-span-full lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Mensajes</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-64">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2">Cargando conversaciones...</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mensajes</h2>
-          <p className="text-muted-foreground">
-            {profile?.account_type === "client"
-              ? "Comunícate con tus asesores asignados"
-              : "Comunícate con tus clientes"}
-          </p>
+    <Card className="col-span-full lg:col-span-2">
+      <CardHeader>
+        <CardTitle>Mensajes</CardTitle>
+      </CardHeader>
+      <CardContent className="flex h-[400px]">
+        <div className="w-1/3 border-r pr-4 overflow-y-auto">
+          <h3 className="font-semibold mb-4">Conversaciones</h3>
+          {conversations.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No hay conversaciones.</p>
+          ) : (
+            conversations.map((conv) => {
+              const participant = getParticipantInfo(conv)
+              return (
+                <div
+                  key={conv.id}
+                  className={`flex items-center gap-3 p-2 rounded-md cursor-pointer mb-2 ${
+                    activeConversationId === conv.id ? "bg-muted" : "hover:bg-muted/50"
+                  }`}
+                  onClick={() => setActiveConversationId(conv.id)}
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={participant.avatar || "/placeholder.svg"} alt={participant.name} />
+                    <AvatarFallback>{participant.name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{participant.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {conv.last_message_at ? format(new Date(conv.last_message_at), "HH:mm") : ""}
+                    </p>
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
-      </div>
-
-      {activeChat ? (
-        <div className="space-y-4">
-          <Button variant="outline" onClick={() => setActiveChat(null)} className="mb-4">
-            ← Volver a conversaciones
-          </Button>
-
-          {profile?.account_type === "client"
-            ? (() => {
-                const case_item = userCases.find((c) => c.id === activeChat)
-                return case_item ? (
-                  <ChatInterface
-                    caseId={activeChat}
-                    advisorName={case_item.advisor}
-                    advisorAvatar={case_item.advisorAvatar}
-                    currentUser="client"
-                  />
-                ) : null
-              })()
-            : (() => {
-                const case_item = advisorCases.find((c) => c.id === activeChat)
-                return case_item ? (
-                  <ChatInterface
-                    caseId={activeChat}
-                    advisorName={`${profile?.first_name} ${profile?.last_name}`}
-                    advisorAvatar="/placeholder-user.jpg"
-                    currentUser="advisor"
-                  />
-                ) : null
-              })()}
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          <h3 className="text-lg font-semibold text-foreground">Conversaciones Activas</h3>
-
-          {profile?.account_type === "client"
-            ? userCases
-                .filter((c) => c.status !== "Completada")
-                .map((case_item) => (
-                  <Card
-                    key={case_item.id}
-                    className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => setActiveChat(case_item.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={case_item.advisorAvatar || "/placeholder.svg"} />
-                          <AvatarFallback>{case_item.advisor.charAt(0)}</AvatarFallback>
+        <div className="w-2/3 pl-4 flex flex-col">
+          {activeConversationId ? (
+            <>
+              <div className="flex-1 overflow-y-auto mb-4 pr-2">
+                {loadingMessages ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="ml-2">Cargando mensajes...</span>
+                  </div>
+                ) : messages.length === 0 ? (
+                  <p className="text-center text-muted-foreground text-sm">No hay mensajes en esta conversación.</p>
+                ) : (
+                  messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex items-start gap-3 mb-4 ${
+                        msg.sender_id === currentUserId ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      {msg.sender_id !== currentUserId && (
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage
+                            src={msg.sender_profile?.avatar_url || "/placeholder-user.jpg"}
+                            alt={msg.sender_profile?.first_name || "User"}
+                          />
+                          <AvatarFallback>
+                            {msg.sender_profile?.first_name ? msg.sender_profile.first_name[0] : "U"}
+                          </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground">{case_item.advisor}</h4>
-                          <p className="text-sm text-muted-foreground">{case_item.title}</p>
-                          <p className="text-xs text-muted-foreground">Último mensaje: Hace 2 horas</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-                            {case_item.status}
-                          </span>
-                        </div>
+                      )}
+                      <div
+                        className={`max-w-[70%] p-3 rounded-lg ${
+                          msg.sender_id === currentUserId
+                            ? "bg-primary text-primary-foreground rounded-br-none"
+                            : "bg-muted text-muted-foreground rounded-bl-none"
+                        }`}
+                      >
+                        <p className="text-sm">{msg.content}</p>
+                        <span className="block text-xs text-right mt-1 opacity-70">
+                          {format(new Date(msg.created_at), "HH:mm")}
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-            : advisorCases
-                .filter((c) => c.status !== "Completada")
-                .map((case_item) => (
-                  <Card
-                    key={case_item.id}
-                    className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => setActiveChat(case_item.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarFallback>{case_item.clientName.charAt(0)}</AvatarFallback>
+                      {msg.sender_id === currentUserId && (
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage
+                            src={msg.sender_profile?.avatar_url || "/placeholder-user.jpg"}
+                            alt={msg.sender_profile?.first_name || "User"}
+                          />
+                          <AvatarFallback>
+                            {msg.sender_profile?.first_name ? msg.sender_profile.first_name[0] : "U"}
+                          </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground">{case_item.clientName}</h4>
-                          <p className="text-sm text-muted-foreground">{case_item.title}</p>
-                          <p className="text-xs text-muted-foreground">Último mensaje: Hace 1 hora</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                            {case_item.status}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Escribe un mensaje..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      handleSendMessage()
+                    }
+                  }}
+                  disabled={isSending}
+                />
+                <Button onClick={handleSendMessage} disabled={isSending}>
+                  {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendIcon className="h-4 w-4" />}
+                  <span className="sr-only">Enviar</span>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              Selecciona una conversación para empezar a chatear.
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

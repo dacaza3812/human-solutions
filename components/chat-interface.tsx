@@ -1,299 +1,223 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect, useRef } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Send,
-  Smile,
-  Paperclip,
-  FileText,
-  ImageIcon,
-  Camera,
-  Mic,
-  User,
-  Phone,
-  Video,
-  MoreVertical,
-} from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { SendIcon, Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
 
 interface Message {
-  id: number
-  sender: "client" | "advisor"
+  id: string
+  sender_id: string
+  receiver_id: string
   content: string
-  timestamp: string
-  type: "text" | "file" | "image"
-  fileName?: string
+  created_at: string
+  sender_profile: {
+    first_name: string | null
+    last_name: string | null
+    avatar_url: string | null
+  } | null
 }
 
 interface ChatInterfaceProps {
-  caseId: number
-  advisorName: string
-  advisorAvatar?: string
-  currentUser: "client" | "advisor"
+  conversationId: string
+  currentUserId: string
+  otherParticipantProfile: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    avatar_url: string | null
+  }
 }
 
-export function ChatInterface({ caseId, advisorName, advisorAvatar, currentUser }: ChatInterfaceProps) {
-  const [message, setMessage] = useState("")
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      sender: "advisor",
-      content: "Hola! Soy tu asesor asignado. ¿En qué puedo ayudarte hoy?",
-      timestamp: "10:30 AM",
-      type: "text",
-    },
-    {
-      id: 2,
-      sender: "client",
-      content: "Hola, necesito ayuda con mi situación financiera actual.",
-      timestamp: "10:32 AM",
-      type: "text",
-    },
-    {
-      id: 3,
-      sender: "advisor",
-      content: "Por supuesto, estaré encantado de ayudarte. ¿Podrías contarme más detalles sobre tu situación?",
-      timestamp: "10:33 AM",
-      type: "text",
-    },
-    {
-      id: 4,
-      sender: "client",
-      content: "Presupuesto_Familiar.pdf",
-      timestamp: "10:35 AM",
-      type: "file",
-      fileName: "Presupuesto_Familiar.pdf",
-    },
-    {
-      id: 5,
-      sender: "client",
-      content: "Aquí tienes mi presupuesto actual. Como puedes ver, tengo algunos problemas para llegar a fin de mes.",
-      timestamp: "10:35 AM",
-      type: "text",
-    },
-  ])
+export function ChatInterface({ conversationId, currentUserId, otherParticipantProfile }: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [newMessage, setNewMessage] = useState("")
+  const [loadingMessages, setLoadingMessages] = useState(true)
+  const [isSending, setIsSending] = useState(false)
+  const supabase = createClientComponentClient()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const imageInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    fetchMessages()
+    const channel = supabase
+      .channel(`messages:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const newMessage = payload.new as Message
+          setMessages((prevMessages) => [...prevMessages, newMessage])
+        },
+      )
+      .subscribe()
 
-  const emojis = ["😊", "😂", "❤️", "👍", "👎", "😢", "😮", "😡", "🙏", "👏", "🎉", "💪"]
-
-  const sendMessage = () => {
-    if (message.trim()) {
-      const newMessage: Message = {
-        id: messages.length + 1,
-        sender: currentUser,
-        content: message,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        type: "text",
-      }
-      setMessages([...messages, newMessage])
-      setMessage("")
+    return () => {
+      supabase.removeChannel(channel)
     }
+  }, [conversationId, supabase])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
+  const fetchMessages = async () => {
+    setLoadingMessages(true)
+    const { data, error } = await supabase
+      .from("messages")
+      .select(
+        `
+        id,
+        sender_id,
+        receiver_id,
+        content,
+        created_at,
+        sender_profile:sender_id(first_name, last_name, avatar_url)
+      `,
+      )
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true })
 
-  const handleFileUpload = (type: "file" | "image") => {
-    if (type === "file") {
-      fileInputRef.current?.click()
+    if (error) {
+      console.error("Error fetching messages:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los mensajes.",
+        variant: "destructive",
+      })
     } else {
-      imageInputRef.current?.click()
+      setMessages(data as Message[])
     }
+    setLoadingMessages(false)
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "file" | "image") => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const newMessage: Message = {
-        id: messages.length + 1,
-        sender: currentUser,
-        content: file.name,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        type: type,
-        fileName: file.name,
-      }
-      setMessages([...messages, newMessage])
-    }
-  }
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return
 
-  const addEmoji = (emoji: string) => {
-    setMessage(message + emoji)
+    setIsSending(true)
+    const { error } = await supabase.from("messages").insert({
+      conversation_id: conversationId,
+      sender_id: currentUserId,
+      receiver_id: otherParticipantProfile.id,
+      content: newMessage,
+    })
+
+    if (error) {
+      console.error("Error sending message:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo enviar el mensaje.",
+        variant: "destructive",
+      })
+    } else {
+      setNewMessage("")
+      // Update last_message_at for the conversation
+      await supabase
+        .from("conversations")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", conversationId)
+    }
+    setIsSending(false)
   }
 
   return (
-    <Card className="h-[600px] flex flex-col border-border/40">
-      {/* Chat Header */}
-      <CardHeader className="border-b border-border/40 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Avatar className="w-10 h-10">
-              <AvatarImage src={advisorAvatar || "/placeholder.svg"} />
-              <AvatarFallback>{advisorName.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-semibold text-foreground">{advisorName}</h3>
-              <p className="text-xs text-emerald-400">En línea</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="icon">
-              <Phone className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Video className="w-4 h-4" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>Ver perfil</DropdownMenuItem>
-                <DropdownMenuItem>Buscar mensajes</DropdownMenuItem>
-                <DropdownMenuItem>Silenciar notificaciones</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardHeader>
-
-      {/* Messages Area */}
-      <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.sender === currentUser ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[70%] rounded-lg p-3 ${
-                msg.sender === currentUser ? "bg-emerald-500 text-white" : "bg-muted text-foreground"
-              }`}
-            >
-              {msg.type === "file" && (
-                <div className="flex items-center space-x-2 mb-2">
-                  <FileText className="w-4 h-4" />
-                  <span className="text-sm font-medium">{msg.fileName}</span>
-                </div>
-              )}
-              {msg.type === "image" && (
-                <div className="flex items-center space-x-2 mb-2">
-                  <ImageIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{msg.fileName}</span>
-                </div>
-              )}
-              <p className="text-sm">{msg.content}</p>
-              <p
-                className={`text-xs mt-1 ${msg.sender === currentUser ? "text-emerald-100" : "text-muted-foreground"}`}
-              >
-                {msg.timestamp}
-              </p>
-            </div>
-          </div>
-        ))}
-      </CardContent>
-
-      {/* Message Input */}
-      <div className="border-t border-border/40 p-4">
-        <div className="flex items-center space-x-2">
-          {/* Attachment Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Paperclip className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" className="w-48">
-              <DropdownMenuItem onClick={() => handleFileUpload("file")}>
-                <FileText className="w-4 h-4 mr-2" />
-                Documento
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFileUpload("image")}>
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Fotos y videos
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Camera className="w-4 h-4 mr-2" />
-                Cámara
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Mic className="w-4 h-4 mr-2" />
-                Audio
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <User className="w-4 h-4 mr-2" />
-                Contacto
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Message Input */}
-          <div className="flex-1 relative">
-            <Input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Escribe un mensaje"
-              className="pr-10"
-            />
-
-            {/* Emoji Picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <Smile className="w-4 h-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2">
-                <div className="grid grid-cols-6 gap-2">
-                  {emojis.map((emoji, index) => (
-                    <Button
-                      key={index}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => addEmoji(emoji)}
-                      className="h-8 w-8 p-0"
-                    >
-                      {emoji}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Send Button */}
-          <Button onClick={sendMessage} size="icon" className="bg-emerald-500 hover:bg-emerald-600">
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 border-b p-4">
+        <Avatar className="h-10 w-10">
+          <AvatarImage
+            src={otherParticipantProfile.avatar_url || "/placeholder-user.jpg"}
+            alt={otherParticipantProfile.first_name || "User"}
+          />
+          <AvatarFallback>
+            {otherParticipantProfile.first_name ? otherParticipantProfile.first_name[0] : "U"}
+          </AvatarFallback>
+        </Avatar>
+        <h3 className="font-semibold">
+          {otherParticipantProfile.first_name} {otherParticipantProfile.last_name}
+        </h3>
       </div>
-
-      {/* Hidden File Inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept=".pdf,.doc,.docx,.txt"
-        onChange={(e) => handleFileChange(e, "file")}
-      />
-      <input
-        ref={imageInputRef}
-        type="file"
-        className="hidden"
-        accept="image/*,video/*"
-        onChange={(e) => handleFileChange(e, "image")}
-      />
-    </Card>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {loadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-2">Cargando mensajes...</span>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">Empieza una conversación.</div>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex items-start gap-3 ${msg.sender_id === currentUserId ? "justify-end" : "justify-start"}`}
+            >
+              {msg.sender_id !== currentUserId && (
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={msg.sender_profile?.avatar_url || "/placeholder-user.jpg"}
+                    alt={msg.sender_profile?.first_name || "User"}
+                  />
+                  <AvatarFallback>
+                    {msg.sender_profile?.first_name ? msg.sender_profile.first_name[0] : "U"}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div
+                className={`max-w-[70%] p-3 rounded-lg ${
+                  msg.sender_id === currentUserId
+                    ? "bg-primary text-primary-foreground rounded-br-none"
+                    : "bg-muted text-muted-foreground rounded-bl-none"
+                }`}
+              >
+                <p className="text-sm">{msg.content}</p>
+                <span className="block text-xs text-right mt-1 opacity-70">
+                  {format(new Date(msg.created_at), "HH:mm")}
+                </span>
+              </div>
+              {msg.sender_id === currentUserId && (
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={msg.sender_profile?.avatar_url || "/placeholder-user.jpg"}
+                    alt={msg.sender_profile?.first_name || "User"}
+                  />
+                  <AvatarFallback>
+                    {msg.sender_profile?.first_name ? msg.sender_profile.first_name[0] : "U"}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="flex gap-2 p-4 border-t">
+        <Input
+          placeholder="Escribe un mensaje..."
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              handleSendMessage()
+            }
+          }}
+          disabled={isSending}
+        />
+        <Button onClick={handleSendMessage} disabled={isSending}>
+          {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendIcon className="h-4 w-4" />}
+          <span className="sr-only">Enviar</span>
+        </Button>
+      </div>
+    </div>
   )
 }

@@ -1,485 +1,349 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Loader2, CheckCircleIcon, XCircleIcon } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useAuth } from "@/contexts/auth-context"
-import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
-import { supabase } from "@/lib/supabase"
-import {
-  CheckCircle,
-  CreditCard,
-  Calendar,
-  DollarSign,
-  AlertCircle,
-  Loader2,
-  Crown,
-  Star,
-  Zap,
-  X,
-  RefreshCw,
-} from "lucide-react"
+import { useRouter } from "next/navigation"
 
-interface SubscriptionInfo {
-  plan_id?: number
-  plan_name?: string
-  plan_price?: number
-  plan_currency?: string
-  plan_billing_interval?: string
-  subscription_status?: string
-  subscription_start_date?: string
-  subscription_end_date?: string
-  stripe_customer_id?: string
-  stripe_subscription_id?: string
+interface Subscription {
+  id: string
+  stripe_subscription_id: string
+  stripe_price_id: string
+  status: string
+  current_period_start: string
+  current_period_end: string
+  cancel_at_period_end: boolean
+  product_name: string
+  product_description: string | null
+  price_amount: number
+  price_currency: string
+  interval: string | null
+  interval_count: number | null
 }
 
-const plans = [
-  {
-    id: 1,
-    name: "Standard",
-    price: "$49.99",
-    frequency: "mensual",
-    description: "Ideal para necesidades básicas de asesoría.",
-    features: ["3 consultas/mes", "Soporte por email", "Acceso a recursos básicos", "Prioridad estándar"],
-    buttonText: "Elegir Plan Standard",
-    highlight: false,
-    icon: CheckCircle,
-  },
-  {
-    id: 2,
-    name: "Premium",
-    price: "$149.99",
-    frequency: "mensual",
-    description: "Para un soporte más completo y personalizado.",
-    features: [
-      "10 consultas/mes",
-      "Soporte prioritario",
-      "Acceso a todos los recursos",
-      "Seguimiento personalizado",
-      "Prioridad alta",
-    ],
-    buttonText: "Elegir Plan Premium",
-    highlight: true,
-    icon: Crown,
-  },
-  {
-    id: 3,
-    name: "Collaborative",
-    price: "$299.99",
-    frequency: "mensual",
-    description: "Solución integral para equipos o familias.",
-    features: [
-      "Consultas ilimitadas",
-      "Asesor dedicado 24/7",
-      "Acceso para equipos",
-      "Reportes personalizados",
-      "Prioridad empresarial",
-    ],
-    buttonText: "Elegir Plan Collaborative",
-    highlight: false,
-    icon: Star,
-  },
-]
+interface Price {
+  id: string
+  name: string
+  description: string | null
+  amount: number
+  currency: string
+  interval: string | null
+}
 
 export function SubscriptionsSection() {
-  const { user, profile } = useAuth()
-  const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripeCheckout()
-  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [availablePrices, setAvailablePrices] = useState<Price[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showPlans, setShowPlans] = useState(false)
-  const [cancelLoading, setCancelLoading] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null)
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const { user, profile } = useAuth()
+  const supabase = createClientComponentClient()
+  const router = useRouter()
 
   useEffect(() => {
-    if (profile?.id) {
-      fetchSubscriptionInfo()
-    }
-  }, [profile])
-
-  const fetchSubscriptionInfo = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Obtener información de suscripción del perfil del usuario
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select(`
-          plan_id,
-          subscription_status,
-          subscription_start_date,
-          subscription_end_date,
-          stripe_customer_id,
-          stripe_subscription_id,
-          plans:plan_id (
-            id,
-            name,
-            price,
-            currency,
-            billing_interval
-          )
-        `)
-        .eq("id", profile?.id)
-        .single()
-
-      if (profileError) {
-        throw profileError
-      }
-
-      if (profileData && profileData.plans) {
-        setSubscriptionInfo({
-          plan_id: profileData.plan_id,
-          plan_name: profileData.plans.name,
-          plan_price: profileData.plans.price,
-          plan_currency: profileData.plans.currency,
-          plan_billing_interval: profileData.plans.billing_interval,
-          subscription_status: profileData.subscription_status,
-          subscription_start_date: profileData.subscription_start_date,
-          subscription_end_date: profileData.subscription_end_date,
-          stripe_customer_id: profileData.stripe_customer_id,
-          stripe_subscription_id: profileData.stripe_subscription_id,
-        })
-      } else {
-        setSubscriptionInfo(null)
-      }
-    } catch (err: any) {
-      console.error("Error fetching subscription info:", err)
-      setError(err.message || "Error al cargar la información de suscripción")
-    } finally {
+    if (user) {
+      fetchSubscriptions()
+      fetchAvailablePrices()
+    } else {
       setLoading(false)
     }
+  }, [user])
+
+  const fetchSubscriptions = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("user_id", user?.id)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching subscriptions:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar tus suscripciones.",
+        variant: "destructive",
+      })
+    } else {
+      setSubscriptions(data as Subscription[])
+    }
+    setLoading(false)
   }
 
-  const handlePlanSelection = async (planId: number) => {
-    await createCheckoutSession(planId)
+  const fetchAvailablePrices = async () => {
+    // In a real application, you'd fetch these from your backend or Stripe directly
+    // For this example, we'll use mock data or environment variables
+    const prices: Price[] = [
+      {
+        id: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD!,
+        name: "Plan Estándar",
+        description: "Acceso a funciones básicas.",
+        amount: 2500, // in cents
+        currency: "usd",
+        interval: "month",
+      },
+      {
+        id: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PREMIUM!,
+        name: "Plan Premium",
+        description: "Acceso completo a todas las funciones.",
+        amount: 5000, // in cents
+        currency: "usd",
+        interval: "month",
+      },
+      // Add other plans as needed
+    ]
+    setAvailablePrices(prices.filter((p) => p.id)) // Filter out undefined prices if env vars are missing
+  }
+
+  const handleSubscribe = async (priceId: string) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para suscribirte.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          priceId,
+          customerId: profile?.stripe_customer_id, // Pass existing customer ID if available
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.url) {
+        router.push(data.url) // Redirect to Stripe Checkout
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "No se pudo iniciar el proceso de pago.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error inesperado.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleCancelSubscription = async () => {
-    if (!subscriptionInfo?.stripe_subscription_id) return
+    if (!selectedSubscription) return
 
-    setCancelLoading(true)
+    setIsCancelling(true)
     try {
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          subscriptionId: subscriptionInfo.stripe_subscription_id,
-        }),
+        body: JSON.stringify({ subscriptionId: selectedSubscription.stripe_subscription_id }),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json() // Lee el mensaje de error del cuerpo de la respuesta
-        throw new Error(errorData.error || "Error al cancelar la suscripción")
-      }
+      const data = await response.json()
 
-      // Actualizar la información de suscripción
-      await fetchSubscriptionInfo()
-    } catch (err: any) {
-      console.error("Error canceling subscription:", err)
-      setError(err.message || "Error al cancelar la suscripción") // Muestra el mensaje de error específico
+      if (response.ok) {
+        toast({
+          title: "Suscripción Cancelada",
+          description: "Tu suscripción ha sido cancelada exitosamente.",
+          action: <CheckCircleIcon className="text-green-500" />,
+        })
+        setIsCancelModalOpen(false)
+        fetchSubscriptions() // Refresh subscriptions list
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "No se pudo cancelar la suscripción.",
+          variant: "destructive",
+          action: <XCircleIcon className="text-red-500" />,
+        })
+      }
+    } catch (error) {
+      console.error("Error cancelling subscription:", error)
+      toast({
+        title: "Error",
+        description: "Ocurrió un error inesperado al cancelar la suscripción.",
+        variant: "destructive",
+        action: <XCircleIcon className="text-red-500" />,
+      })
     } finally {
-      setCancelLoading(false)
+      setIsCancelling(false)
     }
   }
 
-  const getStatusBadge = (status?: string) => {
+  const openCancelModal = (subscription: Subscription) => {
+    setSelectedSubscription(subscription)
+    setIsCancelModalOpen(true)
+  }
+
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "active":
-        return (
-          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">Activa</Badge>
-        )
+        return "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+      case "trialing":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
       case "canceled":
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">Cancelada</Badge>
+      case "unpaid":
+        return "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100"
       case "past_due":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">Vencida</Badge>
-        )
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
       default:
-        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">Inactiva</Badge>
-    }
-  }
-
-  const getPlanIcon = (planName?: string) => {
-    switch (planName?.toLowerCase()) {
-      case "premium":
-        return Crown
-      case "collaborative":
-        return Star
-      default:
-        return CheckCircle
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
     }
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-            <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-          </div>
-        </div>
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-              <span className="ml-2 text-muted-foreground">Cargando información de suscripción...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Mis Suscripciones</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2">Cargando suscripciones...</span>
+        </CardContent>
+      </Card>
     )
   }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-            <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-          </div>
-        </div>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-        <Button onClick={fetchSubscriptionInfo} variant="outline">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Reintentar
-        </Button>
-      </div>
-    )
-  }
+  const activeSubscription = subscriptions.find((s) => s.status === "active" || s.status === "trialing")
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-          <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-        </div>
-        {subscriptionInfo && (
-          <Button
-            variant="outline"
-            onClick={() => setShowPlans(!showPlans)}
-            className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-          >
-            {showPlans ? (
-              <>
-                <X className="w-4 h-4 mr-2" />
-                Ocultar Planes
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 mr-2" />
-                Cambiar Plan
-              </>
-            )}
-          </Button>
+    <Card className="col-span-full">
+      <CardHeader>
+        <CardTitle>Mis Suscripciones</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {subscriptions.length === 0 ? (
+          <p className="text-center text-muted-foreground mb-4">No tienes suscripciones activas.</p>
+        ) : (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2">Suscripciones Actuales</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Monto</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Inicio</TableHead>
+                  <TableHead>Fin</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {subscriptions.map((sub) => (
+                  <TableRow key={sub.id}>
+                    <TableCell className="font-medium">{sub.product_name}</TableCell>
+                    <TableCell>
+                      {sub.price_amount.toLocaleString(undefined, {
+                        style: "currency",
+                        currency: sub.price_currency || "USD",
+                      })}{" "}
+                      / {sub.interval}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusBadgeClass(sub.status)}>{sub.status}</Badge>
+                    </TableCell>
+                    <TableCell>{format(new Date(sub.current_period_start), "dd/MM/yyyy")}</TableCell>
+                    <TableCell>{format(new Date(sub.current_period_end), "dd/MM/yyyy")}</TableCell>
+                    <TableCell className="text-right">
+                      {(sub.status === "active" || sub.status === "trialing") && !sub.cancel_at_period_end && (
+                        <Button variant="destructive" size="sm" onClick={() => openCancelModal(sub)}>
+                          Cancelar
+                        </Button>
+                      )}
+                      {sub.cancel_at_period_end && <Badge variant="outline">Cancelación Pendiente</Badge>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
-      </div>
 
-      {/* Error de checkout */}
-      {checkoutError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{checkoutError}</AlertDescription>
-        </Alert>
-      )}
+        <h3 className="text-lg font-semibold mb-2">Planes Disponibles</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {availablePrices.map((price) => (
+            <Card key={price.id}>
+              <CardHeader>
+                <CardTitle>{price.name}</CardTitle>
+                <p className="text-2xl font-bold">
+                  {(price.amount / 100).toLocaleString(undefined, {
+                    style: "currency",
+                    currency: price.currency || "USD",
+                  })}
+                  <span className="text-sm text-muted-foreground">/{price.interval}</span>
+                </p>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">{price.description}</p>
+                <Button
+                  className="w-full"
+                  onClick={() => handleSubscribe(price.id)}
+                  disabled={activeSubscription?.stripe_price_id === price.id}
+                >
+                  {activeSubscription?.stripe_price_id === price.id ? "Plan Actual" : "Suscribirse"}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </CardContent>
 
-      {/* Información de suscripción actual */}
-      {subscriptionInfo ? (
-        <Card className="border-border/40">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {(() => {
-                  const IconComponent = getPlanIcon(subscriptionInfo.plan_name)
-                  return <IconComponent className="w-6 h-6 text-emerald-400" />
-                })()}
-                <div>
-                  <CardTitle className="text-xl text-foreground">Plan {subscriptionInfo.plan_name}</CardTitle>
-                  <CardDescription>Tu suscripción actual</CardDescription>
-                </div>
-              </div>
-              {getStatusBadge(subscriptionInfo.subscription_status)}
+      {selectedSubscription && (
+        <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirmar Cancelación</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p>
+                ¿Estás seguro de que quieres cancelar tu suscripción al plan{" "}
+                <span className="font-semibold">{selectedSubscription.product_name}</span>?
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Tu suscripción permanecerá activa hasta el final del período actual (
+                {format(new Date(selectedSubscription.current_period_end), "dd/MM/yyyy")}).
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Precio</p>
-                  <p className="font-semibold text-foreground">
-                    {subscriptionInfo.plan_currency?.toUpperCase()} ${subscriptionInfo.plan_price}
-                    <span className="text-sm text-muted-foreground">/{subscriptionInfo.plan_billing_interval}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Fecha de Inicio</p>
-                  <p className="font-semibold text-foreground">
-                    {subscriptionInfo.subscription_start_date
-                      ? new Date(subscriptionInfo.subscription_start_date).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Próximo Pago</p>
-                  <p className="font-semibold text-foreground">
-                    {subscriptionInfo.subscription_end_date
-                      ? new Date(subscriptionInfo.subscription_end_date).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowPlans(!showPlans)}
-                className="flex-1 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Cambiar Plan
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>
+                No, mantener
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleCancelSubscription}
-                disabled={cancelLoading || subscriptionInfo.subscription_status !== "active"}
-                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white"
-              >
-                {cancelLoading ? (
+              <Button variant="destructive" onClick={handleCancelSubscription} disabled={isCancelling}>
+                {isCancelling ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Cancelando...
                   </>
                 ) : (
-                  <>
-                    <X className="w-4 h-4 mr-2" />
-                    Cancelar Suscripción
-                  </>
+                  "Sí, cancelar"
                 )}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        /* Sin suscripción activa */
-        <Card className="border-border/40">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl text-foreground">No tienes una suscripción activa</CardTitle>
-            <CardDescription>Elige un plan para comenzar a disfrutar de nuestros servicios</CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground mb-6">
-              Selecciona uno de nuestros planes para acceder a asesoría personalizada y transformar tu vida.
-            </p>
-            <Button onClick={() => setShowPlans(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white">
-              Ver Planes Disponibles
-            </Button>
-          </CardContent>
-        </Card>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
-
-      {/* Planes disponibles */}
-      {showPlans && (
-        <div className="space-y-6">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold text-foreground mb-2">Planes Disponibles</h3>
-            <p className="text-muted-foreground">
-              {subscriptionInfo ? "Cambia a un plan diferente" : "Elige el plan que mejor se adapte a tus necesidades"}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={`border-border/40 ${plan.highlight ? "border-emerald-500 ring-2 ring-emerald-500" : ""} ${
-                  subscriptionInfo?.plan_id === plan.id ? "bg-emerald-500/5 border-emerald-500" : "bg-card/50"
-                } hover:bg-card/80 transition-colors flex flex-col`}
-              >
-                <CardHeader className="text-center pb-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <plan.icon className="w-8 h-8 text-emerald-400" />
-                  </div>
-                  <CardTitle className="text-xl font-bold text-foreground">{plan.name}</CardTitle>
-                  <CardDescription className="text-muted-foreground">{plan.description}</CardDescription>
-                  {subscriptionInfo?.plan_id === plan.id && (
-                    <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-                      Plan Actual
-                    </Badge>
-                  )}
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-between p-6 pt-0">
-                  <div className="text-center mb-6">
-                    <p className="text-4xl font-bold text-foreground">
-                      {plan.price}
-                      <span className="text-lg text-muted-foreground">/{plan.frequency}</span>
-                    </p>
-                  </div>
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${
-                      plan.highlight
-                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                        : "bg-muted-foreground hover:bg-muted-foreground/80 text-white"
-                    }`}
-                    size="lg"
-                    onClick={() => handlePlanSelection(plan.id)}
-                    disabled={checkoutLoading || subscriptionInfo?.plan_id === plan.id}
-                  >
-                    {checkoutLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : subscriptionInfo?.plan_id === plan.id ? (
-                      "Plan Actual"
-                    ) : (
-                      plan.buttonText
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+    </Card>
   )
 }

@@ -1,115 +1,229 @@
 "use client"
-import { Button } from "@/components/ui/button"
+
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, MessageCircle } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { EyeIcon, MessageSquareIcon, Loader2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
+import { Label } from "@/components/ui/label"
 
-interface ClientCase {
-  id: number
+interface Case {
+  id: string
   title: string
-  type: string
-  status: string
-  advisor: string
-  advisorAvatar: string
   description: string
-  createdDate: string
-  nextAppointment: string | null
-  progress: number
+  status: "open" | "in_progress" | "resolved" | "closed"
+  priority: "low" | "medium" | "high"
+  created_at: string
+  due_date: string | null
+  client_id: string
+  advisor_id: string | null
+  progress: number | null
+  case_type: string | null
+  advisors: {
+    first_name: string
+    last_name: string
+  } | null
 }
 
-interface ClientCasesSectionProps {
-  userCases: ClientCase[]
-  openChatForCase: (caseId: number) => void
-}
+export function ClientCasesSection() {
+  const [cases, setCases] = useState<Case[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedCase, setSelectedCase] = useState<Case | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const supabase = createClientComponentClient()
 
-export function ClientCasesSection({ userCases, openChatForCase }: ClientCasesSectionProps) {
+  useEffect(() => {
+    fetchClientCases()
+  }, [])
+
+  const fetchClientCases = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from("cases")
+      .select("*, advisors:advisor_id(first_name, last_name)")
+      .eq("client_id", user.id)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching client cases:", error)
+      // Optionally show a toast notification
+    } else {
+      setCases(data as Case[])
+    }
+    setLoading(false)
+  }
+
+  const handleOpenModal = (caseItem: Case) => {
+    setSelectedCase(caseItem)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedCase(null)
+  }
+
+  const getStatusBadgeClass = (status: Case["status"]) => {
+    switch (status) {
+      case "open":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
+      case "resolved":
+        return "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+      case "closed":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+      default:
+        return ""
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Mis Casos</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2">Cargando casos...</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mis Casos</h2>
-          <p className="text-muted-foreground">Gestiona y revisa el progreso de tus casos</p>
-        </div>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
-          <Plus className="w-4 h-4 mr-2" />
-          Solicitar Nuevo Caso
-        </Button>
-      </div>
-
-      <div className="grid gap-6">
-        {userCases.map((case_item) => (
-          <Card key={case_item.id} className="border-border/40">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg text-foreground">{case_item.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{case_item.type}</p>
-                </div>
-                <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    case_item.status === "Completada"
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400"
-                      : case_item.status === "En Progreso"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                  }`}
-                >
-                  {case_item.status}
+    <Card>
+      <CardHeader>
+        <CardTitle>Mis Casos</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {cases.length === 0 ? (
+          <p className="text-center text-muted-foreground">No tienes casos para mostrar.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Título</TableHead>
+                <TableHead>Asesor</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Progreso</TableHead>
+                <TableHead>Fecha de Creación</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cases.map((caseItem) => (
+                <TableRow key={caseItem.id}>
+                  <TableCell className="font-medium">{caseItem.title}</TableCell>
+                  <TableCell>
+                    {caseItem.advisors
+                      ? `${caseItem.advisors.first_name} ${caseItem.advisors.last_name}`
+                      : "Sin asignar"}
+                  </TableCell>
+                  <TableCell>{caseItem.case_type || "N/A"}</TableCell>
+                  <TableCell>
+                    <Badge className={getStatusBadgeClass(caseItem.status)}>{caseItem.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Progress value={caseItem.progress || 0} className="w-[60%]" />
+                    <span className="ml-2 text-sm text-muted-foreground">{caseItem.progress || 0}%</span>
+                  </TableCell>
+                  <TableCell>{format(new Date(caseItem.created_at), "dd/MM/yyyy")}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => handleOpenModal(caseItem)}>
+                      <EyeIcon className="h-4 w-4 mr-2" />
+                      Ver
+                    </Button>
+                    <Button variant="ghost" size="sm" className="ml-2">
+                      <MessageSquareIcon className="h-4 w-4" />
+                      <span className="sr-only">Mensajes</span>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+      {selectedCase && (
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Detalles del Caso: {selectedCase.title}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Título:</Label>
+                <span className="col-span-3 font-medium">{selectedCase.title}</span>
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right">Descripción:</Label>
+                <p className="col-span-3 text-sm text-muted-foreground">{selectedCase.description}</p>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Asesor:</Label>
+                <span className="col-span-3">
+                  {selectedCase.advisors
+                    ? `${selectedCase.advisors.first_name} ${selectedCase.advisors.last_name}`
+                    : "Sin asignar"}
                 </span>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">{case_item.description}</p>
-
-              {/* Advisor Info */}
-              <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={case_item.advisorAvatar || "/placeholder.svg"} />
-                  <AvatarFallback>{case_item.advisor.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Asesor Asignado</p>
-                  <p className="text-sm text-muted-foreground">{case_item.advisor}</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => openChatForCase(case_item.id)}>
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Mensaje
-                </Button>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Tipo:</Label>
+                <span className="col-span-3">{selectedCase.case_type || "N/A"}</span>
               </div>
-
-              {/* Progress Bar */}
-              {case_item.status !== "Completada" && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progreso</span>
-                    <span className="text-foreground">{case_item.progress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-emerald-500 h-2 rounded-full transition-all"
-                      style={{ width: `${case_item.progress}%` }}
-                    />
-                  </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Estado:</Label>
+                <span className="col-span-3">
+                  <Badge className={getStatusBadgeClass(selectedCase.status)}>{selectedCase.status}</Badge>
+                </span>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Prioridad:</Label>
+                <span className="col-span-3">{selectedCase.priority}</span>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Progreso:</Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Progress value={selectedCase.progress || 0} className="w-[70%]" />
+                  <span className="text-sm text-muted-foreground">{selectedCase.progress || 0}%</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Fecha de Creación:</Label>
+                <span className="col-span-3">{format(new Date(selectedCase.created_at), "dd/MM/yyyy HH:mm")}</span>
+              </div>
+              {selectedCase.due_date && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Fecha Límite:</Label>
+                  <span className="col-span-3">{format(new Date(selectedCase.due_date), "dd/MM/yyyy")}</span>
                 </div>
               )}
-
-              {/* Case Details */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Fecha de Creación</p>
-                  <p className="font-medium">{new Date(case_item.createdDate).toLocaleDateString()}</p>
-                </div>
-                {case_item.nextAppointment && (
-                  <div>
-                    <p className="text-muted-foreground">Próxima Cita</p>
-                    <p className="font-medium">{case_item.nextAppointment}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCloseModal}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </Card>
   )
 }

@@ -1,264 +1,307 @@
 "use client"
-import { Button } from "@/components/ui/button"
+
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Plus, Send, Eye, X, FileText } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { EyeIcon, MessageSquareIcon, Loader2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
 
-interface AdvisorCase {
-  id: number
-  clientName: string
-  clientId: number
+interface Case {
+  id: string
   title: string
-  type: string
-  status: string
-  priority: string
-  createdDate: string
-  dueDate: string
   description: string
-  progress: number
+  status: "open" | "in_progress" | "resolved" | "closed"
+  priority: "low" | "medium" | "high"
+  created_at: string
+  due_date: string | null
+  client_id: string
+  advisor_id: string | null
+  progress: number | null
+  case_type: string | null
+  clients: {
+    first_name: string
+    last_name: string
+  } | null
 }
 
-interface AdvisorCasesSectionProps {
-  advisorCases: AdvisorCase[]
-  openChatForCase: (caseId: number) => void
-  selectedCase: AdvisorCase | null
-  setSelectedCase: (caseItem: AdvisorCase | null) => void
-  caseFilter: string
-  setCaseFilter: (filter: string) => void
-}
+export function AdvisorCasesSection() {
+  const [cases, setCases] = useState<Case[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedCase, setSelectedCase] = useState<Case | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState<Case["status"] | "">("")
+  const [currentPriority, setCurrentPriority] = useState<Case["priority"] | "">("")
+  const [isUpdating, setIsUpdating] = useState(false)
+  const supabase = createClientComponentClient()
 
-export function AdvisorCasesSection({
-  advisorCases,
-  openChatForCase,
-  selectedCase,
-  setSelectedCase,
-  caseFilter,
-  setCaseFilter,
-}: AdvisorCasesSectionProps) {
-  const filteredCases = advisorCases.filter((case_item) => {
-    if (caseFilter === "all") return true
-    return case_item.status.toLowerCase().includes(caseFilter.toLowerCase())
-  })
+  useEffect(() => {
+    fetchAdvisorCases()
+  }, [])
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mis Casos Asignados</h2>
-          <p className="text-muted-foreground">Gestiona los casos de tus clientes</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <select
-            value={caseFilter}
-            onChange={(e) => setCaseFilter(e.target.value)}
-            className="px-3 py-2 border border-input bg-background rounded-md text-sm"
-          >
-            <option value="all">Todos los casos</option>
-            <option value="en progreso">En Progreso</option>
-            <option value="programada">Programados</option>
-            <option value="en revisión">En Revisión</option>
-          </select>
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Caso
-          </Button>
-        </div>
-      </div>
+  const fetchAdvisorCases = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-      <Card className="border-border/40">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border/40">
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Cliente</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Caso</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Tipo</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Estado</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Prioridad</th>
-                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Fecha Límite</th>
-                  <th className="text-center py-4 px-6 font-medium text-muted-foreground">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCases.map((case_item) => (
-                  <tr
-                    key={case_item.id}
-                    className="border-b border-border/20 hover:bg-muted/50 cursor-pointer"
-                    onClick={() => setSelectedCase(case_item)}
-                  >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback>{case_item.clientName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{case_item.clientName}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div>
-                        <p className="font-medium text-sm">{case_item.title}</p>
-                        <p className="text-xs text-muted-foreground">#{case_item.id}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-sm text-muted-foreground">{case_item.type}</td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          case_item.status === "En Progreso"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                            : case_item.status === "Programada"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                              : "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
-                        }`}
-                      >
-                        {case_item.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          case_item.priority === "Alta"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                            : case_item.priority === "Media"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                              : "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                        }`}
-                      >
-                        {case_item.priority}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-sm">{new Date(case_item.dueDate).toLocaleDateString()}</td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openChatForCase(case_item.id)
-                          }}
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedCase(case_item)
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from("cases")
+      .select("*, clients:client_id(first_name, last_name)")
+      .or(`advisor_id.eq.${user.id},advisor_id.is.null`) // Cases assigned to advisor or unassigned
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching advisor cases:", error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los casos del asesor.",
+        variant: "destructive",
+      })
+    } else {
+      setCases(data as Case[])
+    }
+    setLoading(false)
+  }
+
+  const handleOpenModal = (caseItem: Case) => {
+    setSelectedCase(caseItem)
+    setCurrentStatus(caseItem.status)
+    setCurrentPriority(caseItem.priority)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedCase(null)
+    setCurrentStatus("")
+    setCurrentPriority("")
+  }
+
+  const handleStatusChange = async (newStatus: Case["status"]) => {
+    if (!selectedCase) return
+
+    setIsUpdating(true)
+    const { error } = await supabase.from("cases").update({ status: newStatus }).eq("id", selectedCase.id)
+
+    if (error) {
+      console.error("Error updating case status:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado del caso.",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Éxito",
+        description: "Estado del caso actualizado correctamente.",
+      })
+      setCurrentStatus(newStatus)
+      setCases((prev) => prev.map((c) => (c.id === selectedCase.id ? { ...c, status: newStatus } : c)))
+      setSelectedCase((prev) => (prev ? { ...prev, status: newStatus } : null))
+    }
+    setIsUpdating(false)
+  }
+
+  const handlePriorityChange = async (newPriority: Case["priority"]) => {
+    if (!selectedCase) return
+
+    setIsUpdating(true)
+    const { error } = await supabase.from("cases").update({ priority: newPriority }).eq("id", selectedCase.id)
+
+    if (error) {
+      console.error("Error updating case priority:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la prioridad del caso.",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Éxito",
+        description: "Prioridad del caso actualizada correctamente.",
+      })
+      setCurrentPriority(newPriority)
+      setCases((prev) => prev.map((c) => (c.id === selectedCase.id ? { ...c, priority: newPriority } : c)))
+      setSelectedCase((prev) => (prev ? { ...prev, priority: newPriority } : null))
+    }
+    setIsUpdating(false)
+  }
+
+  const getStatusBadgeClass = (status: Case["status"]) => {
+    switch (status) {
+      case "open":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
+      case "resolved":
+        return "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+      case "closed":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+      default:
+        return ""
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Casos Asignados</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2">Cargando casos...</span>
         </CardContent>
       </Card>
+    )
+  }
 
-      {/* Case Detail Modal */}
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Casos Asignados</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {cases.length === 0 ? (
+          <p className="text-center text-muted-foreground">No hay casos asignados para mostrar.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Título</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Prioridad</TableHead>
+                <TableHead>Progreso</TableHead>
+                <TableHead>Fecha de Creación</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cases.map((caseItem) => (
+                <TableRow key={caseItem.id}>
+                  <TableCell className="font-medium">
+                    {caseItem.clients?.first_name} {caseItem.clients?.last_name}
+                  </TableCell>
+                  <TableCell>{caseItem.title}</TableCell>
+                  <TableCell>{caseItem.case_type || "N/A"}</TableCell>
+                  <TableCell>
+                    <Badge className={getStatusBadgeClass(caseItem.status)}>{caseItem.status}</Badge>
+                  </TableCell>
+                  <TableCell>{caseItem.priority}</TableCell>
+                  <TableCell>
+                    <Progress value={caseItem.progress || 0} className="w-[60%]" />
+                    <span className="ml-2 text-sm text-muted-foreground">{caseItem.progress || 0}%</span>
+                  </TableCell>
+                  <TableCell>{format(new Date(caseItem.created_at), "dd/MM/yyyy")}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => handleOpenModal(caseItem)}>
+                      <EyeIcon className="h-4 w-4 mr-2" />
+                      Ver
+                    </Button>
+                    <Button variant="ghost" size="sm" className="ml-2">
+                      <MessageSquareIcon className="h-4 w-4" />
+                      <span className="sr-only">Mensajes</span>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
       {selectedCase && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">{selectedCase.title}</CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setSelectedCase(null)}>
-                  <X className="w-4 h-4" />
-                </Button>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Detalles del Caso: {selectedCase.title}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Cliente:</Label>
+                <span className="col-span-3 font-medium">
+                  {selectedCase.clients?.first_name} {selectedCase.clients?.last_name}
+                </span>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Cliente</p>
-                  <p className="font-medium">{selectedCase.clientName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Tipo de Caso</p>
-                  <p className="font-medium">{selectedCase.type}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Estado</p>
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedCase.status === "En Progreso"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                        : selectedCase.status === "Programada"
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                          : "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
-                    }`}
-                  >
-                    {selectedCase.status}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Prioridad</p>
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedCase.priority === "Alta"
-                        ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                        : selectedCase.priority === "Media"
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                          : "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                    }`}
-                  >
-                    {selectedCase.priority}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Fecha de Creación</p>
-                  <p className="font-medium">{new Date(selectedCase.createdDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Fecha Límite</p>
-                  <p className="font-medium">{new Date(selectedCase.dueDate).toLocaleDateString()}</p>
-                </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Título:</Label>
+                <span className="col-span-3 font-medium">{selectedCase.title}</span>
               </div>
-
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Descripción</p>
-                <p className="text-sm">{selectedCase.description}</p>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right">Descripción:</Label>
+                <p className="col-span-3 text-sm text-muted-foreground">{selectedCase.description}</p>
               </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progreso del Caso</span>
-                  <span className="text-foreground">{selectedCase.progress}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-emerald-500 h-2 rounded-full transition-all"
-                    style={{ width: `${selectedCase.progress}%` }}
-                  />
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Tipo:</Label>
+                <span className="col-span-3">{selectedCase.case_type || "N/A"}</span>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Estado:</Label>
+                <Select value={currentStatus} onValueChange={handleStatusChange} disabled={isUpdating}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Abierto</SelectItem>
+                    <SelectItem value="in_progress">En Progreso</SelectItem>
+                    <SelectItem value="resolved">Resuelto</SelectItem>
+                    <SelectItem value="closed">Cerrado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Prioridad:</Label>
+                <Select value={currentPriority} onValueChange={handlePriorityChange} disabled={isUpdating}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Selecciona prioridad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Baja</SelectItem>
+                    <SelectItem value="medium">Media</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Progreso:</Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Progress value={selectedCase.progress || 0} className="w-[70%]" />
+                  <span className="text-sm text-muted-foreground">{selectedCase.progress || 0}%</span>
                 </div>
               </div>
-
-              <div className="flex space-x-3">
-                <Button
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-600"
-                  onClick={() => {
-                    openChatForCase(selectedCase.id)
-                    setSelectedCase(null)
-                  }}
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Enviar Mensaje
-                </Button>
-                <Button variant="outline" className="flex-1 bg-transparent">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Ver Documentos
-                </Button>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Fecha de Creación:</Label>
+                <span className="col-span-3">{format(new Date(selectedCase.created_at), "dd/MM/yyyy HH:mm")}</span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              {selectedCase.due_date && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Fecha Límite:</Label>
+                  <span className="col-span-3">{format(new Date(selectedCase.due_date), "dd/MM/yyyy")}</span>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCloseModal}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
-    </div>
+    </Card>
   )
 }

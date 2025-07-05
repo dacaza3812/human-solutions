@@ -1,53 +1,40 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { User } from "@supabase/supabase-js"
-
-// Define un tipo para el perfil de usuario si no existe
-interface UserProfile {
-  id: string
-  first_name?: string | null
-  last_name?: string | null
-  account_type?: string | null
-  phone?: string | null
-  created_at?: string | null
-  referral_code?: string | null
-  stripe_customer_id?: string | null
-  // Añade cualquier otro campo de perfil que uses
-}
+import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { LogOutIcon } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 interface UserInfoCardProps {
-  user: User | null
-  profile: UserProfile | null
+  username: string
+  avatarUrl: string
+  userRole: string
 }
 
-export function UserInfoCard({ user, profile }: UserInfoCardProps) {
+export function UserInfoCard({ username, avatarUrl, userRole }: UserInfoCardProps) {
+  const { signOut } = useAuth()
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push("/login")
+  }
+
   return (
-    <Card className="border-border/40">
-      <CardHeader>
-        <CardTitle className="text-foreground">Información de la Cuenta</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Correo Electrónico</p>
-            <p className="font-medium">{user?.email}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Tipo de Cuenta</p>
-            <p className="font-medium capitalize">{profile?.account_type}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Teléfono</p>
-            <p className="font-medium">{profile?.phone || "No especificado"}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Fecha de Registro</p>
-            <p className="font-medium">
-              {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A"}
-            </p>
-          </div>
-        </div>
+    <Card className="col-span-full lg:col-span-1">
+      <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+        <Avatar className="h-24 w-24 mb-4">
+          <AvatarImage src={avatarUrl || "/placeholder-user.jpg"} alt={username} />
+          <AvatarFallback className="text-4xl">{username ? username[0].toUpperCase() : "U"}</AvatarFallback>
+        </Avatar>
+        <h2 className="text-2xl font-bold">{username}</h2>
+        <p className="text-sm text-muted-foreground capitalize">{userRole}</p>
+        <Button variant="outline" className="mt-4 bg-transparent" onClick={handleSignOut}>
+          <LogOutIcon className="h-4 w-4 mr-2" />
+          Cerrar Sesión
+        </Button>
       </CardContent>
     </Card>
   )
