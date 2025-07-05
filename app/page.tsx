@@ -249,6 +249,8 @@ export default function SolucionesHumanas() {
     },
   ]
 
+  const duplicatedFeatures = [...features, ...features]
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -408,31 +410,43 @@ export default function SolucionesHumanas() {
       {/* Features Grid Section */}
       <section className="py-24 px-4">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="feature-card border-border/40 bg-card/50 cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
-                      <feature.icon className="w-4 h-4 text-emerald-400" />
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">Nuestras Especialidades</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Descubre las áreas en las que podemos ayudarte a transformar tu vida.
+            </p>
+          </div>
+
+          <div className="relative overflow-hidden">
+            <div className="flex space-x-6 animate-scroll-features">
+              {duplicatedFeatures.map((feature, index) => (
+                <Card
+                  key={index}
+                  className="flex-shrink-0 w-80 feature-card border-border/40 bg-card/50 cursor-pointer"
+                >
+                  <CardHeader>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
+                        <feature.icon className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <CardTitle className="text-lg">{feature.title}</CardTitle>
                     </div>
-                    <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  </div>
-                  <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
-                  <ul className="space-y-2">
-                    {feature.features.map((item, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 text-sm">
-                        <CheckCircle className="w-3 h-3 text-emerald-400" />
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
+                    <ul className="space-y-2">
+                      {feature.features.map((item, idx) => (
+                        <li key={idx} className="flex items-center space-x-2 text-sm">
+                          <CheckCircle className="w-3 h-3 text-emerald-400" />
+                          <span className="text-muted-foreground">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
