@@ -1,40 +1,137 @@
-"use client"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DollarSign, Users, Briefcase, MessageCircle } from "lucide-react"
+import { createClient } from "@/lib/supabase-server"
 
-import type React from "react"
+export default async function StatsGrid() {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-import { Card, CardContent } from "@/components/ui/card"
+  if (!user) {
+    return <p>Por favor, inicia sesión para ver las estadísticas.</p>
+  }
 
-interface StatItem {
-  title: string
-  value: string
-  change: string
-  icon: React.ElementType // Lucide icon component
-  color: string
-}
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
 
-interface StatsGridProps {
-  stats: StatItem[] // Ahora espera el array de stats precalculado
-}
+  const isAdvisor = profile?.role === "advisor"
 
-export function StatsGrid({ stats }: StatsGridProps) {
+  // Fetch data for stats
+  let totalCases = 0
+  let activeCases = 0
+  let totalClientsOrReferrals = 0
+  let totalInquiries = 0
+
+  if (isAdvisor) {
+    // Advisor stats
+    const { data: cases, error: casesError } = await supabase
+      .from("cases")
+      .select("id, status")
+      .eq("advisor_id", user.id)
+
+    if (cases) {
+      totalCases = cases.length
+      activeCases = cases.filter((c) => c.status === "open" || c.status === "in_progress").length
+    }
+
+    const { data: referrals, error: referralsError } = await supabase
+      .from("referrals")
+      .select("id")
+      .eq("referrer_id", user.id)
+
+    if (referrals) {
+      totalClientsOrReferrals = referrals.length
+    }
+
+    const { data: inquiries, error: inquiriesError } = await supabase
+      .from("inquiries")
+      .select("id")
+      .eq("status", "pending") // Only count pending inquiries for advisors
+
+    if (inquiries) {
+      totalInquiries = inquiries.length
+    }
+  } else {
+    // Client stats
+    const { data: cases, error: casesError } = await supabase
+      .from("cases")
+      .select("id, status")
+      .eq("client_id", user.id)
+
+    if (cases) {
+      totalCases = cases.length
+      activeCases = cases.filter((c) => c.status === "open" || c.status === "in_progress").length
+    }
+
+    // For clients, totalClientsOrReferrals could be their own active subscription status
+    const { data: subscription, error: subError } = await supabase
+      .from("user_subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .single()
+
+    if (subscription?.status === "active") {
+      totalClientsOrReferrals = 1 // User is an active client
+    }
+
+    // Clients don't typically manage inquiries, so this might be 0 or not displayed
+    totalInquiries = 0
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {stats.map((stat, index) => (
-        <Card key={index} className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.title}</p>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className={`text-sm ${stat.color}`}>{stat.change}</p>
-              </div>
-              <div className={`w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card className="bg-card/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total de Casos</CardTitle>
+          <Briefcase className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{totalCases}</div>
+          <p className="text-xs text-muted-foreground">
+            {activeCases} {activeCases === 1 ? "activo" : "activos"}
+          </p>
+        </CardContent>
+      </Card>
+      <Card className="bg-card/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {isAdvisor ? "Total de Referidos" : "Estado de Suscripción"}
+          </CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {isAdvisor ? totalClientsOrReferrals : totalClientsOrReferrals === 1 ? "Activa" : "Inactiva"}
+          </div>
+          <p className="text-xs text-muted-foreground">{isAdvisor ? "clientes referidos" : "tu plan actual"}</p>
+        </CardContent>
+      </Card>
+      <Card className="bg-card/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Consultas Pendientes</CardTitle>
+          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{totalInquiries}</div>
+          <p className="text-xs text-muted-foreground">{isAdvisor ? "nuevas consultas" : "consultas enviadas"}</p>
+        </CardContent>
+      </Card>
+      <Card className="bg-card/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Ganancias Estimadas</CardTitle>
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {isAdvisor ? `$${(totalClientsOrReferrals * 25).toFixed(2)}` : "N/A"}
+          </div>
+          <p className="text-xs text-muted-foreground">{isAdvisor ? "por referidos activos" : "solo para asesores"}</p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -1,254 +1,176 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle, XCircle, Loader2, Info } from "lucide-react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase-server"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { CheckCircle, XCircle, Info } from "lucide-react"
+import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 
-interface Subscription {
-  id: string
-  status: string
-  current_period_end: string
-  cancel_at_period_end: boolean
-  plan_id: number
-}
+export default async function SubscriptionsSection() {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-interface Plan {
-  id: number
-  name: string
-  price: string
-  frequency: string
-  features: string[]
-}
+  if (!user) {
+    redirect("/login")
+  }
 
-const plans: Plan[] = [
-  {
-    id: 1,
-    name: "Standard",
-    price: "$49.99",
-    frequency: "mensual",
-    features: ["3 consultas/mes", "Soporte por email", "Acceso a recursos básicos", "Prioridad estándar"],
-  },
-  {
-    id: 2,
-    name: "Premium",
-    price: "$149.99",
-    frequency: "mensual",
-    features: [
-      "10 consultas/mes",
-      "Soporte prioritario",
-      "Acceso a todos los recursos",
-      "Seguimiento personalizado",
-      "Prioridad alta",
-    ],
-  },
-  {
-    id: 3,
-    name: "Collaborative",
-    price: "$299.99",
-    frequency: "mensual",
-    features: [
-      "Consultas ilimitadas",
-      "Asesor dedicado 24/7",
-      "Acceso para equipos",
-      "Reportes personalizados",
-      "Prioridad empresarial",
-    ],
-  },
-]
+  const { data: subscription, error } = await supabase
+    .from("user_subscriptions")
+    .select("*")
+    .eq("user_id", user.id)
+    .single()
 
-export function SubscriptionsSection() {
-  const [subscription, setSubscription] = useState<Subscription | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const supabase = createClientComponentClient()
-  const { user } = useAuth()
-  const router = useRouter()
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
 
-  useEffect(() => {
-    async function fetchSubscription() {
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      const { data, error } = await supabase.from("user_subscriptions").select("*").eq("user_id", user.id).single()
-
-      if (error && error.code !== "PGRST116") {
-        // PGRST116 means no rows found
-        console.error("Error fetching subscription:", error)
-        setError("Error al cargar la información de la suscripción.")
-      } else if (data) {
-        setSubscription(data)
-      }
-      setLoading(false)
-    }
-
-    fetchSubscription()
-  }, [user, supabase])
+  const isAdvisor = profile?.role === "advisor"
 
   const handleCancelSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return
+    "use server"
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/cancel-subscription`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
 
-    setActionLoading(true)
-    setError(null)
-    setSuccess(null)
-
-    try {
-      const response = await fetch("/api/stripe/cancel-subscription", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setSuccess("Suscripción cancelada con éxito. Se mantendrá activa hasta el final del período actual.")
-        setSubscription((prev) => (prev ? { ...prev, cancel_at_period_end: true } : null))
-      } else {
-        setError(data.error || "Error al cancelar la suscripción.")
-      }
-    } catch (err) {
-      console.error("Error cancelling subscription:", err)
-      setError("Error de conexión al cancelar la suscripción.")
-    } finally {
-      setActionLoading(false)
+    if (res.ok) {
+      revalidatePath("/dashboard/subscriptions")
+      return { success: true, message: "Suscripción cancelada con éxito." }
+    } else {
+      const errorData = await res.json()
+      return { success: false, message: errorData.error || "Error al cancelar la suscripción." }
     }
   }
 
-  const handleManageSubscription = () => {
-    // This would typically redirect to Stripe's customer portal
-    // For now, we'll just log or show a message
-    alert("Funcionalidad para gestionar suscripción (portal de clientes de Stripe) no implementada.")
+  const getPlanDetails = (planId: number | null) => {
+    switch (planId) {
+      case 1:
+        return { name: "Standard", price: "$49.99/mes", features: "3 consultas/mes, Soporte por email" }
+      case 2:
+        return { name: "Premium", price: "$149.99/mes", features: "10 consultas/mes, Soporte prioritario" }
+      case 3:
+        return { name: "Collaborative", price: "$299.99/mes", features: "Consultas ilimitadas, Asesor dedicado 24/7" }
+      default:
+        return { name: "N/A", price: "N/A", features: "Sin plan activo" }
+    }
   }
 
-  if (loading) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Suscripción</CardTitle>
-          <CardDescription>Gestiona tu plan de suscripción.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-40">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const currentPlan = subscription ? plans.find((p) => p.id === subscription.plan_id) : null
+  const planDetails = getPlanDetails(subscription?.plan_id || null)
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>
-        <CardTitle>Suscripción</CardTitle>
-        <CardDescription>Gestiona tu plan de suscripción.</CardDescription>
+        <CardTitle>Gestión de Suscripción</CardTitle>
+        <CardDescription>Administra tu plan actual y opciones de pago.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {error && (
-          <Alert variant="destructive">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {success && (
-          <Alert>
-            <AlertTitle>Éxito</AlertTitle>
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
-
-        {!user ? (
+        {error || !subscription ? (
           <Alert>
             <Info className="h-4 w-4" />
-            <AlertTitle>No autenticado</AlertTitle>
+            <AlertTitle>Sin Suscripción Activa</AlertTitle>
             <AlertDescription>
-              Por favor,{" "}
-              <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/login")}>
-                inicia sesión
-              </Button>{" "}
-              para ver y gestionar tu suscripción.
-            </AlertDescription>
-          </Alert>
-        ) : !subscription ? (
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle>Sin suscripción activa</AlertTitle>
-            <AlertDescription>
-              Actualmente no tienes una suscripción activa.{" "}
-              <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/planes")}>
-                Elige un plan
-              </Button>{" "}
-              para comenzar.
+              Actualmente no tienes una suscripción activa. Explora nuestros planes para comenzar.
             </AlertDescription>
           </Alert>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Plan Actual</p>
-                <p className="text-2xl font-bold">{currentPlan?.name || "Desconocido"}</p>
-                <p className="text-sm text-muted-foreground">
-                  {currentPlan?.price} / {currentPlan?.frequency}
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => router.push("/planes")}>
-                Cambiar Plan
-              </Button>
-            </div>
+            <Alert variant={subscription.status === "active" ? "default" : "destructive"}>
+              {subscription.status === "active" ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+              <AlertTitle>Estado: {subscription.status === "active" ? "Activa" : "Inactiva"}</AlertTitle>
+              <AlertDescription>
+                Tu plan actual es: <span className="font-semibold">{planDetails.name}</span>.
+                {subscription.status === "active" && (
+                  <>
+                    {" "}
+                    Válido hasta:{" "}
+                    <span className="font-semibold">
+                      {format(new Date(subscription.current_period_end), "PPP", { locale: es })}
+                    </span>
+                    .
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
 
-            <Separator />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="bg-muted/20">
+                <CardHeader>
+                  <CardTitle className="text-lg">Detalles del Plan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Plan:</span> {planDetails.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Precio:</span> {planDetails.price}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Características:</span> {planDetails.features}
+                  </p>
+                </CardContent>
+              </Card>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Estado de la Suscripción</p>
-              <div className="flex items-center space-x-2">
-                {subscription.status === "active" && <CheckCircle className="h-5 w-5 text-green-500" />}
-                {subscription.status !== "active" && <XCircle className="h-5 w-5 text-red-500" />}
-                <span className="text-lg font-semibold capitalize">{subscription.status}</span>
-              </div>
-              {subscription.current_period_end && (
-                <p className="text-sm text-muted-foreground">
-                  Período actual termina el: {format(new Date(subscription.current_period_end), "dd/MM/yyyy")}
-                </p>
-              )}
-              {subscription.cancel_at_period_end && (
-                <p className="text-sm text-orange-500 flex items-center">
-                  <Info className="h-4 w-4 mr-1" />
-                  Tu suscripción se cancelará al final del período actual.
-                </p>
-              )}
-            </div>
-
-            <Separator />
-
-            <div className="flex flex-col gap-2">
-              {!subscription.cancel_at_period_end && (
-                <Button variant="destructive" onClick={handleCancelSubscription} disabled={actionLoading}>
-                  {actionLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Cancelando...
-                    </>
-                  ) : (
-                    "Cancelar Suscripción"
+              <Card className="bg-muted/20">
+                <CardHeader>
+                  <CardTitle className="text-lg">Información de Facturación</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">ID de Suscripción:</span> {subscription.stripe_subscription_id}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Inicio del Período:</span>{" "}
+                    {format(new Date(subscription.current_period_start), "PPP", { locale: es })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold">Fin del Período:</span>{" "}
+                    {format(new Date(subscription.current_period_end), "PPP", { locale: es })}
+                  </p>
+                  {subscription.cancel_at_period_end && (
+                    <p className="text-sm text-red-500 mt-2">
+                      Tu suscripción se cancelará al final del período actual.
+                    </p>
                   )}
-                </Button>
-              )}
-              <Button variant="outline" onClick={handleManageSubscription} disabled={actionLoading}>
-                Gestionar en Stripe
-              </Button>
+                </CardContent>
+              </Card>
             </div>
+
+            {subscription.status === "active" && !subscription.cancel_at_period_end && (
+              <form action={handleCancelSubscription}>
+                <Button type="submit" variant="destructive" className="w-full">
+                  Cancelar Suscripción
+                </Button>
+              </form>
+            )}
+            {subscription.status !== "active" && (
+              <Button className="w-full bg-emerald-500 hover:bg-emerald-600">Explorar Planes</Button>
+            )}
+          </div>
+        )}
+
+        {/* Option to change plan or subscribe if not active */}
+        {!subscription || subscription.status !== "active" ? (
+          <div className="mt-8 text-center">
+            <p className="text-muted-foreground mb-4">¿Listo para empezar o cambiar de plan?</p>
+            <Link href="/#planes">
+              <Button className="bg-emerald-500 hover:bg-emerald-600">Ver Planes de Suscripción</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-8 text-center">
+            <p className="text-muted-foreground mb-4">¿Quieres cambiar tu plan actual?</p>
+            <Link href="/#planes">
+              <Button variant="outline">Cambiar Plan</Button>
+            </Link>
           </div>
         )}
       </CardContent>

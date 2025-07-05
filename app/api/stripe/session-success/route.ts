@@ -7,8 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const sessionId = searchParams.get("session_id")
+  const sessionId = req.nextUrl.searchParams.get("session_id")
 
   if (!sessionId) {
     return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
@@ -17,66 +16,54 @@ export async function GET(req: NextRequest) {
   const supabase = createClient()
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items.data.price.product", "subscription"],
-    })
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
 
-    if (session.status === "complete" && session.subscription) {
-      const subscription = session.subscription as Stripe.Subscription
+    if (session.status === "complete") {
       const userId = session.metadata?.userId
       const planId = session.metadata?.planId
+      const stripeCustomerId = session.customer as string
+      const stripeSubscriptionId = session.subscription as string
 
-      if (userId && planId) {
-        const { data: existingSubscription, error: fetchError } = await supabase
-          .from("user_subscriptions")
-          .select("*")
-          .eq("user_id", userId)
-          .single()
-
-        if (fetchError && fetchError.code !== "PGRST116") {
-          // PGRST116 means no rows found, which is fine for new subscriptions
-          console.error("Error fetching existing subscription:", fetchError)
-          return NextResponse.json({ error: "Database error" }, { status: 500 })
-        }
-
-        const subscriptionData = {
-          user_id: userId,
-          plan_id: planId,
-          stripe_customer_id: subscription.customer as string,
-          stripe_subscription_id: subscription.id,
-          status: subscription.status,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          cancel_at_period_end: subscription.cancel_at_period_end,
-          created_at: new Date().toISOString(),
-        }
-
-        if (existingSubscription) {
-          // Update existing subscription
-          const { error: updateError } = await supabase
-            .from("user_subscriptions")
-            .update(subscriptionData)
-            .eq("user_id", userId)
-
-          if (updateError) {
-            console.error("Error updating subscription:", updateError)
-            return NextResponse.json({ error: "Database update error" }, { status: 500 })
-          }
-        } else {
-          // Insert new subscription
-          const { error: insertError } = await supabase.from("user_subscriptions").insert([subscriptionData])
-
-          if (insertError) {
-            console.error("Error inserting subscription:", insertError)
-            return NextResponse.json({ error: "Database insert error" }, { status: 500 })
-          }
-        }
+      if (!userId || !planId || !stripeCustomerId || !stripeSubscriptionId) {
+        console.error("Missing metadata or subscription ID in session:", session)
+        return NextResponse.json({ error: "Missing data in session" }, { status: 400 })
       }
-    }
 
-    return NextResponse.json({ session })
-  } catch (error: any) {
+      // Update user's profile with Stripe customer ID
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq("id", userId)
+
+      if (profileError) {
+        console.error("Error updating profile with Stripe customer ID:", profileError)
+        return NextResponse.json({ error: "Failed to update user profile" }, { status: 500 })
+      }
+
+      // Insert or update subscription details
+      const { error: subscriptionError } = await supabase.from("user_subscriptions").upsert(
+        {
+          user_id: userId,
+          plan_id: Number.parseInt(planId),
+          stripe_subscription_id: stripeSubscriptionId,
+          status: "active", // Or session.status if Stripe provides a more granular status
+          current_period_start: new Date(session.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(session.current_period_end * 1000).toISOString(),
+        },
+        { onConflict: "user_id" }, // Update if user_id already exists
+      )
+
+      if (subscriptionError) {
+        console.error("Error upserting subscription:", subscriptionError)
+        return NextResponse.json({ error: "Failed to save subscription details" }, { status: 500 })
+      }
+
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/subscriptions?success=true`)
+    } else {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/subscriptions?success=false`)
+    }
+  } catch (error) {
     console.error("Error retrieving checkout session:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to retrieve checkout session" }, { status: 500 })
   }
 }

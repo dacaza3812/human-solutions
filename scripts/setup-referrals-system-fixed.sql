@@ -1,24 +1,37 @@
 -- Create referrals table for tracking referral relationships
 CREATE TABLE IF NOT EXISTS public.referrals (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  referrer_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  referred_email TEXT NOT NULL UNIQUE,
-  status TEXT DEFAULT 'pending' NOT NULL CHECK (status IN ('pending', 'signed_up', 'converted')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  referrer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  referred_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  referral_code TEXT NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('pending', 'active', 'inactive')),
+  commission_earned DECIMAL(10,2) DEFAULT 25.00,
+  commission_paid BOOLEAN DEFAULT FALSE,
+  payment_date TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(referrer_id, referred_id)
 );
 
 -- Enable RLS on referrals table
 ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for referrals table
-DROP POLICY IF EXISTS "Users can view their own referrals." ON public.referrals;
-DROP POLICY IF EXISTS "Users can insert new referrals." ON public.referrals;
+DROP POLICY IF EXISTS "Users can view own referrals" ON public.referrals;
+DROP POLICY IF EXISTS "Users can insert own referrals" ON public.referrals;
+DROP POLICY IF EXISTS "Users can update own referrals" ON public.referrals;
 
-CREATE POLICY "Users can view their own referrals." ON public.referrals
-  FOR SELECT USING (auth.uid() = referrer_id);
+CREATE POLICY "Users can view own referrals" ON public.referrals
+  FOR SELECT USING (
+    auth.uid() = referrer_id OR 
+    auth.uid() = referred_id
+  );
 
-CREATE POLICY "Users can insert new referrals." ON public.referrals
-  FOR INSERT WITH CHECK (auth.uid() = referrer_id);
+CREATE POLICY "System can insert referrals" ON public.referrals
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can update own referrals" ON public.referrals
+  FOR UPDATE USING (auth.uid() = referrer_id);
 
 -- Create function to get referral stats for a user
 CREATE OR REPLACE FUNCTION get_referral_stats(user_referral_code TEXT)
@@ -80,14 +93,16 @@ CREATE TRIGGER handle_referrals_updated_at
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON public.referrals(referrer_id);
-CREATE INDEX IF NOT EXISTS idx_referrals_referred_email ON public.referrals(referred_email);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON public.referrals(referred_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referral_code ON public.referrals(referral_code);
 CREATE INDEX IF NOT EXISTS idx_referrals_status ON public.referrals(status);
 CREATE INDEX IF NOT EXISTS idx_referrals_created_at ON public.referrals(created_at);
+CREATE INDEX IF NOT EXISTS idx_referrals_commission_paid ON public.referrals(commission_paid);
 
 -- Create function to safely create referral relationship
 CREATE OR REPLACE FUNCTION create_referral_relationship(
   referrer_code TEXT,
-  referred_email TEXT
+  referred_user_id UUID
 )
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -107,7 +122,7 @@ BEGIN
   -- Check if referral relationship already exists
   SELECT id INTO existing_referral
   FROM public.referrals
-  WHERE referrer_id = referrer_id AND referred_email = referred_email;
+  WHERE referrer_id = referrer_id AND referred_id = referred_user_id;
   
   -- If relationship already exists, return true
   IF existing_referral IS NOT NULL THEN
@@ -117,12 +132,16 @@ BEGIN
   -- Create new referral relationship
   INSERT INTO public.referrals (
     referrer_id,
-    referred_email,
-    status
+    referred_id,
+    referral_code,
+    status,
+    commission_earned
   ) VALUES (
     referrer_id,
-    referred_email,
-    'pending'
+    referred_user_id,
+    referrer_code,
+    'active',
+    25.00
   );
   
   RETURN TRUE;

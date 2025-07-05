@@ -1,48 +1,63 @@
-"use client"
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp } from "lucide-react"
+import { Activity } from "lucide-react"
+import { createClient } from "@/lib/supabase-server"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
-interface RecentActivityCardProps {
-  recentActivity: {
-    id: number
-    type: string
-    description: string
-    time: string
-    status: "success" | "completed" | "payment" | "scheduled"
-  }[]
-}
+export default async function RecentActivityCard() {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-export function RecentActivityCard({ recentActivity }: RecentActivityCardProps) {
+  if (!user) {
+    return <p>Por favor, inicia sesión para ver la actividad reciente.</p>
+  }
+
+  // Fetch recent activities related to the user (e.g., new cases, messages, status updates)
+  // This is a simplified example. A real activity feed would require a more robust logging system.
+  const { data: cases, error: casesError } = await supabase
+    .from("cases")
+    .select("id, title, status, created_at, updated_at, client_id, advisor_id")
+    .or(`client_id.eq.${user.id},advisor_id.eq.${user.id}`)
+    .order("updated_at", { ascending: false })
+    .limit(5)
+
+  if (casesError) {
+    console.error("Error fetching recent cases for activity:", casesError)
+    return <p>Error al cargar la actividad reciente: {casesError.message}</p>
+  }
+
+  const activities = cases.map((caseItem) => ({
+    id: caseItem.id,
+    description: `Caso "${caseItem.title}" actualizado a estado: ${caseItem.status === "open" ? "Abierto" : caseItem.status === "in_progress" ? "En Progreso" : "Cerrado"}.`,
+    timestamp: caseItem.updated_at,
+  }))
+
   return (
-    <Card className="border-border/40">
-      <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
-          Actividad Reciente
-        </CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Actividad Reciente</CardTitle>
+        <Activity className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="space-y-4">
-        {recentActivity.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border border-border/40">
-            <div
-              className={`w-2 h-2 rounded-full mt-2 ${
-                activity.status === "success"
-                  ? "bg-emerald-400"
-                  : activity.status === "completed"
-                    ? "bg-blue-400"
-                    : activity.status === "payment"
-                      ? "bg-purple-400"
-                      : "bg-orange-400"
-              }`}
-            />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">{activity.type}</p>
-              <p className="text-xs text-muted-foreground">{activity.description}</p>
-              <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-            </div>
+      <CardContent>
+        {activities.length === 0 ? (
+          <p className="text-muted-foreground">No hay actividad reciente.</p>
+        ) : (
+          <div className="space-y-4">
+            {activities.map((activity) => (
+              <div key={activity.id} className="flex items-start space-x-3">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 mt-2" />
+                <div>
+                  <p className="text-sm">{activity.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(activity.timestamp), "PPP p", { locale: es })}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </CardContent>
     </Card>
   )

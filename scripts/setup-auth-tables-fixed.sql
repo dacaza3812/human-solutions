@@ -4,10 +4,6 @@ ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 -- Create profiles table with proper constraints
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  full_name TEXT,
-  avatar_url TEXT,
-  billing_address TEXT,
-  payment_method TEXT,
   email TEXT UNIQUE NOT NULL,
   first_name TEXT,
   last_name TEXT,
@@ -26,7 +22,6 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON public.profiles;
 
 CREATE POLICY "Users can view own profile" ON public.profiles
   FOR SELECT USING (auth.uid() = id);
@@ -36,9 +31,6 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
-
-CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles
-  FOR SELECT USING (TRUE);
 
 -- Create function to generate unique referral code
 CREATE OR REPLACE FUNCTION generate_referral_code(first_name TEXT DEFAULT '', last_name TEXT DEFAULT '')
@@ -107,7 +99,6 @@ BEGIN
   -- Insert profile with referral code
   INSERT INTO public.profiles (
     id, 
-    full_name,
     email, 
     first_name, 
     last_name, 
@@ -118,7 +109,6 @@ BEGIN
   )
   VALUES (
     NEW.id,
-    NEW.raw_user_meta_data->>'first_name' || ' ' || NEW.raw_user_meta_data->>'last_name',
     NEW.email,
     NEW.raw_user_meta_data->>'first_name',
     NEW.raw_user_meta_data->>'last_name',

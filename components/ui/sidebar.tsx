@@ -220,7 +220,7 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.ComponentProps<typeof Button>>(
   ({ className, onClick, ...props }, ref) => {
-    const { toggleSidebar } = useSidebar()
+    const { toggleSidebar, openMobile } = useSidebar() // Get openMobile state
 
     return (
       <Button
@@ -235,7 +235,8 @@ const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.C
         }}
         {...props}
       >
-        <PanelLeft />
+        <PanelLeft className={cn("transition-transform duration-300", openMobile && "rotate-180")} />{" "}
+        {/* Apply rotation */}
         <span className="sr-only">Toggle Sidebar</span>
       </Button>
     )

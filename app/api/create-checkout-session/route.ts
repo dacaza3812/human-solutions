@@ -6,29 +6,38 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-04-10",
 })
 
-const priceIdMap: { [key: number]: string } = {
-  1: process.env.STRIPE_PRICE_ID_STANDARD!,
-  2: process.env.STRIPE_PRICE_ID_PREMIUM!,
-  3: process.env.STRIPE_PRICE_ID_COLLABORATIVE!,
-}
-
 export async function POST(req: NextRequest) {
-  const { planId } = await req.json()
   const supabase = createClient()
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.json({ error: "User not authenticated" }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const priceId = priceIdMap[planId]
+  const { planId } = await req.json()
 
-  if (!priceId) {
-    return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 })
+  let priceId: string
+  let successUrl: string
+  let cancelUrl: string
+
+  switch (planId) {
+    case 1:
+      priceId = process.env.STRIPE_PRICE_ID_STANDARD!
+      break
+    case 2:
+      priceId = process.env.STRIPE_PRICE_ID_PREMIUM!
+      break
+    case 3:
+      priceId = process.env.STRIPE_PRICE_ID_COLLABORATIVE!
+      break
+    default:
+      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 })
   }
+
+  successUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/session-success?session_id={CHECKOUT_SESSION_ID}`
+  cancelUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/subscriptions?canceled=true`
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -40,17 +49,17 @@ export async function POST(req: NextRequest) {
         },
       ],
       customer_email: user.email,
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment_process?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/planes`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         userId: user.id,
         planId: planId,
       },
     })
 
-    return NextResponse.json({ sessionId: session.id })
-  } catch (error: any) {
+    return NextResponse.json({ sessionId: session.id, url: session.url })
+  } catch (error) {
     console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
   }
 }

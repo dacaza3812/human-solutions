@@ -1,59 +1,83 @@
 "use client"
 
 import type React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { UserRound } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
 
-interface ProfileSettingsProps {
-  firstName: string
-  setFirstName: (value: string) => void
-  lastName: string
-  setLastName: (value: string) => void
-  profileUpdateMessage: string
-  profileUpdateError: string
-  handleProfileUpdate: (e: React.FormEvent) => Promise<void>
-}
+export default function ProfileSettings() {
+  const { user, updateProfile, fetchProfile } = useAuth()
+  const { toast } = useToast()
+  const [name, setName] = useState("")
+  const [loading, setLoading] = useState(false)
 
-export function ProfileSettings({
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
-  profileUpdateMessage,
-  profileUpdateError,
-  handleProfileUpdate,
-}: ProfileSettingsProps) {
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        const profile = await fetchProfile(user.id)
+        if (profile) {
+          setName(profile.name || "")
+        }
+      }
+    }
+    loadProfile()
+  }, [user, fetchProfile])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    if (user) {
+      const { error } = await updateProfile(user.id, { name })
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Éxito",
+          description: "Perfil actualizado correctamente.",
+        })
+      }
+    }
+    setLoading(false)
+  }
+
   return (
-    <Card className="border-border/40">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <UserRound className="w-5 h-5 mr-2 text-blue-400" />
-          Actualizar Información de Perfil
-        </CardTitle>
+        <CardTitle>Información del Perfil</CardTitle>
+        <CardDescription>Actualiza tu nombre y dirección de correo electrónico.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleProfileUpdate} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="firstName">Nombre</Label>
-            <Input
-              id="firstName"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-            />
+            <Label htmlFor="name">Nombre</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div>
-            <Label htmlFor="lastName">Apellido</Label>
-            <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+            <Label htmlFor="email">Correo Electrónico</Label>
+            <Input id="email" type="email" value={user?.email || ""} disabled />
+            <p className="text-sm text-muted-foreground mt-1">
+              El correo electrónico no se puede cambiar directamente aquí.
+            </p>
           </div>
-          {profileUpdateError && <p className="text-red-500 text-sm">{profileUpdateError}</p>}
-          {profileUpdateMessage && <p className="text-emerald-500 text-sm">{profileUpdateMessage}</p>}
-          <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
-            Guardar Cambios
+          <Button type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              "Guardar Cambios"
+            )}
           </Button>
         </form>
       </CardContent>

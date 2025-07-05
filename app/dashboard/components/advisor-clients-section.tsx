@@ -3,6 +3,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, Plus, Users, FileText, CheckCircle, Award, MessageCircle, X } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { createClient } from "@/lib/supabase-server"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 interface AdvisorClient {
   id: number
@@ -41,7 +45,7 @@ interface AdvisorClientsSectionProps {
   openChatForCase: (caseId: number) => void
 }
 
-export function AdvisorClientsSection({
+export default async function AdvisorClientsSection({
   advisorClients,
   advisorCases,
   selectedClient,
@@ -50,6 +54,49 @@ export function AdvisorClientsSection({
   setClientFilter,
   openChatForCase,
 }: AdvisorClientsSectionProps) {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return <p>Por favor, inicia sesión para ver tus clientes.</p>
+  }
+
+  // Fetch clients associated with the advisor's cases
+  const { data: cases, error: casesError } = await supabase.from("cases").select("client_id").eq("advisor_id", user.id)
+
+  if (casesError) {
+    console.error("Error fetching cases for advisor clients:", casesError)
+    return <p>Error al cargar los clientes: {casesError.message}</p>
+  }
+
+  const clientIds = Array.from(new Set(cases.map((c) => c.client_id)))
+
+  if (clientIds.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Mis Clientes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Aún no tienes clientes asignados a tus casos.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const { data: clients, error: clientsError } = await supabase
+    .from("profiles")
+    .select("id, name, email, created_at")
+    .in("id", clientIds)
+    .order("created_at", { ascending: false })
+
+  if (clientsError) {
+    console.error("Error fetching client profiles:", clientsError)
+    return <p>Error al cargar los clientes: {clientsError.message}</p>
+  }
+
   const filteredClients = advisorClients.filter(
     (client) =>
       client.name.toLowerCase().includes(clientFilter.toLowerCase()) ||
@@ -281,6 +328,33 @@ export function AdvisorClientsSection({
           </Card>
         </div>
       )}
+
+      {/* Clients Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Mis Clientes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Miembro Desde</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clients.map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell>{client.email}</TableCell>
+                  <TableCell>{format(new Date(client.created_at), "PPP", { locale: es })}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

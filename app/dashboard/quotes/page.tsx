@@ -1,24 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  CalendarDays,
-  Clock,
-  Plus,
-  Video,
-  Phone,
-  MapPin,
-  User,
-  CheckCircle,
-  AlertCircle,
-  Edit,
-  Trash2,
-} from "lucide-react"
+import { Suspense } from "react"
+import QuotesSection from "../components/quotes-section"
+import { CalendarDays, Video, Phone, MapPin } from "lucide-react"
 
 export default function QuotesPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
@@ -138,274 +123,31 @@ export default function QuotesPage() {
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Citas</h1>
-          <p className="text-muted-foreground mt-1">Gestiona tus citas y consultas programadas</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm">
-            <CalendarDays className="w-4 h-4 mr-2" />
-            Ver Calendario
-          </Button>
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Cita
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total de Citas</CardTitle>
-              <CalendarDays className="h-5 w-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{appointmentStats.total}</div>
-              <p className="text-xs text-muted-foreground mt-1">Esta semana</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Confirmadas</CardTitle>
-              <CheckCircle className="h-5 w-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{appointmentStats.confirmed}</div>
-              <p className="text-xs text-muted-foreground mt-1">Listas para realizar</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pendientes</CardTitle>
-              <Clock className="h-5 w-5 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{appointmentStats.pending}</div>
-              <p className="text-xs text-muted-foreground mt-1">Esperando confirmación</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Canceladas</CardTitle>
-              <AlertCircle className="h-5 w-5 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{appointmentStats.cancelled}</div>
-              <p className="text-xs text-muted-foreground mt-1">Requieren reprogramación</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Calendar */}
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle>Calendario</CardTitle>
-              <CardDescription>Selecciona una fecha para ver las citas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                className="rounded-md border"
-              />
-            </CardContent>
-          </Card>
-
-          {/* Appointments List */}
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="today" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="today">Hoy</TabsTrigger>
-                <TabsTrigger value="upcoming">Próximas</TabsTrigger>
-                <TabsTrigger value="all">Todas</TabsTrigger>
-              </TabsList>
-
-              {/* Today's Appointments */}
-              <TabsContent value="today" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Citas de Hoy</CardTitle>
-                    <CardDescription>{todayAppointments.length} citas programadas para hoy</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {todayAppointments.map((appointment) => (
-                        <div
-                          key={appointment.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                              {getModeIcon(appointment.mode)}
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{appointment.title}</h3>
-                              <p className="text-sm text-muted-foreground">{appointment.client}</p>
-                              <div className="flex items-center space-x-4 mt-1 text-xs text-muted-foreground">
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>
-                                    {appointment.time} ({appointment.duration}min)
-                                  </span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <MapPin className="w-3 h-3" />
-                                  <span>{appointment.location}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <Badge variant="outline" className={getStatusColor(appointment.status)}>
-                              {appointment.status}
-                            </Badge>
-                            <div className="flex items-center space-x-1">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Upcoming Appointments */}
-              <TabsContent value="upcoming" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Próximas Citas</CardTitle>
-                    <CardDescription>{upcomingAppointments.length} citas programadas próximamente</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {upcomingAppointments.map((appointment) => (
-                        <div
-                          key={appointment.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                              {getModeIcon(appointment.mode)}
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{appointment.title}</h3>
-                              <p className="text-sm text-muted-foreground">{appointment.client}</p>
-                              <div className="flex items-center space-x-4 mt-1 text-xs text-muted-foreground">
-                                <div className="flex items-center space-x-1">
-                                  <CalendarDays className="w-3 h-3" />
-                                  <span>{appointment.date}</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{appointment.time}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <Badge variant="outline" className={getStatusColor(appointment.status)}>
-                              {appointment.status}
-                            </Badge>
-                            <div className="flex items-center space-x-1">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* All Appointments */}
-              <TabsContent value="all" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Todas las Citas</CardTitle>
-                    <CardDescription>Historial completo de citas programadas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {appointments.map((appointment) => (
-                        <div
-                          key={appointment.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                              {getModeIcon(appointment.mode)}
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{appointment.title}</h3>
-                              <p className="text-sm text-muted-foreground">{appointment.client}</p>
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                                {appointment.description}
-                              </p>
-                              <div className="flex items-center space-x-4 mt-1 text-xs text-muted-foreground">
-                                <div className="flex items-center space-x-1">
-                                  <CalendarDays className="w-3 h-3" />
-                                  <span>{appointment.date}</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{appointment.time}</span>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <User className="w-3 h-3" />
-                                  <span>{appointment.advisor}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="text-right">
-                              <Badge variant="outline" className={getStatusColor(appointment.status)}>
-                                {appointment.status}
-                              </Badge>
-                              <p className="text-xs text-muted-foreground mt-1">{appointment.mode}</p>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Button variant="ghost" size="sm">
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+    <div className="grid gap-6 p-6 md:p-8">
+      <h1 className="text-3xl font-bold">Mis Cotizaciones</h1>
+      <Suspense
+        fallback={
+          <div className="grid gap-6">
+            <div className="flex items-center justify-between">
+              <div className="h-8 w-48 bg-muted rounded" />
+            </div>
+            <div className="bg-card p-4 rounded-lg shadow">
+              <div className="h-6 w-full bg-muted rounded mb-4" />
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex justify-between items-center">
+                    <div className="h-4 w-1/3 bg-muted rounded" />
+                    <div className="h-4 w-1/4 bg-muted rounded" />
+                    <div className="h-4 w-1/6 bg-muted rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        }
+      >
+        <QuotesSection />
+      </Suspense>
     </div>
   )
 }

@@ -1,115 +1,80 @@
-"use client"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, MessageCircle } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase-server"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
-interface ClientCase {
-  id: number
-  title: string
-  type: string
-  status: string
-  advisor: string
-  advisorAvatar: string
-  description: string
-  createdDate: string
-  nextAppointment: string | null
-  progress: number
-}
+export default async function ClientCasesSection() {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-interface ClientCasesSectionProps {
-  userCases: ClientCase[]
-  openChatForCase: (caseId: number) => void
-}
+  if (!user) {
+    return <p>Por favor, inicia sesión para ver tus casos.</p>
+  }
 
-export function ClientCasesSection({ userCases, openChatForCase }: ClientCasesSectionProps) {
+  const { data: cases, error } = await supabase
+    .from("cases")
+    .select("*, advisor:advisor_id(name, email)")
+    .eq("client_id", user.id)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching client cases:", error)
+    return <p>Error al cargar los casos: {error.message}</p>
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mis Casos</h2>
-          <p className="text-muted-foreground">Gestiona y revisa el progreso de tus casos</p>
-        </div>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
-          <Plus className="w-4 h-4 mr-2" />
-          Solicitar Nuevo Caso
-        </Button>
-      </div>
-
-      <div className="grid gap-6">
-        {userCases.map((case_item) => (
-          <Card key={case_item.id} className="border-border/40">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg text-foreground">{case_item.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{case_item.type}</p>
-                </div>
-                <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    case_item.status === "Completada"
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400"
-                      : case_item.status === "En Progreso"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                  }`}
-                >
-                  {case_item.status}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">{case_item.description}</p>
-
-              {/* Advisor Info */}
-              <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={case_item.advisorAvatar || "/placeholder.svg"} />
-                  <AvatarFallback>{case_item.advisor.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Asesor Asignado</p>
-                  <p className="text-sm text-muted-foreground">{case_item.advisor}</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => openChatForCase(case_item.id)}>
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Mensaje
-                </Button>
-              </div>
-
-              {/* Progress Bar */}
-              {case_item.status !== "Completada" && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progreso</span>
-                    <span className="text-foreground">{case_item.progress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-emerald-500 h-2 rounded-full transition-all"
-                      style={{ width: `${case_item.progress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Case Details */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Fecha de Creación</p>
-                  <p className="font-medium">{new Date(case_item.createdDate).toLocaleDateString()}</p>
-                </div>
-                {case_item.nextAppointment && (
-                  <div>
-                    <p className="text-muted-foreground">Próxima Cita</p>
-                    <p className="font-medium">{case_item.nextAppointment}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Mis Casos Abiertos</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {cases.length === 0 ? (
+          <p className="text-muted-foreground">No tienes casos abiertos en este momento.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Título del Caso</TableHead>
+                <TableHead>Asesor Asignado</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Fecha de Creación</TableHead>
+                <TableHead>Última Actualización</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cases.map((caseItem) => (
+                <TableRow key={caseItem.id}>
+                  <TableCell className="font-medium">{caseItem.title}</TableCell>
+                  <TableCell>{caseItem.advisor?.name || "No asignado"}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        caseItem.status === "open"
+                          ? "default"
+                          : caseItem.status === "in_progress"
+                            ? "secondary"
+                            : "outline"
+                      }
+                    >
+                      {caseItem.status === "open"
+                        ? "Abierto"
+                        : caseItem.status === "in_progress"
+                          ? "En Progreso"
+                          : "Cerrado"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{format(new Date(caseItem.created_at), "PPP", { locale: es })}</TableCell>
+                  <TableCell>{format(new Date(caseItem.updated_at), "PPP", { locale: es })}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   )
 }

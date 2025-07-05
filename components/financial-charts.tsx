@@ -1,20 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart } from "recharts"
 
 // Mock financial data
 const monthlyEarnings = [
   { month: "Ene", earnings: 12500, expenses: 8200 },
   { month: "Feb", earnings: 15800, expenses: 9100 },
   { month: "Mar", earnings: 18200, expenses: 10500 },
-  { month: "Abr", earnings: 16900, expenses: 9800 },
+  { month: "Apr", earnings: 16900, expenses: 9800 },
   { month: "May", earnings: 21300, expenses: 11200 },
   { month: "Jun", earnings: 19800, expenses: 10800 },
   { month: "Jul", earnings: 23500, expenses: 12100 },
@@ -118,7 +118,7 @@ const chartConfig = {
     label: "Mobile",
     color: "hsl(var(--chart-2))",
   },
-} satisfies ChartConfig
+}
 
 interface FinancialChartsProps {
   dateRange: { start: string; end: string }
@@ -259,14 +259,13 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
         </CardContent>
       </Card>
 
-      {/* Bar Chart */}
+      {/* Rendimiento Mensual Chart */}
       <Card className="border-border/40">
         <CardHeader>
-          <CardTitle>Gráfico de Barras</CardTitle>
-          <CardDescription>Enero - Junio 2024</CardDescription>
+          <CardTitle>Rendimiento Mensual</CardTitle>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={chartConfig}>
+          <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
             <BarChart accessibilityLayer data={chartData}>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -276,18 +275,38 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
                 axisLine={false}
                 tickFormatter={(value) => value.slice(0, 3)}
               />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+              <YAxis tickLine={false} tickMargin={10} axisLine={false} />
+              <ChartTooltip content={<ChartTooltipContent />} />
               <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
               <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
             </BarChart>
           </ChartContainer>
         </CardContent>
-        <CardFooter className="flex-col items-start gap-2 text-sm">
-          <div className="flex gap-2 font-medium">
-            Tendencia de ingresos en aumento este mes <TrendingUp className="h-4 w-4" />
-          </div>
-          <div className="text-muted-foreground">Basado en datos de los últimos 6 meses</div>
-        </CardFooter>
+      </Card>
+
+      {/* Tendencia de Ingresos Chart */}
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardTitle>Tendencia de Ingresos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+            <LineChart accessibilityLayer data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tickFormatter={(value) => value.slice(0, 3)}
+              />
+              <YAxis tickLine={false} tickMargin={10} axisLine={false} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Line type="monotone" dataKey="desktop" stroke="var(--color-desktop)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="mobile" stroke="var(--color-mobile)" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
       </Card>
 
       {/* Transactions Table */}

@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
 
@@ -23,8 +23,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-emerald-500" />
       </div>
     )
   }

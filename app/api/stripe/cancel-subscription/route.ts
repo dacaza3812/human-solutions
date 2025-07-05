@@ -7,30 +7,50 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 export async function POST(req: NextRequest) {
-  const { subscriptionId } = await req.json()
   const supabase = createClient()
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.json({ error: "User not authenticated" }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   try {
-    const subscription = await stripe.subscriptions.cancel(subscriptionId)
-
-    // Optionally, update your database to reflect the cancelled subscription status
-    await supabase
+    // Fetch the user's current subscription from your database
+    const { data: subscriptionData, error: subscriptionError } = await supabase
       .from("user_subscriptions")
-      .update({ status: subscription.status, ends_at: new Date(subscription.current_period_end * 1000).toISOString() })
+      .select("stripe_subscription_id")
       .eq("user_id", user.id)
-      .eq("stripe_subscription_id", subscription.id)
+      .single()
 
-    return NextResponse.json({ success: true, subscription })
-  } catch (error: any) {
-    console.error("Error cancelling subscription:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (subscriptionError || !subscriptionData) {
+      console.error("Error fetching subscription:", subscriptionError)
+      return NextResponse.json({ error: "Subscription not found" }, { status: 404 })
+    }
+
+    const subscriptionId = subscriptionData.stripe_subscription_id
+
+    // Cancel the subscription in Stripe
+    const canceledSubscription = await stripe.subscriptions.cancel(subscriptionId)
+
+    // Update your database to reflect the canceled subscription
+    const { error: updateError } = await supabase
+      .from("user_subscriptions")
+      .update({
+        status: canceledSubscription.status,
+        ends_at: new Date(canceledSubscription.current_period_end * 1000).toISOString(),
+      })
+      .eq("user_id", user.id)
+
+    if (updateError) {
+      console.error("Error updating subscription in DB:", updateError)
+      return NextResponse.json({ error: "Failed to update subscription status" }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, subscription: canceledSubscription })
+  } catch (error) {
+    console.error("Error canceling subscription:", error)
+    return NextResponse.json({ error: "Failed to cancel subscription" }, { status: 500 })
   }
 }

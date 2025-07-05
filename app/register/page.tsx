@@ -2,81 +2,94 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, AlertCircle, CheckCircle } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [name, setName] = useState("")
+  const [referralCode, setReferralCode] = useState("")
   const [loading, setLoading] = useState(false)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const { signUp } = useAuth()
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  useEffect(() => {
+    const refCode = searchParams.get("ref")
+    if (refCode) {
+      setReferralCode(refCode)
+    }
+  }, [searchParams])
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
-    setSuccessMessage(null)
-    setLoading(true)
-
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.")
-      setLoading(false)
+      toast({
+        title: "Error de registro",
+        description: "Las contraseñas no coinciden.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (password.length < 6) {
+      toast({
+        title: "Error de registro",
+        description: "La contraseña debe tener al menos 6 caracteres.",
+        variant: "destructive",
+      })
       return
     }
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${location.origin}/auth/callback`,
-      },
-    })
-
-    if (signUpError) {
-      setError(signUpError.message)
-    } else {
-      setSuccessMessage("¡Registro exitoso! Por favor, revisa tu correo electrónico para confirmar tu cuenta.")
-      setEmail("")
-      setPassword("")
-      setConfirmPassword("")
-    }
+    setLoading(true)
+    const { error } = await signUp(email, password, name, referralCode)
     setLoading(false)
+
+    if (error) {
+      toast({
+        title: "Error de registro",
+        description: error.message,
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Registro exitoso",
+        description: "Por favor, revisa tu correo para verificar tu cuenta.",
+      })
+      router.push("/login") // Redirect to login after successful registration
+    }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Regístrate</CardTitle>
-          <CardDescription>Crea tu cuenta para acceder al dashboard.</CardDescription>
+          <CardTitle className="text-2xl">Registrarse</CardTitle>
+          <CardDescription>Crea una cuenta para comenzar tu transformación.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSignUp} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {successMessage && (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertTitle>Éxito</AlertTitle>
-                <AlertDescription>{successMessage}</AlertDescription>
-              </Alert>
-            )}
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Nombre Completo</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Tu nombre"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
             <div>
               <Label htmlFor="email">Correo Electrónico</Label>
               <Input
@@ -93,7 +106,7 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -104,13 +117,23 @@ export default function RegisterPage() {
               <Input
                 id="confirm-password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="********"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <div>
+              <Label htmlFor="referral-code">Código de Referido (Opcional)</Label>
+              <Input
+                id="referral-code"
+                type="text"
+                placeholder="Ingresa un código si tienes uno"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+              />
+            </div>
+            <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -123,8 +146,8 @@ export default function RegisterPage() {
           </form>
           <div className="mt-4 text-center text-sm">
             ¿Ya tienes una cuenta?{" "}
-            <Link href="/login" className="underline">
-              Inicia Sesión
+            <Link href="/login" className="text-emerald-400 hover:underline">
+              Iniciar Sesión
             </Link>
           </div>
         </CardContent>

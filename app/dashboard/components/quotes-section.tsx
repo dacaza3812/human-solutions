@@ -1,96 +1,90 @@
-"use client"
-
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar as CalendarComponent } from "@/components/calendar-component"
-import { Plus } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase-server"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { Button } from "@/components/ui/button"
+import { ArrowRight } from "lucide-react"
+import Link from "next/link"
+import { DollarSign } from "lucide-react" // Declared DollarSign variable
 
-interface ClientCase {
-  id: number
-  title: string
-  type: string
-  status: string
-  advisor: string
-  advisorAvatar: string
-  description: string
-  createdDate: string
-  nextAppointment: string | null
-  progress: number
-}
+export default async function QuotesSection() {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-interface QuotesSectionProps {
-  userScheduledCases: ClientCase[]
-  selectedDate: Date
-  setSelectedDate: (date: Date) => void
-}
+  if (!user) {
+    return <p>Por favor, inicia sesión para ver las cotizaciones.</p>
+  }
 
-export function QuotesSection({ userScheduledCases, selectedDate, setSelectedDate }: QuotesSectionProps) {
+  // Fetch quotes relevant to the user (either as client or advisor)
+  const { data: quotes, error } = await supabase
+    .from("quotes")
+    .select("*, cases(id, title), client:client_id(name), advisor:advisor_id(name)")
+    .or(`client_id.eq.${user.id},advisor_id.eq.${user.id}`)
+    .order("created_at", { ascending: false })
+    .limit(5) // Show only the 5 most recent quotes
+
+  if (error) {
+    console.error("Error fetching quotes:", error)
+    return <p>Error al cargar las cotizaciones: {error.message}</p>
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mis Citas</h2>
-          <p className="text-muted-foreground">Gestiona tus citas y consultas programadas</p>
-        </div>
-        <Button className="bg-emerald-500 hover:bg-emerald-600">
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva Cita
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Últimas Cotizaciones</CardTitle>
+        <DollarSign className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        {quotes.length === 0 ? (
+          <p className="text-muted-foreground">No hay cotizaciones recientes.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Caso</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Rol</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {quotes.map((quote) => (
+                <TableRow key={quote.id}>
+                  <TableCell className="font-medium">
+                    <Link href={`/dashboard/cases/${quote.case_id}`} className="text-emerald-400 hover:underline">
+                      {quote.cases?.title || "N/A"}
+                    </Link>
+                  </TableCell>
+                  <TableCell>${quote.amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        quote.status === "pending" ? "secondary" : quote.status === "accepted" ? "default" : "outline"
+                      }
+                    >
+                      {quote.status === "pending"
+                        ? "Pendiente"
+                        : quote.status === "accepted"
+                          ? "Aceptada"
+                          : "Rechazada"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{format(new Date(quote.created_at), "PPP", { locale: es })}</TableCell>
+                  <TableCell>{quote.client_id === user.id ? "Cliente" : "Asesor"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <Button variant="link" className="p-0 h-auto mt-4 text-emerald-400">
+          Ver todas las cotizaciones <ArrowRight className="ml-1 h-3 w-3" />
         </Button>
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Calendar */}
-        <div className="lg:col-span-1">
-          <CalendarComponent selectedDate={selectedDate} onDateSelect={setSelectedDate} />
-        </div>
-
-        {/* Cases Table - Only scheduled cases for current user */}
-        <div className="lg:col-span-2">
-          <Card className="border-border/40">
-            <CardHeader>
-              <CardTitle className="text-foreground">Mis Citas Programadas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border/40">
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Asesor</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
-                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Hora</th>
-                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {userScheduledCases.map((case_item) => (
-                      <tr key={case_item.id} className="border-b border-border/20 hover:bg-muted/50">
-                        <td className="py-3 px-4 text-sm font-medium">{case_item.advisor}</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">{case_item.type}</td>
-                        <td className="py-3 px-4 text-sm">{new Date(case_item.createdDate).toLocaleDateString()}</td>
-                        <td className="py-3 px-4 text-sm">
-                          {case_item.nextAppointment?.split(" ")[1] || "Por definir"}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              case_item.status === "En Progreso"
-                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                            }`}
-                          >
-                            {case_item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
