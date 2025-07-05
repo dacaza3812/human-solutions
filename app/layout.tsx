@@ -1,14 +1,15 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import "./globals.css"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Fox Lawyer - Asesoría Legal Personalizada",
-  description: "Asesoría legal personalizada para resolver problemas financieros, familiares y amorosos",
+  title: "Fox Lawyer - Asesoría Personalizada",
+  description: "Plataforma de asesoría personalizada para problemas financieros, familiares y de relación.",
     generator: 'v0.dev'
 }
 
@@ -18,14 +19,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" suppressHydrationWarning>
-      <body>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
-          <AuthProvider>
-            {children}
-            <SpeedInsights />
-            <Analytics />
-            </AuthProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
       </body>
     </html>

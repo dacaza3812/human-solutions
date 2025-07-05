@@ -1,56 +1,41 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase-server"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2024-04-10",
 })
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
+  const { subscriptionId } = await req.json()
+  const supabase = createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "User not authenticated" }, { status: 401 })
+  }
+
   try {
-    const { subscriptionId } = await request.json()
+    const subscription = await stripe.subscriptions.cancel(subscriptionId)
 
-    if (!subscriptionId) {
-      return NextResponse.json({ error: "Subscription ID is required" }, { status: 400 })
-    }
-
-    // Verificar autenticación
-    const supabase = createServerComponentClient({ cookies })
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Cancelar la suscripción en Stripe
-    const canceledSubscription = await stripe.subscriptions.cancel(subscriptionId)
-
-    // Actualizar el estado en Supabase
+    // Update Supabase to reflect the cancelled subscription status
     const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        subscription_status: "canceled",
-        subscription_cancelled_at: new Date().toISOString(),
-      })
-      .eq("id", session.user.id)
+      .from("user_subscriptions")
+      .update({ status: subscription.status, ends_at: new Date(subscription.current_period_end * 1000).toISOString() })
+      .eq("user_id", user.id)
+      .eq("stripe_subscription_id", subscriptionId)
 
     if (updateError) {
-      console.error("Error updating subscription status:", updateError)
-      return NextResponse.json(
-        { error: `Failed to update subscription status: ${updateError.message}` },
-        { status: 500 },
-      )
+      console.error("Error updating Supabase subscription status:", updateError)
+      return NextResponse.json({ error: "Failed to update subscription status in DB" }, { status: 500 })
     }
 
-    return NextResponse.json({
-      success: true,
-      subscription: canceledSubscription,
-    })
-  } catch (error: any) {
-    console.error("Error canceling subscription:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
+    return NextResponse.json({ success: true, subscription })
+  } catch (error) {
+    console.error("Error cancelling subscription:", error)
+    return NextResponse.json({ error: "Failed to cancel subscription" }, { status: 500 })
   }
 }

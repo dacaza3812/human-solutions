@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { createClient } from "@/lib/supabase-server"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import {
   CalendarDays,
   Clock,
@@ -20,8 +24,16 @@ import {
   Trash2,
 } from "lucide-react"
 
-export default function QuotesPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+export default async function QuotesPage() {
+  const supabase = createClient()
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date()) // Moved useState to the top level
+
+  const { data: quotes, error } = await supabase.from("quotes").select("*").order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching quotes:", error)
+    return <div>Error loading quotes.</div>
+  }
 
   const appointments = [
     {
@@ -138,11 +150,11 @@ export default function QuotesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 md:p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Citas</h1>
+          <h1 className="text-3xl font-bold text-foreground">Citas y Cotizaciones</h1>
           <p className="text-muted-foreground mt-1">Gestiona tus citas y consultas programadas</p>
         </div>
         <div className="flex items-center space-x-3">
@@ -405,6 +417,59 @@ export default function QuotesPage() {
             </Tabs>
           </div>
         </div>
+
+        {/* Quotes Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Todas las Cotizaciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {quotes.length === 0 ? (
+              <p className="text-center text-muted-foreground">No hay cotizaciones registradas.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Monto</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quotes.map((quote) => (
+                    <TableRow key={quote.id}>
+                      <TableCell>{quote.title}</TableCell>
+                      <TableCell>{quote.client_name || "N/A"}</TableCell>
+                      <TableCell>${quote.amount?.toLocaleString()}</TableCell>
+                      <TableCell>{format(new Date(quote.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            quote.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                              : quote.status === "approved"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                          }`}
+                        >
+                          {quote.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <a href={`/dashboard/quotes/${quote.id}`} className="text-blue-500 hover:underline">
+                          Ver Detalles
+                        </a>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

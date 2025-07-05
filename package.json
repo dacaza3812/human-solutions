@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.3.4",
+    "@hookform/resolvers": "latest",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "latest",
@@ -69,7 +69,7 @@
     "vaul": "latest",
     "vue": "latest",
     "vue-router": "latest",
-    "zod": "^3.22.4"
+    "zod": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

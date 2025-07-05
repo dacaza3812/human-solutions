@@ -1,48 +1,40 @@
-"use client"
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp } from "lucide-react"
+import { Activity } from "lucide-react"
+import { createClient } from "@/lib/supabase-server"
+import { formatDistanceToNow } from "date-fns"
+import { es } from "date-fns/locale"
 
-interface RecentActivityCardProps {
-  recentActivity: {
-    id: number
-    type: string
-    description: string
-    time: string
-    status: "success" | "completed" | "payment" | "scheduled"
-  }[]
-}
+export default async function RecentActivityCard() {
+  const supabase = createClient()
+  // In a real app, you'd fetch recent activities for the user/advisor
+  const { data: activities, error } = await supabase.from("activity_log").select("*").limit(5)
 
-export function RecentActivityCard({ recentActivity }: RecentActivityCardProps) {
+  if (error) {
+    console.error("Error fetching activities:", error)
+    return <p>Error loading activity.</p>
+  }
+
   return (
-    <Card className="border-border/40">
-      <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
-          Actividad Reciente
-        </CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-lg font-medium">Actividad Reciente</CardTitle>
+        <Activity className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="space-y-4">
-        {recentActivity.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border border-border/40">
-            <div
-              className={`w-2 h-2 rounded-full mt-2 ${
-                activity.status === "success"
-                  ? "bg-emerald-400"
-                  : activity.status === "completed"
-                    ? "bg-blue-400"
-                    : activity.status === "payment"
-                      ? "bg-purple-400"
-                      : "bg-orange-400"
-              }`}
-            />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">{activity.type}</p>
-              <p className="text-xs text-muted-foreground">{activity.description}</p>
-              <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-            </div>
-          </div>
-        ))}
+      <CardContent>
+        {activities.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay actividad reciente.</p>
+        ) : (
+          <ul className="space-y-3">
+            {activities.map((activity) => (
+              <li key={activity.id} className="flex items-center justify-between text-sm">
+                <p className="text-muted-foreground">{activity.description}</p>
+                <span className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: es })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   )

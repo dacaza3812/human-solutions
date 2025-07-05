@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
+import { CartesianGrid, XAxis, Line, LineChart, ResponsiveContainer } from "recharts"
+import { ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 // Mock financial data
 const monthlyEarnings = [
   { month: "Ene", earnings: 12500, expenses: 8200 },
   { month: "Feb", earnings: 15800, expenses: 9100 },
   { month: "Mar", earnings: 18200, expenses: 10500 },
-  { month: "Apr", earnings: 16900, expenses: 9800 },
+  { month: "Abr", earnings: 16900, expenses: 9800 },
   { month: "May", earnings: 21300, expenses: 11200 },
   { month: "Jun", earnings: 19800, expenses: 10800 },
   { month: "Jul", earnings: 23500, expenses: 12100 },
@@ -96,6 +98,15 @@ const transactionData = [
     category: "Mediación",
     status: "Pendiente",
   },
+]
+
+const chartData = [
+  { month: "Ene", desktop: 186 },
+  { month: "Feb", desktop: 305 },
+  { month: "Mar", desktop: 237 },
+  { month: "Abr", desktop: 73 },
+  { month: "May", desktop: 209 },
+  { month: "Jun", desktop: 214 },
 ]
 
 interface FinancialChartsProps {
@@ -234,6 +245,26 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
               <span className="text-sm text-muted-foreground">Gastos</span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Desktop Usage Chart */}
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardTitle className="flex items-center text-foreground">
+            <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
+            Uso de Escritorio Mensual
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+              <Line dataKey="desktop" type="monotone" stroke="#8884d8" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
 

@@ -9,13 +9,17 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/contexts/auth-context"
 import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
 import { supabase } from "@/lib/supabase"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useToast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import {
+  Loader2,
   CheckCircle,
   CreditCard,
   Calendar,
   DollarSign,
   AlertCircle,
-  Loader2,
   Crown,
   Star,
   Zap,
@@ -34,6 +38,17 @@ interface SubscriptionInfo {
   subscription_end_date?: string
   stripe_customer_id?: string
   stripe_subscription_id?: string
+}
+
+interface Subscription {
+  id: string
+  plan_id: number
+  plans: { name: string; price: number }
+  status: string
+  current_period_start: string
+  current_period_end: string
+  stripe_subscription_id: string
+  cancel_at_period_end: boolean
 }
 
 const plans = [
@@ -92,6 +107,9 @@ export function SubscriptionsSection() {
   const [error, setError] = useState<string | null>(null)
   const [showPlans, setShowPlans] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [loadingSubscriptionId, setLoadingSubscriptionId] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (profile?.id) {
@@ -145,6 +163,18 @@ export function SubscriptionsSection() {
       } else {
         setSubscriptionInfo(null)
       }
+
+      // Fetch historical subscriptions
+      const { data: subscriptionsData, error: subscriptionsError } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("stripe_customer_id", profileData.stripe_customer_id)
+
+      if (subscriptionsError) {
+        throw subscriptionsError
+      }
+
+      setSubscriptions(subscriptionsData || [])
     } catch (err: any) {
       console.error("Error fetching subscription info:", err)
       setError(err.message || "Error al cargar la información de suscripción")
@@ -157,33 +187,51 @@ export function SubscriptionsSection() {
     await createCheckoutSession(planId)
   }
 
-  const handleCancelSubscription = async () => {
-    if (!subscriptionInfo?.stripe_subscription_id) return
-
-    setCancelLoading(true)
+  const handleCancelSubscription = async (subscriptionId: string) => {
+    setLoadingSubscriptionId(subscriptionId)
     try {
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          subscriptionId: subscriptionInfo.stripe_subscription_id,
-        }),
+        body: JSON.stringify({ subscriptionId }),
       })
+      const data = await response.json()
 
-      if (!response.ok) {
-        const errorData = await response.json() // Lee el mensaje de error del cuerpo de la respuesta
-        throw new Error(errorData.error || "Error al cancelar la suscripción")
+      if (response.ok && data.success) {
+        toast({
+          title: "Suscripción Cancelada",
+          description: "Tu suscripción ha sido cancelada exitosamente.",
+        })
+        // Update the local state to reflect the cancellation
+        setSubscriptions((prevSubs) =>
+          prevSubs.map((sub) =>
+            sub.stripe_subscription_id === subscriptionId
+              ? {
+                  ...sub,
+                  status: data.subscription.status,
+                  cancel_at_period_end: data.subscription.cancel_at_period_end,
+                }
+              : sub,
+          ),
+        )
+      } else {
+        toast({
+          title: "Error al Cancelar",
+          description: data.error || "No se pudo cancelar la suscripción.",
+          variant: "destructive",
+        })
       }
-
-      // Actualizar la información de suscripción
-      await fetchSubscriptionInfo()
-    } catch (err: any) {
-      console.error("Error canceling subscription:", err)
-      setError(err.message || "Error al cancelar la suscripción") // Muestra el mensaje de error específico
+    } catch (error) {
+      console.error("Error cancelling subscription:", error)
+      toast({
+        title: "Error de Red",
+        description: "No se pudo conectar con el servidor para cancelar la suscripción.",
+        variant: "destructive",
+      })
     } finally {
-      setCancelLoading(false)
+      setLoadingSubscriptionId(null)
     }
   }
 
@@ -370,7 +418,7 @@ export function SubscriptionsSection() {
                 variant="outline"
                 onClick={handleCancelSubscription}
                 disabled={cancelLoading || subscriptionInfo.subscription_status !== "active"}
-                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white"
+                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white bg-transparent"
               >
                 {cancelLoading ? (
                   <>
@@ -480,6 +528,73 @@ export function SubscriptionsSection() {
           </div>
         </div>
       )}
+
+      {/* Historial de Suscripciones */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Historial de Suscripciones</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {subscriptions.length === 0 ? (
+            <p className="text-center text-muted-foreground">No tienes suscripciones activas o pasadas.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Precio</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Inicio</TableHead>
+                  <TableHead>Fin</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {subscriptions.map((sub) => (
+                  <TableRow key={sub.id}>
+                    <TableCell>{sub.plans?.name || "N/A"}</TableCell>
+                    <TableCell>${sub.plans?.price?.toFixed(2) || "0.00"}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          sub.status === "active"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : sub.status === "canceled" || sub.status === "unpaid"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                        }`}
+                      >
+                        {sub.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>{format(new Date(sub.current_period_start), "dd/MM/yyyy", { locale: es })}</TableCell>
+                    <TableCell>{format(new Date(sub.current_period_end), "dd/MM/yyyy", { locale: es })}</TableCell>
+                    <TableCell className="text-right">
+                      {sub.status === "active" && !sub.cancel_at_period_end && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleCancelSubscription(sub.stripe_subscription_id)}
+                          disabled={loadingSubscriptionId === sub.stripe_subscription_id}
+                        >
+                          {loadingSubscriptionId === sub.stripe_subscription_id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            "Cancelar"
+                          )}
+                        </Button>
+                      )}
+                      {sub.cancel_at_period_end && (
+                        <span className="text-sm text-muted-foreground">Cancela al final del período</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

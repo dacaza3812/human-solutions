@@ -1,94 +1,98 @@
 "use server"
 
-import { supabase } from "@/lib/supabase"
+import { z } from "zod"
+import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
-import { v4 as uuidv4 } from "uuid"
 
-interface FormState {
-  success: boolean
-  message: string
-  errors?: {
-    firstName?: string[]
-    lastName?: string[]
-    email?: string[]
-    phone?: string[]
-    message?: string[]
-    file?: string[]
-  }
-}
+const contactFormSchema = z.object({
+  firstName: z.string().min(1, "El nombre es requerido."),
+  lastName: z.string().min(1, "El apellido es requerido."),
+  email: z.string().email("Correo electrónico inválido.").min(1, "El correo electrónico es requerido."),
+  phone: z.string().optional(),
+  message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres."),
+  file: z.any().optional(), // File will be handled separately
+})
 
-export async function submitContactForm(prevState: FormState, formData: FormData): Promise<FormState> {
-  const firstName = formData.get("firstName") as string
-  const lastName = formData.get("lastName") as string
-  const email = formData.get("email") as string
-  const phone = formData.get("phone") as string
-  const message = formData.get("message") as string
-  const file = formData.get("file") as File | null
+export async function submitContactForm(prevState: any, formData: FormData) {
+  const supabase = createClient()
 
-  const errors: FormState["errors"] = {}
-
-  if (!firstName || firstName.trim() === "") {
-    errors.firstName = ["El nombre es requerido."]
-  }
-  if (!lastName || lastName.trim() === "") {
-    errors.lastName = ["El apellido es requerido."]
-  }
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = ["El correo electrónico es inválido."]
-  }
-  if (!message || message.trim() === "") {
-    errors.message = ["El mensaje es requerido."]
+  const data = {
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    message: formData.get("message"),
+    file: formData.get("file"),
   }
 
-  if (Object.keys(errors).length > 0) {
-    return { success: false, message: "Por favor, corrige los errores en el formulario.", errors }
+  const validatedFields = contactFormSchema.safeParse(data)
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: "Error de validación. Por favor, revisa los campos.",
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
   }
 
   let fileUrl: string | null = null
-  if (file && file.size > 0) {
-    const fileExtension = file.name.split(".").pop()
-    const fileName = `${uuidv4()}.${fileExtension}`
-    const filePath = `inquiries/${fileName}`
+  const file = validatedFields.data.file
 
+  if (file instanceof File && file.size > 0) {
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("inquiry-files") // Ensure this bucket exists in your Supabase project
-      .upload(filePath, file, {
+      .from("contact_form_files")
+      .upload(`${Date.now()}-${file.name}`, file, {
         cacheControl: "3600",
         upsert: false,
       })
 
     if (uploadError) {
       console.error("Error uploading file:", uploadError)
-      return { success: false, message: `Error al subir el archivo: ${uploadError.message}` }
+      return {
+        success: false,
+        message: "Error al subir el archivo. Inténtalo de nuevo.",
+        errors: { file: ["Error al subir el archivo."] },
+      }
     }
-
-    // Get public URL for the uploaded file
-    const { data: publicUrlData } = supabase.storage.from("inquiry-files").getPublicUrl(filePath)
-    fileUrl = publicUrlData.publicUrl
+    fileUrl = uploadData.path
   }
 
-  try {
-    const { data, error } = await supabase.from("inquiries").insert({
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone: phone || null,
-      message,
-      file_url: fileUrl,
-      status: "new", // Default status
-    })
+  const { error } = await supabase.from("inquiries").insert({
+    first_name: validatedFields.data.firstName,
+    last_name: validatedFields.data.lastName,
+    email: validatedFields.data.email,
+    phone: validatedFields.data.phone,
+    message: validatedFields.data.message,
+    file_url: fileUrl,
+    status: "pending", // Default status
+  })
 
-    if (error) {
-      console.error("Error inserting inquiry:", error)
-      return { success: false, message: `Error al enviar el formulario: ${error.message}` }
+  if (error) {
+    console.error("Error inserting inquiry:", error)
+    return {
+      success: false,
+      message: "Error al enviar el formulario. Inténtalo de nuevo.",
+      errors: { general: ["Error al enviar el formulario."] },
     }
-
-    revalidatePath("/") // Revalidate the landing page if needed
-    revalidatePath("/dashboard/inquiries") // Revalidate the new dashboard section
-
-    return { success: true, message: "¡Tu mensaje ha sido enviado exitosamente! Nos pondremos en contacto pronto." }
-  } catch (e: any) {
-    console.error("Unexpected error:", e)
-    return { success: false, message: `Ocurrió un error inesperado: ${e.message}` }
   }
+
+  revalidatePath("/dashboard/inquiries") // Revalidate inquiries page to show new entry
+
+  return {
+    success: true,
+    message: "¡Formulario enviado con éxito! Nos pondremos en contacto pronto.",
+  }
+}
+
+export async function updateInquiryStatus(inquiryId: string, newStatus: string) {
+  const supabase = createClient()
+  const { error } = await supabase.from("inquiries").update({ status: newStatus }).eq("id", inquiryId)
+
+  if (error) {
+    console.error("Error updating inquiry status:", error)
+    return { success: false, message: "Error al actualizar el estado de la consulta." }
+  }
+
+  revalidatePath("/dashboard/inquiries")
+  return { success: true, message: "Estado de la consulta actualizado con éxito." }
 }

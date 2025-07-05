@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createClient } from "@/lib/supabase-server"
 import {
   TestTube,
   Play,
@@ -20,116 +21,27 @@ import {
   RefreshCw,
 } from "lucide-react"
 
-export default function TestPage() {
-  const testStats = [
-    {
-      title: "Pruebas Totales",
-      value: "156",
-      change: "+12%",
-      icon: TestTube,
-      color: "text-emerald-500",
-    },
-    {
-      title: "Pruebas Exitosas",
-      value: "142",
-      change: "91%",
-      icon: CheckCircle,
-      color: "text-green-500",
-    },
-    {
-      title: "Pruebas Fallidas",
-      value: "14",
-      change: "9%",
-      icon: AlertCircle,
-      color: "text-red-500",
-    },
-    {
-      title: "Tiempo Promedio",
-      value: "2.3s",
-      change: "-0.2s",
-      icon: Clock,
-      color: "text-blue-500",
-    },
-  ]
-
-  const testHistory = [
-    {
-      id: 1,
-      name: "Test de Autenticación",
-      status: "Exitoso",
-      time: "1.2s",
-      date: "Hace 5 min",
-      progress: 100,
-    },
-    {
-      id: 2,
-      name: "Test de Base de Datos",
-      status: "Exitoso",
-      time: "2.8s",
-      date: "Hace 10 min",
-      progress: 100,
-    },
-    {
-      id: 3,
-      name: "Test de API Externa",
-      status: "Fallido",
-      time: "5.1s",
-      date: "Hace 15 min",
-      progress: 45,
-    },
-    {
-      id: 4,
-      name: "Test de UI Components",
-      status: "Exitoso",
-      time: "1.9s",
-      date: "Hace 20 min",
-      progress: 100,
-    },
-    {
-      id: 5,
-      name: "Test de Integración",
-      status: "En Progreso",
-      time: "3.2s",
-      date: "Hace 25 min",
-      progress: 75,
-    },
-  ]
-
-  const testSuites = [
-    {
-      name: "Suite de Autenticación",
-      tests: 24,
-      passed: 22,
-      failed: 2,
-      duration: "45s",
-    },
-    {
-      name: "Suite de Base de Datos",
-      tests: 18,
-      passed: 18,
-      failed: 0,
-      duration: "32s",
-    },
-    {
-      name: "Suite de API",
-      tests: 35,
-      passed: 31,
-      failed: 4,
-      duration: "78s",
-    },
-    {
-      name: "Suite de UI",
-      tests: 42,
-      passed: 40,
-      failed: 2,
-      duration: "56s",
-    },
-  ]
+export default async function TestPage() {
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   return (
-    <div className="p-6">
+    <div className="p-6 md:p-8">
+      <h1 className="text-2xl font-bold mb-6">Página de Prueba (Solo para desarrollo)</h1>
+      <p className="text-muted-foreground">Esta página es para probar la conexión con Supabase y la autenticación.</p>
+      <div className="mt-4 p-4 border rounded-md">
+        <h2 className="text-lg font-semibold">Información del Usuario:</h2>
+        {user ? (
+          <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(user, null, 2)}</pre>
+        ) : (
+          <p>No hay usuario autenticado.</p>
+        )}
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 mt-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Centro de Pruebas</h1>
           <p className="text-muted-foreground mt-1">Monitorea y ejecuta pruebas del sistema</p>
@@ -149,7 +61,36 @@ export default function TestPage() {
       <div className="space-y-6">
         {/* Stats Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {testStats.map((stat, index) => (
+          {[
+            {
+              title: "Pruebas Totales",
+              value: "156",
+              change: "+12%",
+              icon: TestTube,
+              color: "text-emerald-500",
+            },
+            {
+              title: "Pruebas Exitosas",
+              value: "142",
+              change: "91%",
+              icon: CheckCircle,
+              color: "text-green-500",
+            },
+            {
+              title: "Pruebas Fallidas",
+              value: "14",
+              change: "9%",
+              icon: AlertCircle,
+              color: "text-red-500",
+            },
+            {
+              title: "Tiempo Promedio",
+              value: "2.3s",
+              change: "-0.2s",
+              icon: Clock,
+              color: "text-blue-500",
+            },
+          ].map((stat, index) => (
             <Card key={index}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
@@ -183,7 +124,48 @@ export default function TestPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {testHistory.map((test) => (
+                  {[
+                    {
+                      id: 1,
+                      name: "Test de Autenticación",
+                      status: "Exitoso",
+                      time: "1.2s",
+                      date: "Hace 5 min",
+                      progress: 100,
+                    },
+                    {
+                      id: 2,
+                      name: "Test de Base de Datos",
+                      status: "Exitoso",
+                      time: "2.8s",
+                      date: "Hace 10 min",
+                      progress: 100,
+                    },
+                    {
+                      id: 3,
+                      name: "Test de API Externa",
+                      status: "Fallido",
+                      time: "5.1s",
+                      date: "Hace 15 min",
+                      progress: 45,
+                    },
+                    {
+                      id: 4,
+                      name: "Test de UI Components",
+                      status: "Exitoso",
+                      time: "1.9s",
+                      date: "Hace 20 min",
+                      progress: 100,
+                    },
+                    {
+                      id: 5,
+                      name: "Test de Integración",
+                      status: "En Progreso",
+                      time: "3.2s",
+                      date: "Hace 25 min",
+                      progress: 75,
+                    },
+                  ].map((test) => (
                     <div
                       key={test.id}
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -235,7 +217,36 @@ export default function TestPage() {
           {/* Test Suites Tab */}
           <TabsContent value="suites" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-              {testSuites.map((suite, index) => (
+              {[
+                {
+                  name: "Suite de Autenticación",
+                  tests: 24,
+                  passed: 22,
+                  failed: 2,
+                  duration: "45s",
+                },
+                {
+                  name: "Suite de Base de Datos",
+                  tests: 18,
+                  passed: 18,
+                  failed: 0,
+                  duration: "32s",
+                },
+                {
+                  name: "Suite de API",
+                  tests: 35,
+                  passed: 31,
+                  failed: 4,
+                  duration: "78s",
+                },
+                {
+                  name: "Suite de UI",
+                  tests: 42,
+                  passed: 40,
+                  failed: 2,
+                  duration: "56s",
+                },
+              ].map((suite, index) => (
                 <Card key={index}>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">

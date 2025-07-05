@@ -2,12 +2,13 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
@@ -22,7 +23,6 @@ import {
   CheckCircle,
   Menu,
   Shield,
-  Zap,
   Target,
   TrendingUp,
   MessageCircle,
@@ -43,13 +43,28 @@ import {
   Loader2,
   AlertCircle,
   File,
+  CheckCircleIcon,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { useActionState } from "react"
 import { submitContactForm } from "@/actions/contact"
 import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
+
+// Componente para el botón de envío con estado de carga
+function SubmitButton({ isPending }: { isPending: boolean }) {
+  return (
+    <Button type="submit" disabled={isPending} className="flex-1 bg-emerald-500 hover:bg-emerald-600">
+      {isPending ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Enviando...
+        </>
+      ) : (
+        "Enviar Mensaje"
+      )}
+    </Button>
+  )
+}
 
 export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -58,27 +73,59 @@ export default function SolucionesHumanas() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const contactFormRef = useRef<HTMLFormElement>(null)
 
   const router = useRouter()
   const { user } = useAuth()
   const { createCheckoutSession, loading, error } = useStripeCheckout()
   const { toast } = useToast()
 
-  const [formState, formAction, isPending] = useActionState(submitContactForm, {
+  const [isPending, setIsPending] = useState(false)
+  const [formState, setFormState] = useState({
     success: false,
     message: "",
+    errors: {},
   })
 
   // Show toast notification based on form submission result
-  useState(() => {
+  useEffect(() => {
     if (formState.message) {
       toast({
         title: formState.success ? "Éxito" : "Error",
         description: formState.message,
         variant: formState.success ? "default" : "destructive",
       })
+      if (formState.success) {
+        contactFormRef.current?.reset()
+        setSelectedFile(null)
+        setFilePreviewUrl(null)
+      }
     }
   }, [formState.message, formState.success, toast])
+
+  const handleContactFormSubmit = async (formData: FormData) => {
+    setIsPending(true)
+    const result = await submitContactForm(formState, formData) // Pass prevState as first argument
+    setFormState(result)
+    setIsPending(false)
+
+    if (result.success) {
+      toast({
+        title: "Éxito",
+        description: result.message,
+        action: <CheckCircleIcon className="text-green-500" />,
+      })
+      contactFormRef.current?.reset() // Clear form fields on success
+      setSelectedFile(null)
+      setFilePreviewUrl(null)
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      })
+    }
+  }
 
   const calculateEarnings = (refs: number) => {
     const directCommission = refs * 25
@@ -126,122 +173,58 @@ export default function SolucionesHumanas() {
 
   const features = [
     {
-      icon: DollarSign,
       title: "Asesoría Financiera",
-      description: "Haz que tu salario alcance hasta el final del mes",
-      details: "Planificación para tus finanzas personales a corto, mediano y largo plazo.",
-      features: ["Generación de ingresos", "Técnicas de ahorro", "Inversión de tu capital"],
+      description: "Expertos en finanzas personales y empresariales para optimizar tus recursos.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Users,
       title: "Relaciones Familiares",
-      description: "Fortalece los vínculos familiares",
-      details: "Mejora la comunicación y resuelve conflictos en el hogar.",
-      features: ["Mediación de conflictos", "Comunicación efectiva", "Terapia familiar"],
+      description: "Mediación y apoyo para fortalecer los lazos y resolver conflictos familiares.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Heart,
-      title: "Problemas de relación",
-      description: "Construye relaciones sólidas y duraderas",
-      details: "Resolución de conflictos con familiares, amigos, parejas, compañeros o jefes",
-      features: [
-        "Como potenciar tu inteligencia interpersonal e intrapersonal",
-        "Coaching social",
-        "Comunicación asertiva",
-      ],
+      title: "Asesoría Legal",
+      description: "Orientación y representación en diversas áreas del derecho para proteger tus intereses.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Shield,
-      title: "Confidencialidad Total",
-      description: "Tu privacidad es nuestra prioridad",
-      details: "Todas las consultas son completamente confidenciales y seguras.",
-      features: ["100% confidencial", "Datos seguros", "Privacidad garantizada"],
+      title: "Desarrollo Personal",
+      description: "Coaching y herramientas para potenciar tu crecimiento y bienestar individual.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
     {
-      icon: Zap,
-      title: "Respuesta Rápida",
-      description: "Obtén ayuda cuando la necesites",
-      details: "Respuestas en menos de 24 horas para casos urgentes.",
-      features: ["Respuesta < 24h", "Soporte urgente", "Disponibilidad extendida"],
-    },
-    {
-      icon: Target,
-      title: "Resultados Medibles",
-      description: "Seguimiento de tu progreso",
-      details: "Métricas claras para evaluar tu mejora y crecimiento personal.",
-      features: ["Métricas de progreso", "Evaluaciones periódicas", "Objetivos claros"],
+      title: "Salud y Bienestar",
+      description: "Programas integrales para mejorar tu salud física y mental.",
+      icon: "/placeholder.svg?height=64&width=64",
     },
   ]
 
   const testimonials = [
     {
-      name: "María González",
-      username: "@maria_g",
-      avatar: "M",
-      content:
-        "Trabajando en mi próxima aplicación SaaS y quiero que esta sea mi trabajo de tiempo completo porque estoy muy emocionada de armarla. @Fox Lawyer y chill, si quieres 💪",
-      verified: true,
+      name: "Ana G.",
+      quote: "La asesoría financiera me ayudó a organizar mis deudas y empezar a ahorrar. ¡Totalmente recomendado!",
+      avatar: "/placeholder-user.jpg",
     },
     {
-      name: "Carlos Rodríguez",
-      username: "@carlos_r",
-      avatar: "C",
-      content:
-        "Trabajar con @Fox Lawyer ha sido una de las mejores experiencias de desarrollo que he tenido últimamente. Increíblemente fácil de configurar, gran documentación, y tantos obstáculos para saltar con la competencia. Definitivamente lo usaré en mis próximos proyectos 🔥",
-      verified: true,
+      name: "Carlos R.",
+      quote: "Gracias a la mediación familiar, pudimos resolver nuestros conflictos y mejorar la comunicación.",
+      avatar: "/placeholder-user.jpg",
     },
     {
-      name: "Ana Martínez",
-      username: "@ana_martinez",
-      avatar: "A",
-      content:
-        "Y'all @Fox Lawyer + @nextjs es increíble! 🙌 Apenas una hora en una prueba de concepto y ya tengo la mayoría de la funcionalidad en su lugar. 😍😍😍",
-      verified: true,
+      name: "Sofía M.",
+      quote: "El equipo legal fue excepcional. Me sentí apoyada y bien representada en todo momento.",
+      avatar: "/placeholder-user.jpg",
     },
     {
-      name: "Luis Fernández",
-      username: "@luis_dev",
-      avatar: "L",
-      content:
-        "Usando @Fox Lawyer realmente me impresionó el poder de la asesoría personalizada (y sql en general). A pesar de ser un poco dudoso sobre todo el tema de backend como servicio, no he perdido nada. La experiencia se siente muy robusta y segura.",
-      verified: true,
-    },
-    {
-      name: "Patricia Silva",
-      username: "@patricia_s",
-      avatar: "P",
-      content:
-        "Y gracias a @Fox Lawyer, pude pasar de la idea al lanzamiento de funciones en cuestión de horas. ¡Absolutamente increíble!",
-      verified: false,
-    },
-    {
-      name: "Roberto Jiménez",
-      username: "@roberto_coach",
-      avatar: "R",
-      content:
-        "@Fox Lawyer Poniendo un montón de consultas de API bien explicadas en una documentación auto-construida es solo un movimiento genial en general. Me gusta tener GraphQL-style en tiempo real.",
-      verified: true,
-    },
-    {
-      name: "Elena Vargas",
-      username: "@elena_design",
-      avatar: "E",
-      content:
-        "¡Increíble! Fox Lawyer es asombroso. Simplemente ejecuté mi primera consulta y funciona perfectamente. Esto vale la pena. 🚀",
-      verified: false,
-    },
-    {
-      name: "Diego Morales",
-      username: "@diego_startup",
-      avatar: "D",
-      content:
-        "Este fin de semana hice un progreso personal récord 🏆 en el tiempo que dediqué a crear una aplicación con asesoría familiar / permisos, base de datos, cdn, escalado infinito, git push para desplegar y gratis. Gracias a @Fox Lawyer",
-      verified: true,
+      name: "Javier L.",
+      quote: "Los programas de desarrollo personal me dieron las herramientas para alcanzar mis metas.",
+      avatar: "/placeholder-user.jpg",
     },
   ]
 
   // Duplicate testimonials for infinite scroll
   const duplicatedTestimonials = [...testimonials, ...testimonials]
+  const duplicatedFeatures = [...features, ...features] // Duplicate features for infinite scroll
 
   const plans = [
     {
@@ -289,7 +272,7 @@ export default function SolucionesHumanas() {
   ]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
@@ -379,8 +362,19 @@ export default function SolucionesHumanas() {
       )}
 
       {/* Hero Section */}
-      <section id="inicio" className="py-24 px-4">
-        <div className="container mx-auto text-center">
+      <section
+        id="inicio"
+        className="relative py-24 px-4 overflow-hidden"
+        style={{
+          backgroundImage: `url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/git-blob/prj_mYDYHUeBJSsmIli1t7KwnGvlkcwc/jZee6Fk2JGSsZxFe5hNqnV/public/hero-background.png')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Overlay for blur and darkening */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        <div className="container mx-auto text-center relative z-10">
           <div className="max-w-4xl mx-auto">
             {/* Mobile Logo - Only visible on mobile devices */}
             <div className="md:hidden mb-8">
@@ -395,11 +389,11 @@ export default function SolucionesHumanas() {
               </Button>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
               Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
             </h1>
 
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
+            <p className="text-xl text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
               Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
               problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
               privacidad y confidencialidad del cliente
@@ -409,7 +403,11 @@ export default function SolucionesHumanas() {
               <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8">
                 Comienza tu transformación
               </Button>
-              <Button size="lg" variant="outline" className="border-border/40 bg-transparent">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-emerald-500/50 text-emerald-400 bg-transparent hover:bg-emerald-500 hover:text-white"
+              >
                 Solicita una demo
               </Button>
             </div>
@@ -417,48 +415,48 @@ export default function SolucionesHumanas() {
             {/* Trusted by section */}
             <div className="space-y-4">
               <div className="flex justify-center items-center space-x-8 md:space-x-12">
-                <Globe className="w-8 h-8 company-icon cursor-pointer" />
-                <Smartphone className="w-8 h-8 company-icon cursor-pointer" />
-                <Laptop className="w-8 h-8 company-icon cursor-pointer" />
-                <Database className="w-8 h-8 company-icon cursor-pointer" />
-                <Lock className="w-8 h-8 company-icon cursor-pointer" />
+                <Globe className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Smartphone className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Laptop className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Database className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Lock className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Confiado por empresas de rápido crecimiento en todo el mundo
-              </p>
+              <p className="text-sm text-gray-300">Confiado por empresas de rápido crecimiento en todo el mundo</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Grid Section */}
+      {/* Features Section with Horizontal Scroll */}
       <section className="py-24 px-4">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="feature-card border-border/40 bg-card/50 cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
-                      <feature.icon className="w-4 h-4 text-emerald-400" />
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">Nuestras Especialidades</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Descubre las áreas en las que podemos ayudarte a transformar tu vida.
+            </p>
+          </div>
+
+          <div className="relative overflow-hidden">
+            <div className="flex space-x-6 animate-scroll">
+              {duplicatedFeatures.map((feature, index) => (
+                <Card
+                  key={index}
+                  className="flex-shrink-0 w-80 feature-card border-border/40 bg-card/50 cursor-pointer"
+                >
+                  <CardHeader>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
+                        <Image src={feature.icon || "/placeholder.svg"} alt={feature.title} width={24} height={24} />
+                      </div>
+                      <CardTitle className="text-lg">{feature.title}</CardTitle>
                     </div>
-                    <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  </div>
-                  <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
-                  <ul className="space-y-2">
-                    {feature.features.map((item, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 text-sm">
-                        <CheckCircle className="w-3 h-3 text-emerald-400" />
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>{/* Removed specific details and features list as per new design */}</CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -838,7 +836,7 @@ export default function SolucionesHumanas() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <form action={formAction} className="space-y-6">
+                <form ref={contactFormRef} onSubmit={handleContactFormSubmit} className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="firstName">Nombre</Label>
@@ -929,16 +927,7 @@ export default function SolucionesHumanas() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <Button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600" disabled={isPending}>
-                      {isPending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Enviando...
-                        </>
-                      ) : (
-                        "Enviar Mensaje"
-                      )}
-                    </Button>
+                    <SubmitButton isPending={isPending} />
                   </div>
                 </form>
               </CardContent>

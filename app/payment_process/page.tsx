@@ -2,123 +2,85 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
 
-export default function PaymentProcess() {
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [message, setMessage] = useState("")
-  const [countdown, setCountdown] = useState(5) // Inicializa el contador en 5 segundos
+export default function PaymentProcessPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user } = useAuth()
-
-  const success = searchParams.get("success")
   const sessionId = searchParams.get("session_id")
+  const [status, setStatus] = useState<"loading" | "success" | "failure">("loading")
+  const [message, setMessage] = useState("")
 
   useEffect(() => {
-    if (!user) {
-      router.push("/login")
-      return
-    }
+    if (sessionId) {
+      const verifySession = async () => {
+        try {
+          const response = await fetch(`/api/stripe/session-success?session_id=${sessionId}`)
+          const data = await response.json()
 
-    if (success === "true" && sessionId) {
-      verifyPayment(sessionId)
-    } else {
-      setStatus("error")
-      setMessage("No se encontraron parámetros de pago válidos.")
-    }
-  }, [success, sessionId, user])
-
-  useEffect(() => {
-    if (status === "success" && countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1)
-      }, 1000)
-      return () => clearTimeout(timer)
-    } else if (status === "success" && countdown === 0) {
-      // Esta es la línea que redirige al usuario al dashboard
-      router.push("/dashboard")
-    }
-  }, [status, countdown, router])
-
-  const verifyPayment = async (sessionId: string) => {
-    try {
-      const response = await fetch("/api/stripe/session-success", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionId }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        setStatus("success")
-        setMessage("¡Pago exitoso! Tu suscripción ha sido activada correctamente.")
-      } else {
-        setStatus("error")
-        setMessage(data.error || "Error al verificar el pago.")
+          if (response.ok && data.success) {
+            setStatus("success")
+            setMessage("¡Pago procesado con éxito! Tu suscripción está activa.")
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+              router.push("/dashboard")
+            }, 3000)
+          } else {
+            setStatus("failure")
+            setMessage(data.error || "Hubo un problema al procesar tu pago. Por favor, inténtalo de nuevo.")
+          }
+        } catch (error) {
+          console.error("Error verifying session:", error)
+          setStatus("failure")
+          setMessage("Error de conexión. Por favor, verifica tu internet e inténtalo de nuevo.")
+        }
       }
-    } catch (error) {
-      console.error("Error verifying payment:", error)
-      setStatus("error")
-      setMessage("Error de conexión al verificar el pago.")
+      verifySession()
+    } else {
+      setStatus("failure")
+      setMessage("No se encontró el ID de sesión. Por favor, regresa a la página de planes.")
     }
-  }
-
-  const handleGoToDashboard = () => {
-    router.push("/dashboard")
-  }
-
-  const handleGoHome = () => {
-    router.push("/")
-  }
+  }, [sessionId, router])
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            {status === "loading" && <Loader2 className="w-16 h-16 text-emerald-500 animate-spin" />}
-            {status === "success" && <CheckCircle className="w-16 h-16 text-emerald-500" />}
-            {status === "error" && <XCircle className="w-16 h-16 text-red-500" />}
-          </div>
-          <CardTitle className="text-2xl">
-            {status === "loading" && "Procesando Pago..."}
-            {status === "success" && "¡Pago Exitoso!"}
-            {status === "error" && "Error en el Pago"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <p className="text-muted-foreground">{message}</p>
-
-          {status === "success" && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Serás redirigido al dashboard en {countdown} segundos...</p>
-              <Button onClick={handleGoToDashboard} className="w-full bg-emerald-500 hover:bg-emerald-600">
-                Ir al Dashboard Ahora
-              </Button>
-            </div>
-          )}
-
-          {status === "error" && (
-            <div className="space-y-2">
-              <Button onClick={handleGoHome} variant="outline" className="w-full bg-transparent">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver al Inicio
-              </Button>
-              <Button onClick={handleGoToDashboard} className="w-full bg-emerald-500 hover:bg-emerald-600">
-                Ir al Dashboard
-              </Button>
-            </div>
-          )}
-
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md p-6 text-center">
+        <CardHeader>
           {status === "loading" && (
-            <p className="text-sm text-muted-foreground">Por favor espera mientras verificamos tu pago...</p>
+            <>
+              <div className="flex justify-center mb-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500" />
+              </div>
+              <CardTitle className="text-2xl font-bold">Procesando tu pago...</CardTitle>
+              <CardDescription>Por favor, no cierres esta ventana.</CardDescription>
+            </>
+          )}
+          {status === "success" && (
+            <>
+              <div className="flex justify-center mb-4">
+                <CheckCircle2 className="h-16 w-16 text-emerald-500" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-emerald-500">¡Pago Exitoso!</CardTitle>
+              <CardDescription>{message}</CardDescription>
+            </>
+          )}
+          {status === "failure" && (
+            <>
+              <div className="flex justify-center mb-4">
+                <XCircle className="h-16 w-16 text-red-500" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-red-500">Error en el Pago</CardTitle>
+              <CardDescription>{message}</CardDescription>
+            </>
+          )}
+        </CardHeader>
+        <CardContent>
+          {status === "failure" && (
+            <Button onClick={() => router.push("/planes")} className="mt-4 bg-emerald-500 hover:bg-emerald-600">
+              Volver a Planes
+            </Button>
           )}
         </CardContent>
       </Card>

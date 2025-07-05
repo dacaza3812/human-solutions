@@ -4,6 +4,10 @@ import type React from "react"
 import { PasswordSettings } from "./settings/password-settings"
 import { ProfileSettings } from "./settings/profile-settings"
 import { ReferralCodeSettings } from "./settings/referral-code-settings"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { ArrowRight, Settings } from "lucide-react"
+import Link from "next/link"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -153,12 +157,49 @@ export function SettingsSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Configuración de la Cuenta</h2>
-          <p className="text-muted-foreground">Gestiona tu información personal y de seguridad</p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-lg font-medium">Configuración Rápida</CardTitle>
+          <Settings className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-3">
+            <li>
+              <Link href="/dashboard/settings/profile">
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0 h-auto text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Editar Perfil <ArrowRight className="ml-1 h-3 w-3 inline" />
+                </Button>
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/settings/password">
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0 h-auto text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Cambiar Contraseña <ArrowRight className="ml-1 h-3 w-3 inline" />
+                </Button>
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/settings/referral-code">
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0 h-auto text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Gestionar Código de Referido <ArrowRight className="ml-1 h-3 w-3 inline" />
+                </Button>
+              </Link>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
 
       <PasswordSettings
         currentPassword={currentPassword}
