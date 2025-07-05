@@ -43,6 +43,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -339,12 +340,23 @@ export default function SolucionesHumanas() {
       )}
 
       {/* Hero Section */}
-      <section id="inicio" className="py-24 px-4">
-        <div className="container mx-auto text-center">
+      <section
+        id="inicio"
+        className="relative py-24 px-4 overflow-hidden"
+        style={{
+          backgroundImage: `url('/hero-background.png')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Overlay for blur and darkening */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        <div className="container mx-auto text-center relative z-10">
           <div className="max-w-4xl mx-auto">
             {/* Mobile Logo - Only visible on mobile devices */}
             <div className="md:hidden mb-8">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-20 h-20 mx-auto" />
+              <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={80} height={80} className="mx-auto" />
             </div>
 
             {/* Announcement Banner */}
@@ -355,19 +367,25 @@ export default function SolucionesHumanas() {
               </Button>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
-              Aumenta tu pensamiento agudo <span className="text-emerald-400">táctico</span>
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+              Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
             </h1>
 
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se le enseña a usted a comprender la vida tal y como es, no como a usted le gustaría que fuera.
+            <p className="text-xl text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
+              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
+              problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
+              privacidad y confidencialidad del cliente
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8">
                 Comienza tu transformación
               </Button>
-              <Button size="lg" variant="outline" className="border-border/40">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-emerald-500/50 text-emerald-400 bg-transparent hover:bg-emerald-500 hover:text-white"
+              >
                 Solicita una demo
               </Button>
             </div>
@@ -375,15 +393,13 @@ export default function SolucionesHumanas() {
             {/* Trusted by section */}
             <div className="space-y-4">
               <div className="flex justify-center items-center space-x-8 md:space-x-12">
-                <Globe className="w-8 h-8 company-icon cursor-pointer" />
-                <Smartphone className="w-8 h-8 company-icon cursor-pointer" />
-                <Laptop className="w-8 h-8 company-icon cursor-pointer" />
-                <Database className="w-8 h-8 company-icon cursor-pointer" />
-                <Lock className="w-8 h-8 company-icon cursor-pointer" />
+                <Globe className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Smartphone className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Laptop className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Database className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Lock className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Confidencialidad total - Respuesta rápida - Resultados medibles
-              </p>
+              <p className="text-sm text-gray-300">Confiado por empresas de rápido crecimiento en todo el mundo</p>
             </div>
           </div>
         </div>
