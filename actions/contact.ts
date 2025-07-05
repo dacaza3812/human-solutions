@@ -1,81 +1,105 @@
 "use server"
 
 import { z } from "zod"
+import { Resend } from "resend"
 import { createClient } from "@/lib/supabase-server"
-import { revalidatePath } from "next/cache"
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const contactFormSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido."),
+  firstName: z.string().min(1, "El nombre es requerido."),
+  lastName: z.string().min(1, "El apellido es requerido."),
   email: z.string().email("Correo electrónico inválido."),
   phone: z.string().optional(),
   message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres."),
-  file: z.instanceof(File).optional(),
+  file: z.any().optional(), // Will be validated separately if needed
 })
 
-export async function submitContactForm(prevState: any, formData: FormData) {
-  const supabase = createClient()
-
-  const data = {
-    name: formData.get("name"),
+export async function submitContactForm(
+  prevState: { success: boolean; message: string; errors?: Record<string, string[]> },
+  formData: FormData,
+) {
+  const validatedFields = contactFormSchema.safeParse({
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
     email: formData.get("email"),
     phone: formData.get("phone"),
     message: formData.get("message"),
     file: formData.get("file"),
-  }
+  })
 
-  const parsed = contactFormSchema.safeParse(data)
-
-  if (!parsed.success) {
-    const errors = parsed.error.flatten().fieldErrors
+  if (!validatedFields.success) {
     return {
       success: false,
       message: "Error de validación. Por favor, revisa los campos.",
-      errors: errors,
+      errors: validatedFields.error.flatten().fieldErrors,
     }
   }
 
-  const { name, email, phone, message, file } = parsed.data
+  const { firstName, lastName, email, phone, message, file } = validatedFields.data
 
-  let fileUrl: string | null = null
-  if (file) {
-    const filePath = `inquiries/${email}/${file.name}`
-    const { data: uploadData, error: uploadError } = await supabase.storage.from("inquiries").upload(filePath, file, {
-      cacheControl: "3600",
-      upsert: false,
+  try {
+    const supabase = createClient()
+    let fileUrl: string | null = null
+
+    if (file instanceof File && file.size > 0) {
+      const { data, error: uploadError } = await supabase.storage
+        .from("contact-form-uploads")
+        .upload(`${Date.now()}-${file.name}`, file, {
+          cacheControl: "3600",
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError)
+        return {
+          success: false,
+          message: "Error al subir el archivo. Por favor, inténtalo de nuevo.",
+        }
+      }
+      fileUrl = data.path
+    }
+
+    const { error: dbError } = await supabase.from("inquiries").insert({
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      phone: phone,
+      message: message,
+      file_url: fileUrl,
     })
 
-    if (uploadError) {
-      console.error("Error uploading file:", uploadError)
+    if (dbError) {
+      console.error("Error inserting inquiry:", dbError)
       return {
         success: false,
-        message: "Error al subir el archivo. Por favor, inténtalo de nuevo.",
-        errors: { file: ["Error al subir el archivo."] },
+        message: "Error al guardar tu consulta. Por favor, inténtalo de nuevo.",
       }
     }
-    fileUrl = uploadData.path
-  }
 
-  const { error } = await supabase.from("inquiries").insert({
-    name,
-    email,
-    phone,
-    message,
-    file_url: fileUrl,
-  })
+    // Send email notification
+    await resend.emails.send({
+      from: "onboarding@resend.dev", // Replace with your verified sender
+      to: "delivered@resend.dev", // Replace with your recipient email
+      subject: "Nueva Consulta de Contacto de Fox Lawyer",
+      html: `
+        <p><strong>Nombre:</strong> ${firstName} ${lastName}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Teléfono:</strong> ${phone || "N/A"}</p>
+        <p><strong>Mensaje:</strong> ${message}</p>
+        ${fileUrl ? `<p><strong>Archivo Adjunto:</strong> <a href="${fileUrl}">${file.name}</a></p>` : ""}
+      `,
+    })
 
-  if (error) {
-    console.error("Error inserting inquiry:", error)
+    return {
+      success: true,
+      message: "Tu mensaje ha sido enviado con éxito. Nos pondremos en contacto contigo pronto.",
+    }
+  } catch (error) {
+    console.error("Unexpected error:", error)
     return {
       success: false,
-      message: "Error al enviar el mensaje. Por favor, inténtalo de nuevo.",
-      errors: { general: ["Error al enviar el mensaje."] },
+      message: "Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.",
     }
-  }
-
-  revalidatePath("/")
-  return {
-    success: true,
-    message: "¡Mensaje enviado con éxito! Nos pondremos en contacto contigo pronto.",
-    errors: {},
   }
 }

@@ -1,85 +1,45 @@
+"use client"
+
 import type React from "react"
-import { createClient } from "@/lib/supabase-server"
-import { redirect } from "next/navigation"
+
+import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import {
-  Home,
+  HomeIcon,
   Briefcase,
-  MessageCircle,
-  DollarSign,
   Users,
+  MessageSquare,
+  DollarSign,
   Settings,
-  LogOut,
   Menu,
   X,
-  Mail,
-  CalendarDays,
-  FileText,
+  LogOut,
+  ClipboardList,
+  Handshake,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/contexts/auth-context"
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
+  const { signOut } = useAuth()
 
-  if (!user) {
-    redirect("/login")
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("name, avatar_url, role")
-    .eq("id", user.id)
-    .single()
-
-  if (profileError || !profile) {
-    console.error("Error fetching profile:", profileError)
-    // Handle error, maybe redirect to an error page or show a message
-    redirect("/error") // Or a more appropriate error handling
-  }
-
-  const isAdvisor = profile.role === "advisor"
-
-  const navigationItems = [
-    { name: "Dashboard", href: "/dashboard", icon: Home },
+  const navigation = [
+    { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
     { name: "Casos", href: "/dashboard/cases", icon: Briefcase },
-    { name: "Mensajes", href: "/dashboard/messages", icon: MessageCircle },
+    { name: "Clientes", href: "/dashboard/clients", icon: Users },
+    { name: "Consultas", href: "/dashboard/inquiries", icon: ClipboardList },
+    { name: "Mensajes", href: "/dashboard/messages", icon: MessageSquare },
     { name: "Cotizaciones", href: "/dashboard/quotes", icon: DollarSign },
-    { name: "Citas", href: "/dashboard/calendar", icon: CalendarDays },
+    { name: "Referidos", href: "/dashboard/referrals", icon: Handshake },
+    { name: "Suscripciones", href: "/dashboard/subscriptions", icon: DollarSign },
+    { name: "Configuración", href: "/dashboard/settings", icon: Settings },
   ]
-
-  if (isAdvisor) {
-    navigationItems.push(
-      { name: "Clientes", href: "/dashboard/clients", icon: Users },
-      { name: "Consultas", href: "/dashboard/inquiries", icon: Mail },
-      { name: "Referidos", href: "/dashboard/referrals", icon: FileText },
-    )
-  }
-
-  navigationItems.push({ name: "Suscripción", href: "/dashboard/subscriptions", icon: DollarSign })
-  navigationItems.push({ name: "Configuración", href: "/dashboard/settings", icon: Settings })
-
-  const userInitials = profile.name
-    ? profile.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-    : user.email?.[0]?.toUpperCase() || "U"
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
@@ -92,67 +52,38 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </Link>
           <ThemeToggle />
         </div>
-        <nav className="flex-1 overflow-auto py-4">
-          <ul className="grid gap-2 px-4">
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <nav className="flex flex-col gap-2 p-4">
+          {navigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                pathname === item.href ? "bg-muted text-primary" : ""
+              }`}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.name}
+            </Link>
+          ))}
+          <Button
+            variant="ghost"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+            onClick={signOut}
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar Sesión
+          </Button>
         </nav>
-        <div className="mt-auto border-t p-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile.avatar_url || "/placeholder-user.jpg"} alt={profile.name || "User"} />
-                  <AvatarFallback>{userInitials}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium">{profile.name || "Usuario"}</span>
-                  <span className="text-xs text-muted-foreground">{profile.role}</span>
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings">Configuración</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/support">Soporte</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <form action="/auth/sign-out" method="post" className="w-full">
-                  <button type="submit" className="flex w-full items-center gap-2 text-destructive">
-                    <LogOut className="h-4 w-4" />
-                    Cerrar Sesión
-                  </button>
-                </form>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </aside>
 
-      {/* Main Content */}
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-64">
-        {/* Header for Mobile */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent">
-          <Sheet>
+        {/* Header for Mobile and Desktop */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button size="icon" variant="outline" className="sm:hidden bg-transparent">
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
+                <span className="sr-only">Toggle Navigation Menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col sm:max-w-xs">
@@ -161,67 +92,40 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={24} height={24} />
                   <span className="text-lg">Fox Lawyer</span>
                 </Link>
-                <SheetTrigger asChild>
-                  <Button size="icon" variant="ghost">
-                    <X className="h-5 w-5" />
-                    <span className="sr-only">Close Menu</span>
-                  </Button>
-                </SheetTrigger>
+                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
-              <nav className="flex-1 overflow-auto py-4">
-                <ul className="grid gap-2 px-4">
-                  {navigationItems.map((item) => (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {item.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+              <nav className="grid gap-2 p-4 text-lg font-medium">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground ${
+                      pathname === item.href ? "bg-muted text-foreground" : ""
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                ))}
+                <Button
+                  variant="ghost"
+                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    signOut()
+                    setMobileMenuOpen(false)
+                  }}
+                >
+                  <LogOut className="h-5 w-5" />
+                  Cerrar Sesión
+                </Button>
               </nav>
-              <div className="mt-auto border-t p-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={profile.avatar_url || "/placeholder-user.jpg"} alt={profile.name || "User"} />
-                        <AvatarFallback>{userInitials}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col items-start">
-                        <span className="text-sm font-medium">{profile.name || "Usuario"}</span>
-                        <span className="text-xs text-muted-foreground">{profile.role}</span>
-                      </div>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end">
-                    <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/settings">Configuración</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/support">Soporte</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <form action="/auth/sign-out" method="post" className="w-full">
-                        <button type="submit" className="flex w-full items-center gap-2 text-destructive">
-                          <LogOut className="h-4 w-4" />
-                          Cerrar Sesión
-                        </button>
-                      </form>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
             </SheetContent>
           </Sheet>
           <div className="flex-1" />
-          <ThemeToggle />
+          <ThemeToggle className="hidden sm:flex" />
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">{children}</main>
       </div>

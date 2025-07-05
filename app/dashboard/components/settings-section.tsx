@@ -1,10 +1,9 @@
 "use client"
+
+import type React from "react"
 import { PasswordSettings } from "./settings/password-settings"
 import { ProfileSettings } from "./settings/profile-settings"
 import { ReferralCodeSettings } from "./settings/referral-code-settings"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createClient } from "@/lib/supabase-server"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -55,49 +54,143 @@ interface SettingsSectionProps {
   setReferralCodeUpdateError: (value: string) => void
 }
 
-export default async function SettingsSection() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export function SettingsSection({
+  profile,
+  changePassword,
+  updateUserProfile,
+  currentPassword,
+  setCurrentPassword,
+  newPassword,
+  setNewPassword,
+  confirmNewPassword,
+  setConfirmNewPassword,
+  passwordChangeMessage,
+  setPasswordChangeMessage,
+  passwordChangeError,
+  setPasswordChangeError,
+  firstName,
+  setFirstName,
+  lastName,
+  setLastName,
+  profileUpdateMessage,
+  setProfileUpdateMessage,
+  profileUpdateError,
+  setProfileUpdateError,
+  newReferralCode,
+  setNewReferralCode,
+  referralCodeUpdateMessage,
+  setReferralCodeUpdateMessage,
+  referralCodeUpdateError,
+  setReferralCodeUpdateError,
+}: SettingsSectionProps) {
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordChangeMessage("")
+    setPasswordChangeError("")
 
-  if (!user) {
-    return <p>Por favor, inicia sesión para ver la configuración.</p>
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
+      return
+    }
+
+    const { error } = await changePassword(newPassword)
+
+    if (error) {
+      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
+    } else {
+      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmNewPassword("")
+    }
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setProfileUpdateMessage("")
+    setProfileUpdateError("")
 
-  const isAdvisor = profile?.role === "advisor"
+    if (!firstName.trim() || !lastName.trim()) {
+      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
+      return
+    }
+
+    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
+
+    if (error) {
+      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
+    } else {
+      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
+    }
+  }
+
+  const handleReferralCodeUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setReferralCodeUpdateMessage("")
+    setReferralCodeUpdateError("")
+
+    if (!newReferralCode.trim()) {
+      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
+      return
+    }
+    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
+      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
+      return
+    }
+
+    const { error } = await updateUserProfile({ referral_code: newReferralCode })
+
+    if (error) {
+      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
+    } else {
+      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
+    }
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Configuración de la Cuenta</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-3">
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="password">Contraseña</TabsTrigger>
-            {isAdvisor && <TabsTrigger value="referral">Referidos</TabsTrigger>}
-          </TabsList>
-          <TabsContent value="profile" className="mt-4">
-            <ProfileSettings />
-          </TabsContent>
-          <TabsContent value="password" className="mt-4">
-            <PasswordSettings />
-          </TabsContent>
-          {isAdvisor && (
-            <TabsContent value="referral" className="mt-4">
-              <ReferralCodeSettings />
-            </TabsContent>
-          )}
-        </Tabs>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">Configuración de la Cuenta</h2>
+          <p className="text-muted-foreground">Gestiona tu información personal y de seguridad</p>
+        </div>
+      </div>
+
+      <PasswordSettings
+        currentPassword={currentPassword}
+        setCurrentPassword={setCurrentPassword}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        confirmNewPassword={confirmNewPassword}
+        setConfirmNewPassword={setConfirmNewPassword}
+        passwordChangeMessage={passwordChangeMessage}
+        passwordChangeError={passwordChangeError}
+        handlePasswordChange={handlePasswordChange}
+      />
+
+      <ProfileSettings
+        firstName={firstName}
+        setFirstName={setFirstName}
+        lastName={lastName}
+        setLastName={setLastName}
+        profileUpdateMessage={profileUpdateMessage}
+        profileUpdateError={profileUpdateError}
+        handleProfileUpdate={handleProfileUpdate}
+      />
+
+      {profile?.account_type === "client" && (
+        <ReferralCodeSettings
+          newReferralCode={newReferralCode}
+          setNewReferralCode={setNewReferralCode}
+          referralCodeUpdateMessage={referralCodeUpdateMessage}
+          referralCodeUpdateError={referralCodeUpdateError}
+          handleReferralCodeUpdate={handleReferralCodeUpdate}
+        />
+      )}
+    </div>
   )
 }

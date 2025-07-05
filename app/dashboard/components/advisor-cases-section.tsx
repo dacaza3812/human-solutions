@@ -1,12 +1,8 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Send, X, FileText } from "lucide-react"
-import { createClient } from "@/lib/supabase-server"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Plus, Send, Eye, X, FileText } from "lucide-react"
 
 interface AdvisorCase {
   id: number
@@ -31,7 +27,7 @@ interface AdvisorCasesSectionProps {
   setCaseFilter: (filter: string) => void
 }
 
-export default async function AdvisorCasesSection({
+export function AdvisorCasesSection({
   advisorCases,
   openChatForCase,
   selectedCase,
@@ -39,27 +35,7 @@ export default async function AdvisorCasesSection({
   caseFilter,
   setCaseFilter,
 }: AdvisorCasesSectionProps) {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return <p>Por favor, inicia sesión para ver tus casos.</p>
-  }
-
-  const { data: cases, error } = await supabase
-    .from("cases")
-    .select("*, client:client_id(name, email)")
-    .eq("advisor_id", user.id)
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching advisor cases:", error)
-    return <p>Error al cargar los casos: {error.message}</p>
-  }
-
-  const filteredCases = cases.filter((case_item) => {
+  const filteredCases = advisorCases.filter((case_item) => {
     if (caseFilter === "all") return true
     return case_item.status.toLowerCase().includes(caseFilter.toLowerCase())
   })
@@ -78,9 +54,9 @@ export default async function AdvisorCasesSection({
             className="px-3 py-2 border border-input bg-background rounded-md text-sm"
           >
             <option value="all">Todos los casos</option>
-            <option value="open">Abiertos</option>
-            <option value="in_progress">En Progreso</option>
-            <option value="closed">Cerrados</option>
+            <option value="en progreso">En Progreso</option>
+            <option value="programada">Programados</option>
+            <option value="en revisión">En Revisión</option>
           </select>
           <Button className="bg-emerald-500 hover:bg-emerald-600">
             <Plus className="w-4 h-4 mr-2" />
@@ -90,52 +66,98 @@ export default async function AdvisorCasesSection({
       </div>
 
       <Card className="border-border/40">
-        <CardHeader>
-          <CardTitle>Casos Asignados</CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
-          {filteredCases.length === 0 ? (
-            <p className="text-muted-foreground">No tienes casos asignados en este momento.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Título del Caso</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha de Creación</TableHead>
-                  <TableHead>Última Actualización</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Cliente</th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Caso</th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Tipo</th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Estado</th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Prioridad</th>
+                  <th className="text-left py-4 px-6 font-medium text-muted-foreground">Fecha Límite</th>
+                  <th className="text-center py-4 px-6 font-medium text-muted-foreground">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
                 {filteredCases.map((case_item) => (
-                  <TableRow key={case_item.id}>
-                    <TableCell className="font-medium">{case_item.title}</TableCell>
-                    <TableCell>{case_item.clientName}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          case_item.status === "open"
-                            ? "default"
-                            : case_item.status === "in_progress"
-                              ? "secondary"
-                              : "outline"
-                        }
+                  <tr
+                    key={case_item.id}
+                    className="border-b border-border/20 hover:bg-muted/50 cursor-pointer"
+                    onClick={() => setSelectedCase(case_item)}
+                  >
+                    <td className="py-4 px-6">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback>{case_item.clientName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{case_item.clientName}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div>
+                        <p className="font-medium text-sm">{case_item.title}</p>
+                        <p className="text-xs text-muted-foreground">#{case_item.id}</p>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-sm text-muted-foreground">{case_item.type}</td>
+                    <td className="py-4 px-6">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          case_item.status === "En Progreso"
+                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                            : case_item.status === "Programada"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                              : "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
+                        }`}
                       >
-                        {case_item.status === "open"
-                          ? "Abierto"
-                          : case_item.status === "in_progress"
-                            ? "En Progreso"
-                            : "Cerrado"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{format(new Date(case_item.createdDate), "PPP", { locale: es })}</TableCell>
-                    <TableCell>{format(new Date(case_item.dueDate), "PPP", { locale: es })}</TableCell>
-                  </TableRow>
+                        {case_item.status}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          case_item.priority === "Alta"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                            : case_item.priority === "Media"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                              : "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                        }`}
+                      >
+                        {case_item.priority}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-sm">{new Date(case_item.dueDate).toLocaleDateString()}</td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openChatForCase(case_item.id)
+                          }}
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCase(case_item)
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
@@ -165,18 +187,14 @@ export default async function AdvisorCasesSection({
                   <p className="text-sm text-muted-foreground">Estado</p>
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedCase.status === "open"
+                      selectedCase.status === "En Progreso"
                         ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                        : selectedCase.status === "in_progress"
+                        : selectedCase.status === "Programada"
                           ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
                           : "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400"
                     }`}
                   >
-                    {selectedCase.status === "open"
-                      ? "Abierto"
-                      : selectedCase.status === "in_progress"
-                        ? "En Progreso"
-                        : "Cerrado"}
+                    {selectedCase.status}
                   </span>
                 </div>
                 <div>

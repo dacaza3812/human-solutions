@@ -2,65 +2,123 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
-export default function PaymentProcessPage() {
+export default function PaymentProcess() {
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
+  const [message, setMessage] = useState("")
+  const [countdown, setCountdown] = useState(5) // Inicializa el contador en 5 segundos
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<"loading" | "success" | "failure">("loading")
-  const [message, setMessage] = useState("Procesando tu pago...")
+  const { user } = useAuth()
+
+  const success = searchParams.get("success")
+  const sessionId = searchParams.get("session_id")
 
   useEffect(() => {
-    const success = searchParams.get("success")
-    const canceled = searchParams.get("canceled")
-
-    if (success === "true") {
-      setStatus("success")
-      setMessage("¡Tu suscripción ha sido activada con éxito!")
-    } else if (canceled === "true") {
-      setStatus("failure")
-      setMessage("El proceso de pago fue cancelado. Puedes intentarlo de nuevo.")
-    } else {
-      // This case should ideally be handled by the API route redirecting
-      // If a user lands here without params, it's an unexpected state.
-      setStatus("failure")
-      setMessage("Hubo un problema con el proceso de pago. Por favor, inténtalo de nuevo.")
+    if (!user) {
+      router.push("/login")
+      return
     }
-  }, [searchParams])
+
+    if (success === "true" && sessionId) {
+      verifyPayment(sessionId)
+    } else {
+      setStatus("error")
+      setMessage("No se encontraron parámetros de pago válidos.")
+    }
+  }, [success, sessionId, user])
+
+  useEffect(() => {
+    if (status === "success" && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (status === "success" && countdown === 0) {
+      // Esta es la línea que redirige al usuario al dashboard
+      router.push("/dashboard")
+    }
+  }, [status, countdown, router])
+
+  const verifyPayment = async (sessionId: string) => {
+    try {
+      const response = await fetch("/api/stripe/session-success", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setStatus("success")
+        setMessage("¡Pago exitoso! Tu suscripción ha sido activada correctamente.")
+      } else {
+        setStatus("error")
+        setMessage(data.error || "Error al verificar el pago.")
+      }
+    } catch (error) {
+      console.error("Error verifying payment:", error)
+      setStatus("error")
+      setMessage("Error de conexión al verificar el pago.")
+    }
+  }
+
+  const handleGoToDashboard = () => {
+    router.push("/dashboard")
+  }
+
+  const handleGoHome = () => {
+    router.push("/")
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
-          {status === "loading" && <Loader2 className="mx-auto h-12 w-12 animate-spin text-emerald-500" />}
-          {status === "success" && <CheckCircle className="mx-auto h-12 w-12 text-green-500" />}
-          {status === "failure" && <XCircle className="mx-auto h-12 w-12 text-red-500" />}
-          <CardTitle className="mt-4 text-2xl">
-            {status === "loading" && "Procesando..."}
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            {status === "loading" && <Loader2 className="w-16 h-16 text-emerald-500 animate-spin" />}
+            {status === "success" && <CheckCircle className="w-16 h-16 text-emerald-500" />}
+            {status === "error" && <XCircle className="w-16 h-16 text-red-500" />}
+          </div>
+          <CardTitle className="text-2xl">
+            {status === "loading" && "Procesando Pago..."}
             {status === "success" && "¡Pago Exitoso!"}
-            {status === "failure" && "Error en el Pago"}
+            {status === "error" && "Error en el Pago"}
           </CardTitle>
-          <CardDescription>{message}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="text-center space-y-4">
+          <p className="text-muted-foreground">{message}</p>
+
           {status === "success" && (
-            <Link href="/dashboard">
-              <Button className="w-full bg-emerald-500 hover:bg-emerald-600">Ir al Dashboard</Button>
-            </Link>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Serás redirigido al dashboard en {countdown} segundos...</p>
+              <Button onClick={handleGoToDashboard} className="w-full bg-emerald-500 hover:bg-emerald-600">
+                Ir al Dashboard Ahora
+              </Button>
+            </div>
           )}
-          {status === "failure" && (
-            <Link href="/dashboard/subscriptions">
-              <Button className="w-full bg-red-500 hover:bg-red-600">Reintentar Suscripción</Button>
-            </Link>
+
+          {status === "error" && (
+            <div className="space-y-2">
+              <Button onClick={handleGoHome} variant="outline" className="w-full bg-transparent">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver al Inicio
+              </Button>
+              <Button onClick={handleGoToDashboard} className="w-full bg-emerald-500 hover:bg-emerald-600">
+                Ir al Dashboard
+              </Button>
+            </div>
           )}
+
           {status === "loading" && (
-            <Button className="w-full bg-emerald-500" disabled>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Cargando...
-            </Button>
+            <p className="text-sm text-muted-foreground">Por favor espera mientras verificamos tu pago...</p>
           )}
         </CardContent>
       </Card>

@@ -2,199 +2,197 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAuth } from "@/contexts/auth-context"
-import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Upload } from "lucide-react"
-import { createClient } from "@/lib/supabase" // Client-side Supabase
-import { useRouter } from "next/navigation"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Upload, XCircle } from "lucide-react"
 
 export default function NewCaseForm() {
-  const { user } = useAuth()
-  const supabase = createClient()
-  const router = useRouter()
-  const { toast } = useToast()
-
-  const [title, setTitle] = useState("")
+  const [consultationType, setConsultationType] = useState("")
+  const [clientName, setClientName] = useState("")
+  const [clientEmail, setClientEmail] = useState("")
+  const [clientPhone, setClientPhone] = useState("")
+  const [priorityLevel, setPriorityLevel] = useState("")
   const [description, setDescription] = useState("")
-  const [category, setCategory] = useState("")
-  const [priority, setPriority] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [loading, setLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null
-    setSelectedFile(file)
+    if (event.target.files) {
+      setSelectedFiles(Array.from(event.target.files))
+    }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  const handleRemoveFile = (fileName: string) => {
+    setSelectedFiles(selectedFiles.filter((file) => file.name !== fileName))
+  }
 
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "Debes iniciar sesión para abrir un nuevo caso.",
-        variant: "destructive",
-      })
-      setLoading(false)
-      return
-    }
-
-    let fileUrl: string | null = null
-    if (selectedFile) {
-      const filePath = `case_attachments/${user.id}/${Date.now()}_${selectedFile.name}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("case_attachments")
-        .upload(filePath, selectedFile, {
-          cacheControl: "3600",
-          upsert: false,
-        })
-
-      if (uploadError) {
-        console.error("Error uploading file:", uploadError)
-        toast({
-          title: "Error al subir archivo",
-          description: uploadError.message,
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-      fileUrl = uploadData.path
-    }
-
-    const { error } = await supabase.from("cases").insert({
-      client_id: user.id,
-      title,
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault()
+    // Here you would typically send this data to your backend
+    console.log({
+      consultationType,
+      clientName,
+      clientEmail,
+      clientPhone,
+      priorityLevel,
       description,
-      category,
-      priority,
-      attachment_url: fileUrl,
-      status: "open", // Default status for new cases
+      selectedFiles: selectedFiles.map((file) => file.name), // Just names for console log
     })
-
-    if (error) {
-      console.error("Error creating case:", error)
-      toast({
-        title: "Error al abrir caso",
-        description: error.message,
-        variant: "destructive",
-      })
-    } else {
-      toast({
-        title: "Caso Abierto",
-        description: "Tu nuevo caso ha sido creado con éxito.",
-      })
-      router.push("/dashboard/cases") // Redirect to cases list
-    }
-    setLoading(false)
+    alert("Formulario de nuevo caso enviado (simulado). Revisa la consola para ver los datos.")
+    // Reset form or close modal
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Abrir Nuevo Caso</CardTitle>
-        <CardDescription>Completa los detalles para iniciar un nuevo caso de asesoría.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="title">Título del Caso</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: Problema con hipoteca"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Descripción Detallada</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe tu situación y lo que esperas lograr..."
-              rows={5}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="category">Categoría</Label>
-              <Select value={category} onValueChange={setCategory} required>
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Selecciona una categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="financiera">Asesoría Financiera</SelectItem>
-                  <SelectItem value="familiar">Relaciones Familiares</SelectItem>
-                  <SelectItem value="legal">Asesoría Legal</SelectItem>
-                  <SelectItem value="personal">Desarrollo Personal</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="priority">Prioridad</Label>
-              <Select value={priority} onValueChange={setPriority} required>
-                <SelectTrigger id="priority">
-                  <SelectValue placeholder="Selecciona la prioridad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="baja">Baja</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="urgente">Urgente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="attachment">Adjuntar Documento (Opcional)</Label>
-            <div className="mt-1">
+    <form onSubmit={handleSubmit} className="space-y-6 p-4">
+      <div className="grid gap-4">
+        {/* Consultation Type */}
+        <div className="space-y-2">
+          <Label htmlFor="consultation-type">Tipo de Consulta</Label>
+          <Select value={consultationType} onValueChange={setConsultationType}>
+            <SelectTrigger id="consultation-type">
+              <SelectValue placeholder="Selecciona el tipo de consulta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="formal">Formal</SelectItem>
+              <SelectItem value="informal">Informal</SelectItem>
+              <SelectItem value="comercial">Comercial</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Contact Information */}
+        <Card className="border-dashed border-2 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-lg">Datos de Contacto</CardTitle>
+            <CardDescription>Información del cliente para el caso.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="client-name">Nombre Completo</Label>
               <Input
-                id="attachment"
-                name="attachment"
+                id="client-name"
+                placeholder="Nombre del cliente"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client-email">Correo Electrónico</Label>
+              <Input
+                id="client-email"
+                type="email"
+                placeholder="cliente@ejemplo.com"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client-phone">Número de Teléfono</Label>
+              <Input
+                id="client-phone"
+                type="tel"
+                placeholder="+1234567890"
+                value={clientPhone}
+                onChange={(e) => setClientPhone(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Priority Level */}
+        <div className="space-y-2">
+          <Label htmlFor="priority-level">Tipo de Prioridad</Label>
+          <Select value={priorityLevel} onValueChange={setPriorityLevel}>
+            <SelectTrigger id="priority-level">
+              <SelectValue placeholder="Selecciona la prioridad" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="baja">Baja</SelectItem>
+              <SelectItem value="media">Media</SelectItem>
+              <SelectItem value="alta">Alta</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Description */}
+        <div className="space-y-2">
+          <Label htmlFor="description">Descripción</Label>
+          <Textarea
+            id="description"
+            placeholder="Describe detalladamente el caso..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={5}
+            required
+          />
+          <p className="text-sm text-muted-foreground">
+            Nota: Para una edición de texto más avanzada (negritas, listas, etc.), se integraría un editor de texto
+            enriquecido.
+          </p>
+        </div>
+
+        {/* Image Upload */}
+        <div className="space-y-2">
+          <Label htmlFor="images">Imágenes (Opcional)</Label>
+          <div className="flex items-center justify-center w-full">
+            <Label
+              htmlFor="dropzone-file"
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
+                <p className="mb-2 text-sm text-muted-foreground">
+                  <span className="font-semibold">Haz clic para subir</span> o arrastra y suelta
+                </p>
+                <p className="text-xs text-muted-foreground">PNG, JPG, GIF (Máx. 5MB por archivo)</p>
+              </div>
+              <Input
+                id="dropzone-file"
                 type="file"
                 className="hidden"
-                ref={fileInputRef}
+                multiple
                 onChange={handleFileChange}
+                accept="image/*"
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full border-dashed"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {selectedFile ? selectedFile.name : "Seleccionar archivo"}
-              </Button>
-              {selectedFile && (
-                <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {selectedFile.name}</p>
-              )}
-            </div>
+            </Label>
           </div>
-          <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Abriendo caso...
-              </>
-            ) : (
-              "Abrir Caso"
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          {selectedFiles.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-medium">Archivos seleccionados:</p>
+              <ul className="space-y-1">
+                {selectedFiles.map((file, index) => (
+                  <li
+                    key={index}
+                    className="flex items-center justify-between text-sm text-muted-foreground bg-muted p-2 rounded-md"
+                  >
+                    <span>
+                      {file.name} ({Math.round(file.size / 1024)} KB)
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveFile(file.name)}
+                      className="h-auto p-1"
+                    >
+                      <XCircle className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600">
+        Crear Nuevo Caso
+      </Button>
+    </form>
   )
 }

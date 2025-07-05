@@ -1,39 +1,27 @@
-.next
-.env.local
-.env
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-# Logs
-logs
-*.log
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-.pnpm-store/
+.pnpm-debug.log*
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
-.report/
+# env files
+.env*
 
-# Runtime data
-*.tgz
-.yarn/cache
-.yarn/unplugged
-.pnp.*
+# vercel
+.vercel
 
-# Output of 'npm pack'
-*.tgz
-
-# node-gyp files
-.node_modules/
-*.node
-*.wasm
-
-# Caching
-.next/
-.turbo/
-.vercel/
-.DS_Store
+# typescript
 *.tsbuildinfo
 next-env.d.ts

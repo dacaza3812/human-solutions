@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart } from "recharts"
 
 // Mock financial data
 const monthlyEarnings = [
@@ -99,26 +97,6 @@ const transactionData = [
     status: "Pendiente",
   },
 ]
-
-const chartData = [
-  { month: "Enero", desktop: 186, mobile: 80 },
-  { month: "Febrero", desktop: 305, mobile: 200 },
-  { month: "Marzo", desktop: 237, mobile: 120 },
-  { month: "Abril", desktop: 73, mobile: 190 },
-  { month: "Mayo", desktop: 209, mobile: 130 },
-  { month: "Junio", desktop: 214, mobile: 140 },
-]
-
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "hsl(var(--chart-1))",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "hsl(var(--chart-2))",
-  },
-}
 
 interface FinancialChartsProps {
   dateRange: { start: string; end: string }
@@ -256,56 +234,6 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
               <span className="text-sm text-muted-foreground">Gastos</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Rendimiento Mensual Chart */}
-      <Card className="border-border/40">
-        <CardHeader>
-          <CardTitle>Rendimiento Mensual</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-            <BarChart accessibilityLayer data={chartData}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="month"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                tickFormatter={(value) => value.slice(0, 3)}
-              />
-              <YAxis tickLine={false} tickMargin={10} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
-              <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-
-      {/* Tendencia de Ingresos Chart */}
-      <Card className="border-border/40">
-        <CardHeader>
-          <CardTitle>Tendencia de Ingresos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-            <LineChart accessibilityLayer data={chartData}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="month"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                tickFormatter={(value) => value.slice(0, 3)}
-              />
-              <YAxis tickLine={false} tickMargin={10} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="desktop" stroke="var(--color-desktop)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="mobile" stroke="var(--color-mobile)" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ChartContainer>
         </CardContent>
       </Card>
 

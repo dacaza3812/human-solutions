@@ -1,13 +1,10 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
@@ -18,10 +15,10 @@ import {
   DollarSign,
   Users,
   FileText,
-  Upload,
   CheckCircle,
   Menu,
   Shield,
+  Zap,
   Target,
   TrendingUp,
   MessageCircle,
@@ -41,127 +38,22 @@ import {
   TwitterIcon,
   Loader2,
   AlertCircle,
-  File,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { useActionState } from "react"
-import { submitContactForm } from "@/actions/contact"
 import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
-import { Icons } from "@/components/icons"
+import ContactForm from "@/components/contact-form" // Import the new ContactForm component
 
-interface Feature {
-  title: string
-  description: string
-  details: string
-  features: string[]
-  icon?: string
-}
-
-interface FAQItem {
-  question: string
-  answer: string
-}
-
-const features: Feature[] = [
-  {
-    title: "Asesoría Financiera Personalizada",
-    description: "Planificación y gestión de tus finanzas para alcanzar tus metas.",
-    details:
-      "Desde la creación de presupuestos hasta la inversión estratégica, te ayudamos a tomar decisiones financieras informadas.",
-    features: ["Análisis de ingresos y gastos", "Planificación de jubilación", "Inversiones personalizadas"],
-    icon: "/icons/financial.svg",
-  },
-  {
-    title: "Relaciones Familiares Saludables",
-    description: "Mejora la comunicación y fortalece los lazos familiares.",
-    details: "Ofrecemos herramientas y técnicas para resolver conflictos y fomentar un ambiente familiar positivo.",
-    features: ["Terapia familiar", "Talleres de comunicación", "Resolución de conflictos"],
-    icon: "/icons/family.svg",
-  },
-  {
-    title: "Asesoría Legal Integral",
-    description: "Protege tus derechos y asegura el cumplimiento de la ley.",
-    details: "Nuestros expertos legales te brindan asesoramiento en diversas áreas, desde contratos hasta litigios.",
-    features: ["Revisión de contratos", "Representación legal", "Asesoramiento en derecho civil"],
-    icon: "/icons/legal.svg",
-  },
-  {
-    title: "Desarrollo Personal y Profesional",
-    description: "Alcanza tu máximo potencial y logra tus objetivos.",
-    details:
-      "A través de programas de coaching y mentoría, te impulsamos a crecer tanto en el ámbito personal como profesional.",
-    features: ["Coaching personalizado", "Desarrollo de liderazgo", "Gestión del tiempo"],
-    icon: "/icons/personal.svg",
-  },
-]
-
-const faqs: FAQItem[] = [
-  {
-    question: "¿Cómo puedo solicitar una consulta?",
-    answer:
-      "Puedes solicitar una consulta a través de nuestro formulario de contacto o llamando a nuestro número de teléfono.",
-  },
-  {
-    question: "¿Qué tipo de servicios ofrecen?",
-    answer:
-      "Ofrecemos una amplia gama de servicios, desde asesoría financiera hasta terapia familiar y asesoría legal.",
-  },
-  {
-    question: "¿Cuál es su política de privacidad?",
-    answer:
-      "Respetamos tu privacidad y protegemos tus datos personales. Consulta nuestra política de privacidad para obtener más información.",
-  },
-  {
-    question: "¿Cómo puedo cancelar mi suscripción?",
-    answer:
-      "Puedes cancelar tu suscripción en cualquier momento a través de tu cuenta o contactando a nuestro equipo de soporte.",
-  },
-]
-
-interface SubmitButtonProps {
-  isPending: boolean
-}
-
-function SubmitButton({ isPending }: SubmitButtonProps) {
-  return (
-    <Button disabled={isPending}>
-      {isPending && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
-      Enviar Mensaje
-    </Button>
-  )
-}
-
-export default function Home() {
+export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [referrals, setReferrals] = useState(1)
   const [monthlyEarnings, setMonthlyEarnings] = useState(25)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const router = useRouter()
   const { user } = useAuth()
   const { createCheckoutSession, loading, error } = useStripeCheckout()
   const { toast } = useToast()
-
-  const [formState, formAction, isPending] = useActionState(submitContactForm, {
-    success: false,
-    message: "",
-    errors: {},
-  })
-
-  // Show toast notification based on form submission result
-  useState(() => {
-    if (formState.message) {
-      toast({
-        title: formState.success ? "Éxito" : "Error",
-        description: formState.message,
-        variant: formState.success ? "default" : "destructive",
-      })
-    }
-  }, [formState.message, formState.success, toast])
 
   const calculateEarnings = (refs: number) => {
     const directCommission = refs * 25
@@ -184,20 +76,6 @@ export default function Home() {
     await createCheckoutSession(planId)
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null
-    setSelectedFile(file)
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setFilePreviewUrl(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    } else {
-      setFilePreviewUrl(null)
-    }
-  }
-
   const navigation = [
     { name: "Inicio", href: "#inicio" },
     { name: "Servicios", href: "#servicios" },
@@ -205,6 +83,55 @@ export default function Home() {
     { name: "Compensación", href: "#compensacion" },
     { name: "Planes", href: "#planes" },
     { name: "Contacto", href: "#contacto" },
+  ]
+
+  const features = [
+    {
+      icon: DollarSign,
+      title: "Asesoría Financiera",
+      description: "Haz que tu salario alcance hasta el final del mes",
+      details: "Planificación para tus finanzas personales a corto, mediano y largo plazo.",
+      features: ["Generación de ingresos", "Técnicas de ahorro", "Inversión de tu capital"],
+    },
+    {
+      icon: Users,
+      title: "Relaciones Familiares",
+      description: "Fortalece los vínculos familiares",
+      details: "Mejora la comunicación y resuelve conflictos en el hogar.",
+      features: ["Mediación de conflictos", "Comunicación efectiva", "Terapia familiar"],
+    },
+    {
+      icon: Heart,
+      title: "Problemas de relación",
+      description: "Construye relaciones sólidas y duraderas",
+      details: "Resolución de conflictos con familiares, amigos, parejas, compañeros o jefes",
+      features: [
+        "Como potenciar tu inteligencia interpersonal e intrapersonal",
+        "Coaching social",
+        "Comunicación asertiva",
+      ],
+    },
+    {
+      icon: Shield,
+      title: "Confidencialidad Total",
+      description: "Tu privacidad es nuestra prioridad",
+      details: "Todas las consultas son completamente confidenciales y seguras.",
+      features: ["100% confidencial", "Datos seguros", "Privacidad garantizada"],
+    },
+    {
+      icon: Zap,
+      title: "Respuesta Rápida",
+      description: "Obtén ayuda cuando la necesites",
+      details: "Respuestas en menos de 24 horas para casos urgentes.",
+      features: ["Respuesta < 24h", "Soporte urgente", "Disponibilidad extendida"],
+    },
+    {
+      icon: Target,
+      title: "Resultados Medibles",
+      description: "Seguimiento de tu progreso",
+      details: "Métricas claras para evaluar tu mejora y crecimiento personal.",
+      features: ["Métricas de progreso", "Evaluaciones periódicas", "Objetivos claros"],
+    },
   ]
 
   const testimonials = [
@@ -276,7 +203,6 @@ export default function Home() {
 
   // Duplicate testimonials for infinite scroll
   const duplicatedTestimonials = [...testimonials, ...testimonials]
-  const duplicatedFeatures = [...features, ...features] // Duplicate features for infinite scroll
 
   const plans = [
     {
@@ -414,19 +340,8 @@ export default function Home() {
       )}
 
       {/* Hero Section */}
-      <section
-        id="inicio"
-        className="relative py-24 px-4 overflow-hidden"
-        style={{
-          backgroundImage: `url('/hero-background.png')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        {/* Overlay for blur and darkening */}
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-        <div className="container mx-auto text-center relative z-10">
+      <section id="inicio" className="py-24 px-4">
+        <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto">
             {/* Mobile Logo - Only visible on mobile devices */}
             <div className="md:hidden mb-8">
@@ -441,11 +356,11 @@ export default function Home() {
               </Button>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
               Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
             </h1>
 
-            <p className="text-xl text-gray-300 mb-8 leading-relaxed max-w-3xl mx-auto">
+            <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
               Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
               problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
               privacidad y confidencialidad del cliente
@@ -455,7 +370,7 @@ export default function Home() {
               <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8">
                 Comienza tu transformación
               </Button>
-              <Button size="lg" variant="outline" className="border-border/40 bg-transparent text-white">
+              <Button size="lg" variant="outline" className="border-border/40 bg-transparent">
                 Solicita una demo
               </Button>
             </div>
@@ -463,62 +378,48 @@ export default function Home() {
             {/* Trusted by section */}
             <div className="space-y-4">
               <div className="flex justify-center items-center space-x-8 md:space-x-12">
-                <Globe className="w-8 h-8 company-icon cursor-pointer text-white" />
-                <Smartphone className="w-8 h-8 company-icon cursor-pointer text-white" />
-                <Laptop className="w-8 h-8 company-icon cursor-pointer text-white" />
-                <Database className="w-8 h-8 company-icon cursor-pointer text-white" />
-                <Lock className="w-8 h-8 company-icon cursor-pointer text-white" />
+                <Globe className="w-8 h-8 company-icon cursor-pointer" />
+                <Smartphone className="w-8 h-8 company-icon cursor-pointer" />
+                <Laptop className="w-8 h-8 company-icon cursor-pointer" />
+                <Database className="w-8 h-8 company-icon cursor-pointer" />
+                <Lock className="w-8 h-8 company-icon cursor-pointer" />
               </div>
-              <p className="text-sm text-gray-300">Confiado por empresas de rápido crecimiento en todo el mundo</p>
+              <p className="text-sm text-muted-foreground">
+                Confiado por empresas de rápido crecimiento en todo el mundo
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Grid Section (now a horizontally scrolling carousel) */}
+      {/* Features Grid Section */}
       <section className="py-24 px-4">
         <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">Nuestras Especialidades</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Descubre las áreas en las que podemos ayudarte a transformar tu vida.
-            </p>
-          </div>
-
-          <div className="relative overflow-hidden">
-            <div className="flex space-x-6 animate-scroll-features">
-              {duplicatedFeatures.map((feature, index) => (
-                <Card key={index} className="flex-shrink-0 w-80 border-border/40 bg-card/50 cursor-pointer">
-                  <CardHeader>
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
-                        {/* Assuming icons are SVG or can be rendered directly */}
-                        {feature.icon && (
-                          <img
-                            src={feature.icon || "/placeholder.svg"}
-                            alt={feature.title}
-                            className="w-4 h-4 text-emerald-400"
-                          />
-                        )}
-                      </div>
-                      <CardTitle className="text-lg">{feature.title}</CardTitle>
+          <div className="grid lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="feature-card border-border/40 bg-card/50 cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
+                      <feature.icon className="w-4 h-4 text-emerald-400" />
                     </div>
-                    <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
-                    <ul className="space-y-2">
-                      {feature.features.map((item, idx) => (
-                        <li key={idx} className="flex items-center space-x-2 text-sm">
-                          <CheckCircle className="w-3 h-3 text-emerald-400" />
-                          <span className="text-muted-foreground">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <CardTitle className="text-lg">{feature.title}</CardTitle>
+                  </div>
+                  <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
+                  <ul className="space-y-2">
+                    {feature.features.map((item, idx) => (
+                      <li key={idx} className="flex items-center space-x-2 text-sm">
+                        <CheckCircle className="w-3 h-3 text-emerald-400" />
+                        <span className="text-muted-foreground">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
@@ -890,119 +791,7 @@ export default function Home() {
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <Card className="border-border/40">
-              <CardHeader>
-                <CardTitle className="text-center text-emerald-400">Formulario de Contacto</CardTitle>
-                <CardDescription className="text-center">
-                  Completa el formulario y nos pondremos en contacto contigo
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <form action={formAction} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Nombre</Label>
-                      <Input id="firstName" name="firstName" placeholder="Tu nombre" className="mt-1" />
-                      {formState.errors?.firstName && (
-                        <p className="text-red-500 text-sm mt-1">{formState.errors.firstName[0]}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Apellido</Label>
-                      <Input id="lastName" name="lastName" placeholder="Tu apellido" className="mt-1" />
-                      {formState.errors?.lastName && (
-                        <p className="text-red-500 text-sm mt-1">{formState.errors.lastName[0]}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email">Correo Electrónico</Label>
-                    <Input id="email" name="email" type="email" placeholder="tu@ejemplo.com" className="mt-1" />
-                    {formState.errors?.email && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.email[0]}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone">Teléfono (opcional)</Label>
-                    <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
-                    {formState.errors?.phone && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.phone[0]}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="message">Mensaje</Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      placeholder="Cuéntanos sobre tu situación y objetivos..."
-                      rows={4}
-                      className="mt-1"
-                    />
-                    {formState.errors?.message && (
-                      <p className="text-red-500 text-sm mt-1">{formState.errors.message[0]}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="file">Subir Documento (opcional)</Label>
-                    <div className="mt-1">
-                      <Input
-                        id="file"
-                        name="file"
-                        type="file"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full border-dashed"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {selectedFile ? selectedFile.name : "Seleccionar archivo"}
-                      </Button>
-                      {formState.errors?.file && (
-                        <p className="text-red-500 text-sm mt-1">{formState.errors.file[0]}</p>
-                      )}
-                      {filePreviewUrl && (
-                        <div className="mt-2 flex items-center space-x-2">
-                          {selectedFile?.type.startsWith("image/") ? (
-                            <Image
-                              src={filePreviewUrl || "/placeholder.svg"}
-                              alt="File preview"
-                              width={64}
-                              height={64}
-                              className="rounded-md object-cover"
-                            />
-                          ) : (
-                            <File className="h-16 w-16 text-muted-foreground" />
-                          )}
-                          <span className="text-sm text-muted-foreground">{selectedFile?.name}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600" disabled={isPending}>
-                      {isPending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Enviando...
-                        </>
-                      ) : (
-                        "Enviar Mensaje"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+            <ContactForm />
           </div>
         </div>
       </section>

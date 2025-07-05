@@ -130,24 +130,6 @@ body {
   animation-play-state: paused;
 }
 
-/* New animation for features section */
-@keyframes scroll-left-features {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
-}
-
-.animate-scroll-features {
-  animation: scroll-left-features 40s linear infinite; /* Adjust speed as needed */
-}
-
-.animate-scroll-features:hover {
-  animation-play-state: paused;
-}
-
 /* Feature card hover effects */
 .feature-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;

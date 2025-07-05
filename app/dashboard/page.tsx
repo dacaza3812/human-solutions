@@ -1,18 +1,18 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, Suspense } from "react" // Import Suspense
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
-import { DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
-import UserInfoCard from "./components/user-info-card"
-import StatsGrid from "./components/stats-grid"
-import UpcomingAppointmentsCard from "./components/upcoming-appointments-card"
-import RecentActivityCard from "./components/recent-activity-card"
-import FinancialOverviewSection from "./components/financial-overview-section"
-import DashboardLoading from "./loading"
+import { Plus, DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
+import { UserInfoCard } from "./components/user-info-card"
+import { StatsGrid } from "./components/stats-grid"
+import { RecentActivityCard } from "./components/recent-activity-card"
+import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+// InquiriesSection is now a separate page, no longer imported here
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -506,94 +506,97 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="grid gap-6 p-6 md:p-8">
-      <h1 className="text-3xl font-bold">Bienvenido a tu Dashboard</h1>
-
-      <Suspense fallback={<DashboardLoading />}>
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <UserInfoCard user={user} profile={profile} />
+    <div className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
+            <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
           </div>
-          <div className="lg:col-span-2">
-            <StatsGrid stats={displayStats} />
-          </div>
+          {profile?.account_type === "advisor" && (
+            <Button className="bg-emerald-500 hover:bg-emerald-600">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Caso
+            </Button>
+          )}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          <div className="lg:col-span-1 xl:col-span-2">
-            <FinancialOverviewSection />
-          </div>
-          <div className="lg:col-span-1 xl:col-span-1">
-            <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
-          </div>
+        {/* User Info Card */}
+        <UserInfoCard user={user} profile={profile} />
+
+        {/* Stats Grid */}
+        <StatsGrid stats={displayStats} />
+
+        {/* Recent Activity */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <RecentActivityCard recentActivity={recentActivity} />
+          <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
         </div>
 
-        <RecentActivityCard recentActivity={recentActivity} />
-      </Suspense>
-
-      {/* Tabs for different sections (removed Inquiries tab) */}
-      <div className="mt-6">
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-5">
-            {" "}
-            {/* Adjusted grid-cols */}
-            <TabsTrigger value="overview">Resumen</TabsTrigger>
-            <TabsTrigger value="cases">Casos</TabsTrigger>
-            <TabsTrigger value="appointments">Citas</TabsTrigger>
-            <TabsTrigger value="messages">Mensajes</TabsTrigger>
-            <TabsTrigger value="settings">Configuración</TabsTrigger>
-          </TabsList>
-          <TabsContent value="overview" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumen General</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Contenido del resumen general.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="cases" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Casos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Contenido de gestión de casos.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="appointments" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Próximas Citas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Contenido de próximas citas.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="messages" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mensajes Recientes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Contenido de mensajes recientes.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="settings" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuración de la Cuenta</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Contenido de configuración de la cuenta.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Tabs for different sections (removed Inquiries tab) */}
+        <div className="mt-6">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-5">
+              {" "}
+              {/* Adjusted grid-cols */}
+              <TabsTrigger value="overview">Resumen</TabsTrigger>
+              <TabsTrigger value="cases">Casos</TabsTrigger>
+              <TabsTrigger value="appointments">Citas</TabsTrigger>
+              <TabsTrigger value="messages">Mensajes</TabsTrigger>
+              <TabsTrigger value="settings">Configuración</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resumen General</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido del resumen general.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="cases" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gestión de Casos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de gestión de casos.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="appointments" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Próximas Citas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de próximas citas.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="messages" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Mensajes Recientes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de mensajes recientes.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="settings" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configuración de la Cuenta</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Contenido de configuración de la cuenta.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   )

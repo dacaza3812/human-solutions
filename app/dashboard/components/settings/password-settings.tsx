@@ -1,74 +1,59 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
-import { useToast } from "@/components/ui/use-toast"
-import { Loader2 } from "lucide-react"
+import { Key } from "lucide-react"
 
-export default function PasswordSettings() {
-  const { updatePassword } = useAuth()
-  const { toast } = useToast()
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [loading, setLoading] = useState(false)
+interface PasswordSettingsProps {
+  currentPassword: string
+  setCurrentPassword: (value: string) => void
+  newPassword: string
+  setNewPassword: (value: string) => void
+  confirmNewPassword: string
+  setConfirmNewPassword: (value: string) => void
+  passwordChangeMessage: string
+  passwordChangeError: string
+  handlePasswordChange: (e: React.FormEvent) => Promise<void>
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Las contraseñas no coinciden.",
-        variant: "destructive",
-      })
-      return
-    }
-    if (newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "La contraseña debe tener al menos 6 caracteres.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setLoading(true)
-    const { error } = await updatePassword(newPassword)
-    setLoading(false)
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      })
-    } else {
-      toast({
-        title: "Éxito",
-        description: "Contraseña actualizada correctamente.",
-      })
-      setNewPassword("")
-      setConfirmPassword("")
-    }
-  }
-
+export function PasswordSettings({
+  currentPassword,
+  setCurrentPassword,
+  newPassword,
+  setNewPassword,
+  confirmNewPassword,
+  setConfirmNewPassword,
+  passwordChangeMessage,
+  passwordChangeError,
+  handlePasswordChange,
+}: PasswordSettingsProps) {
   return (
-    <Card>
+    <Card className="border-border/40">
       <CardHeader>
-        <CardTitle>Cambiar Contraseña</CardTitle>
-        <CardDescription>Actualiza tu contraseña para mantener tu cuenta segura.</CardDescription>
+        <CardTitle className="flex items-center text-foreground">
+          <Key className="w-5 h-5 mr-2 text-purple-400" />
+          Cambiar Contraseña
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handlePasswordChange} className="space-y-4">
           <div>
-            <Label htmlFor="new-password">Nueva Contraseña</Label>
+            <Label htmlFor="currentPassword">Contraseña Actual</Label>
             <Input
-              id="new-password"
+              id="currentPassword"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="newPassword">Nueva Contraseña</Label>
+            <Input
+              id="newPassword"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -76,24 +61,19 @@ export default function PasswordSettings() {
             />
           </div>
           <div>
-            <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
+            <Label htmlFor="confirmNewPassword">Confirmar Nueva Contraseña</Label>
             <Input
-              id="confirm-password"
+              id="confirmNewPassword"
               type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
               required
             />
           </div>
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              "Guardar Cambios"
-            )}
+          {passwordChangeError && <p className="text-red-500 text-sm">{passwordChangeError}</p>}
+          {passwordChangeMessage && <p className="text-emerald-500 text-sm">{passwordChangeMessage}</p>}
+          <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
+            Actualizar Contraseña
           </Button>
         </form>
       </CardContent>
