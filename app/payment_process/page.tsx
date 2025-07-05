@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/auth-context"
 export default function PaymentProcess() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [message, setMessage] = useState("")
-  const [countdown, setCountdown] = useState(5)
+  const [countdown, setCountdown] = useState(5) // Inicializa el contador en 5 segundos
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -39,6 +39,7 @@ export default function PaymentProcess() {
       }, 1000)
       return () => clearTimeout(timer)
     } else if (status === "success" && countdown === 0) {
+      // Esta es la línea que redirige al usuario al dashboard
       router.push("/dashboard")
     }
   }, [status, countdown, router])
@@ -106,7 +107,7 @@ export default function PaymentProcess() {
 
           {status === "error" && (
             <div className="space-y-2">
-              <Button onClick={handleGoHome} variant="outline" className="w-full">
+              <Button onClick={handleGoHome} variant="outline" className="w-full bg-transparent">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Volver al Inicio
               </Button>

@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef, useTransition } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
@@ -16,7 +19,6 @@ import {
   DollarSign,
   Users,
   FileText,
-  Calendar,
   Upload,
   CheckCircle,
   Menu,
@@ -41,20 +43,75 @@ import {
   TwitterIcon,
   Loader2,
   AlertCircle,
+  File,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { submitContactForm } from "@/actions/contact"
+import { useToast } from "@/components/ui/use-toast"
+import { Toaster } from "@/components/ui/toaster"
+
+// Componente para el botón de envío con estado de carga
+function SubmitButton({ isPending }: { isPending: boolean }) {
+  return (
+    <Button type="submit" disabled={isPending} className="flex-1 bg-emerald-500 hover:bg-emerald-600">
+      {isPending ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Enviando...
+        </>
+      ) : (
+        "Enviar Mensaje"
+      )}
+    </Button>
+  )
+}
 
 export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [referrals, setReferrals] = useState(1)
-  const [monthlyEarnings, setMonthlyEarnings] = useState(50)
+  const [monthlyEarnings, setMonthlyEarnings] = useState(25)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const contactFormRef = useRef<HTMLFormElement>(null)
 
   const router = useRouter()
   const { user } = useAuth()
   const { createCheckoutSession, loading, error } = useStripeCheckout()
+  const { toast } = useToast()
+
+  const [isPending, startTransition] = useTransition()
+  const [formState, setFormState] = useState({
+    success: false,
+    message: "",
+    errors: {},
+  })
+
+  // Show toast notification based on form submission result
+  useEffect(() => {
+    if (formState.message) {
+      toast({
+        title: formState.success ? "Éxito" : "Error",
+        description: formState.message,
+        variant: formState.success ? "default" : "destructive",
+      })
+      if (formState.success) {
+        contactFormRef.current?.reset()
+        setSelectedFile(null)
+        setFilePreviewUrl(null)
+      }
+    }
+  }, [formState.message, formState.success, toast])
+
+  const handleContactFormSubmit = async (formData: FormData) => {
+    startTransition(async () => {
+      const result = await submitContactForm(formState, formData) // Pass prevState as first argument
+      setFormState(result)
+    })
+  }
 
   const calculateEarnings = (refs: number) => {
-    const directCommission = refs * 50 // $50 USD por cada cliente referido directamente
+    const directCommission = refs * 25
     const indirectCommission = Math.floor(refs * 0.3) * 12.5
     return directCommission + indirectCommission
   }
@@ -72,6 +129,20 @@ export default function SolucionesHumanas() {
     }
 
     await createCheckoutSession(planId)
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null
+    setSelectedFile(file)
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFilePreviewUrl(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    } else {
+      setFilePreviewUrl(null)
+    }
   }
 
   const navigation = [
@@ -201,26 +272,27 @@ export default function SolucionesHumanas() {
 
   // Duplicate testimonials for infinite scroll
   const duplicatedTestimonials = [...testimonials, ...testimonials]
+  const duplicatedFeatures = [...features, ...features] // Duplicate features for infinite scroll
 
   const plans = [
     {
       id: 1,
       name: "Standard",
-      price: "$99.99",
+      price: "$49.99",
       frequency: "mensual",
       description: "Ideal para necesidades básicas de asesoría.",
-      features: ["Contacto directo con el CEO una vez por semana", "Acceso a conocimiento esotérico", "comisión de un 50% por la activación de cada plan de sus referidos"],
+      features: ["3 consultas/mes", "Soporte por email", "Acceso a recursos básicos", "Prioridad estándar"],
       buttonText: "Elegir Plan Standard",
       highlight: false,
     },
     {
       id: 2,
       name: "Premium",
-      price: "$999.99",
-      frequency: "anual",
+      price: "$149.99",
+      frequency: "mensual",
       description: "Para un soporte más completo y personalizado.",
       features: [
-        "Pago único anual",
+        "10 consultas/mes",
         "Soporte prioritario",
         "Acceso a todos los recursos",
         "Seguimiento personalizado",
@@ -231,17 +303,16 @@ export default function SolucionesHumanas() {
     },
     {
       id: 3,
-      name: "Profesional Fox",
-      price: "$5000.00",
-      frequency: "anual",
+      name: "Collaborative",
+      price: "$299.99",
+      frequency: "mensual",
       description: "Solución integral para equipos o familias.",
       features: [
-        "Asesoría de forma presencial con el CEO",
         "Consultas ilimitadas",
         "Asesor dedicado 24/7",
         "Acceso para equipos",
         "Reportes personalizados",
-        
+        "Prioridad empresarial",
       ],
       buttonText: "Elegir Plan Collaborative",
       highlight: false,
@@ -255,7 +326,7 @@ export default function SolucionesHumanas() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
+              <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={32} height={32} />
               <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
             </div>
 
@@ -278,7 +349,7 @@ export default function SolucionesHumanas() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden md:inline-flex border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                  className="hidden md:inline-flex border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white bg-transparent"
                   onClick={() => router.push("/dashboard")}
                 >
                   Dashboard
@@ -300,7 +371,7 @@ export default function SolucionesHumanas() {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b border-border/40">
               <div className="flex items-center space-x-2">
-                <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
+                <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={32} height={32} />
                 <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
@@ -325,7 +396,7 @@ export default function SolucionesHumanas() {
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white font-medium"
+                className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white font-medium bg-transparent"
                 onClick={() => {
                   router.push("/dashboard")
                   setMobileMenuOpen(false)
@@ -339,12 +410,23 @@ export default function SolucionesHumanas() {
       )}
 
       {/* Hero Section */}
-      <section id="inicio" className="py-24 px-4">
-        <div className="container mx-auto text-center">
+      <section
+        id="inicio"
+        className="relative py-24 px-4 overflow-hidden"
+        style={{
+          backgroundImage: `url('/hero-background.png')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Overlay for blur and darkening */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        <div className="container mx-auto text-center relative z-10">
           <div className="max-w-4xl mx-auto">
             {/* Mobile Logo - Only visible on mobile devices */}
             <div className="md:hidden mb-8">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-20 h-20 mx-auto" />
+              <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={80} height={80} className="mx-auto" />
             </div>
 
             {/* Announcement Banner */}
@@ -355,19 +437,25 @@ export default function SolucionesHumanas() {
               </Button>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
-              Aumenta tu pensamiento agudo <span className="text-emerald-400">táctico</span>
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+              Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
             </h1>
 
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se le enseña a usted a comprender la vida tal y como es, no como a usted le gustaría que fuera.
+            <p className="text-xl text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
+              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
+              problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
+              privacidad y confidencialidad del cliente
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8">
                 Comienza tu transformación
               </Button>
-              <Button size="lg" variant="outline" className="border-border/40">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-emerald-500/50 text-emerald-400 bg-transparent hover:bg-emerald-500 hover:text-white"
+              >
                 Solicita una demo
               </Button>
             </div>
@@ -375,48 +463,58 @@ export default function SolucionesHumanas() {
             {/* Trusted by section */}
             <div className="space-y-4">
               <div className="flex justify-center items-center space-x-8 md:space-x-12">
-                <Globe className="w-8 h-8 company-icon cursor-pointer" />
-                <Smartphone className="w-8 h-8 company-icon cursor-pointer" />
-                <Laptop className="w-8 h-8 company-icon cursor-pointer" />
-                <Database className="w-8 h-8 company-icon cursor-pointer" />
-                <Lock className="w-8 h-8 company-icon cursor-pointer" />
+                <Globe className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Smartphone className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Laptop className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Database className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
+                <Lock className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Confidencialidad total - Respuesta rápida - Resultados medibles
-              </p>
+              <p className="text-sm text-gray-300">Confiado por empresas de rápido crecimiento en todo el mundo</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Grid Section */}
+      {/* Features Section with Horizontal Scroll */}
       <section className="py-24 px-4">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="feature-card border-border/40 bg-card/50 cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
-                      <feature.icon className="w-4 h-4 text-emerald-400" />
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">Nuestras Especialidades</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Descubre las áreas en las que podemos ayudarte a transformar tu vida.
+            </p>
+          </div>
+
+          <div className="relative overflow-hidden">
+            <div className="flex space-x-6 animate-scroll-features">
+              {duplicatedFeatures.map((feature, index) => (
+                <Card
+                  key={index}
+                  className="flex-shrink-0 w-80 feature-card border-border/40 bg-card/50 cursor-pointer"
+                >
+                  <CardHeader>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center">
+                        <feature.icon className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <CardTitle className="text-lg">{feature.title}</CardTitle>
                     </div>
-                    <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  </div>
-                  <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
-                  <ul className="space-y-2">
-                    {feature.features.map((item, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 text-sm">
-                        <CheckCircle className="w-3 h-3 text-emerald-400" />
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardDescription className="text-base text-muted-foreground">{feature.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">{feature.details}</p>
+                    <ul className="space-y-2">
+                      {feature.features.map((item, idx) => (
+                        <li key={idx} className="flex items-center space-x-2 text-sm">
+                          <CheckCircle className="w-3 h-3 text-emerald-400" />
+                          <span className="text-muted-foreground">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -437,8 +535,8 @@ export default function SolucionesHumanas() {
                 <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <span className="text-2xl font-bold text-white">1</span>
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Confidencialidad total</h3>
-                <p className="text-muted-foreground mb-6">Únete a nuestra plataforma por solo $100 USD mensuales</p>
+                <h3 className="text-xl font-bold text-foreground mb-4">Suscripción</h3>
+                <p className="text-muted-foreground mb-6">Únete a nuestra plataforma por solo $50 USD mensuales</p>
                 <Card className="border-emerald-500/20 bg-emerald-500/5">
                   <CardContent className="p-4">
                     <div className="text-sm space-y-1">
@@ -459,7 +557,7 @@ export default function SolucionesHumanas() {
                 <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <FileText className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Respuesta Rápida</h3>
+                <h3 className="text-xl font-bold text-foreground mb-4">Evaluación</h3>
                 <p className="text-muted-foreground mb-6">
                   Completa un cuestionario personalizado según tu situación específica
                 </p>
@@ -476,7 +574,7 @@ export default function SolucionesHumanas() {
                 <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <Target className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-4">Resultados medibles</h3>
+                <h3 className="text-xl font-bold text-foreground mb-4">Plan de Acción</h3>
                 <p className="text-muted-foreground mb-6">
                   Recibe un plan personalizado con pasos específicos y seguimiento
                 </p>
@@ -514,7 +612,7 @@ export default function SolucionesHumanas() {
                   <div className="p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
                     <h4 className="font-semibold text-emerald-400 mb-2">Comisión Directa - 50%</h4>
                     <p className="text-sm text-muted-foreground mb-2">
-                      $50% por cada cliente que refiere directamente
+                      $25 USD por cada cliente que refiere directamente
                     </p>
                     <div className="flex items-center text-xs text-emerald-400">
                       <BarChart3 className="w-3 h-3 mr-1" />
@@ -731,11 +829,11 @@ export default function SolucionesHumanas() {
             </p>
 
             <div className="flex justify-center space-x-4 mb-12">
-              <Button variant="outline" size="sm" className="border-border/40">
+              <Button variant="outline" size="sm" className="border-border/40 bg-transparent">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Discusiones GitHub
               </Button>
-              <Button variant="outline" size="sm" className="border-border/40">
+              <Button variant="outline" size="sm" className="border-border/40 bg-transparent">
                 Discord
               </Button>
             </div>
@@ -771,7 +869,7 @@ export default function SolucionesHumanas() {
 
           <div className="text-center mt-16">
             <h3 className="text-3xl font-bold text-foreground mb-4">
-              Conviértete en un <span className="text-emerald-400">zorro</span>
+              Transforma tu vida en un fin de semana, <span className="text-emerald-400">escala a millones</span>
             </h3>
           </div>
         </div>
@@ -796,80 +894,100 @@ export default function SolucionesHumanas() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
+                <form ref={contactFormRef} action={handleContactFormSubmit} className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">Nombre</Label>
+                      <Input id="firstName" name="firstName" placeholder="Tu nombre" className="mt-1" />
+                      {formState.errors?.firstName && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.firstName[0]}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Apellido</Label>
+                      <Input id="lastName" name="lastName" placeholder="Tu apellido" className="mt-1" />
+                      {formState.errors?.lastName && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.lastName[0]}</p>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
-                    <Label htmlFor="firstName">Nombre</Label>
-                    <Input id="firstName" placeholder="Tu nombre" className="mt-1" />
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input id="email" name="email" type="email" placeholder="tu@ejemplo.com" className="mt-1" />
+                    {formState.errors?.email && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.email[0]}</p>
+                    )}
                   </div>
+
                   <div>
-                    <Label htmlFor="lastName">Apellido</Label>
-                    <Input id="lastName" placeholder="Tu apellido" className="mt-1" />
+                    <Label htmlFor="phone">Teléfono (opcional)</Label>
+                    <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
+                    {formState.errors?.phone && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.phone[0]}</p>
+                    )}
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="email">Correo Electrónico</Label>
-                  <Input id="email" type="email" placeholder="tu@email.com" className="mt-1" />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input id="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
-                </div>
-
-               {/* <div>
-                  <Label htmlFor="service">Importancia</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona un área</option>
-                    <option value="financial">Asesoría Financiera</option>
-                    <option value="family">Relaciones Familiares</option>
-                    <option value="love">Relaciones Amorosas</option>
-                    <option value="advisor">Quiero ser Asesor</option>
-                  </select>
-                </div> */}
-
-                {/*<div>
-                  <Label htmlFor="service">Área de Interés</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona el nivel de priodidad</option>
-                    <option value="lov">Baja</option>
-                    <option value="mid">Media</option>
-                    <option value="high">Alta</option>
-                  </select>
-                </div> */}
-
-                <div>
-                  <Label htmlFor="message">Mensaje</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Cuéntanos sobre tu situación y objetivos..."
-                    rows={4}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="file">Subir Documento (opcional)</Label>
-                  <div className="mt-1">
-                    <Input id="file" type="file" className="hidden" />
-                    <Button
-                      variant="outline"
-                      onClick={() => document.getElementById("file")?.click()}
-                      className="w-full border-dashed"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Seleccionar archivo
-                    </Button>
+                  <div>
+                    <Label htmlFor="message">Mensaje</Label>
+                    <Textarea
+                      id="message"
+                      name="message"
+                      placeholder="Cuéntanos sobre tu situación y objetivos..."
+                      rows={4}
+                      className="mt-1"
+                    />
+                    {formState.errors?.message && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.message[0]}</p>
+                    )}
                   </div>
-                </div>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600">Enviar Mensaje</Button>
-                  <Button variant="outline" className="flex-1 border-border/40">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Agendar Consulta
-                  </Button>
-                </div>
+                  <div>
+                    <Label htmlFor="file">Subir Documento (opcional)</Label>
+                    <div className="mt-1">
+                      <Input
+                        id="file"
+                        name="file"
+                        type="file"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full border-dashed"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {selectedFile ? selectedFile.name : "Seleccionar archivo"}
+                      </Button>
+                      {formState.errors?.file && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.file[0]}</p>
+                      )}
+                      {filePreviewUrl && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          {selectedFile?.type.startsWith("image/") ? (
+                            <Image
+                              src={filePreviewUrl || "/placeholder.svg"}
+                              alt="File preview"
+                              width={64}
+                              height={64}
+                              className="rounded-md object-cover"
+                            />
+                          ) : (
+                            <File className="h-16 w-16 text-muted-foreground" />
+                          )}
+                          <span className="text-sm text-muted-foreground">{selectedFile?.name}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <SubmitButton isPending={isPending} />
+                  </div>
+                </form>
               </CardContent>
             </Card>
           </div>
@@ -882,7 +1000,7 @@ export default function SolucionesHumanas() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-1">
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-6 h-6" />
+                <Image src="/fox-lawyer-logo.png" alt="Fox Lawyer" width={24} height={24} />
                 <h4 className="text-lg font-bold text-foreground">Fox Lawyer</h4>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
@@ -929,13 +1047,13 @@ export default function SolucionesHumanas() {
             <div>
               <h5 className="font-semibold mb-4 text-foreground">Síguenos</h5>
               <div className="flex space-x-3">
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
+                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
                   <FacebookIcon />
                 </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
+                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
                   <InstagramIcon />
                 </Button>
-                <Button size="sm" variant="outline" className="w-10 h-10 p-0">
+                <Button size="sm" variant="outline" className="w-10 h-10 p-0 bg-transparent">
                   <TwitterIcon />
                 </Button>
               </div>
@@ -949,6 +1067,7 @@ export default function SolucionesHumanas() {
           </div>
         </div>
       </footer>
+      <Toaster />
     </div>
   )
 }

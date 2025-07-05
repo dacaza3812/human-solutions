@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Only add referral_code if it exists and is not empty
       if (referralCode && referralCode.trim() !== "") {
-        metadata.referred_by = referralCode.trim()
+        metadata.referral_code = referralCode.trim()
       }
 
       const { data, error } = await supabase.auth.signUp({
@@ -141,7 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Create referral relationship if applicable
-            /*
             if (referralCode && referralCode.trim() !== "" && data.user) {
               const { error: referralError } = await supabase.rpc("create_referral_relationship", {
                 referrer_code: referralCode.trim(),
@@ -152,7 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.error("Error creating referral relationship:", referralError)
               }
             }
-              */
           } catch (err) {
             console.error("Error in profile creation fallback:", err)
           }

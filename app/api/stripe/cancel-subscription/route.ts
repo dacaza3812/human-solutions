@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-05-28.basil",
+  apiVersion: "2024-06-20",
 })
 
 export async function POST(request: NextRequest) {
@@ -15,21 +15,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Subscription ID is required" }, { status: 400 })
     }
 
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader) {
-      return NextResponse.json({ error: "No authorization header" }, { status: 401 })
-    }
-
     // Verificar autenticación
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-    const token = authHeader.replace("Bearer ", "")
+    const supabase = createServerComponentClient({ cookies })
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token)
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Invalid user" }, { status: 401 })
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Cancelar la suscripción en Stripe
@@ -39,10 +32,10 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabase
       .from("profiles")
       .update({
-        subscription_status: "cancelled",
+        subscription_status: "canceled",
         subscription_cancelled_at: new Date().toISOString(),
       })
-      .eq("id", user.id)
+      .eq("id", session.user.id)
 
     if (updateError) {
       console.error("Error updating subscription status:", updateError)
