@@ -6,10 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { createClient } from "@/lib/supabase-server"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import {
   UserPlus,
   Copy,
@@ -30,23 +26,6 @@ import {
 export default function ReferralsPage() {
   const [copySuccess, setCopySuccess] = useState(false)
   const [referralCode] = useState("FOXLAW2024")
-  const supabase = createClient()
-  const [referrals, setReferrals] = useState([])
-  const [error, setError] = useState(null)
-
-  const fetchReferrals = async () => {
-    const { data, error } = await supabase.from("referrals").select("*").order("created_at", { ascending: false })
-    if (error) {
-      console.error("Error fetching referrals:", error)
-      setError(error)
-    } else {
-      setReferrals(data)
-    }
-  }
-
-  useState(() => {
-    fetchReferrals()
-  }, [])
 
   const referralStats = {
     totalReferrals: 24,
@@ -168,7 +147,7 @@ export default function ReferralsPage() {
   }
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -330,48 +309,41 @@ export default function ReferralsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {error ? (
-                    <p className="text-center text-muted-foreground">Error loading referrals.</p>
-                  ) : referrals.length === 0 ? (
-                    <p className="text-center text-muted-foreground">No hay referidos registrados.</p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Email Referido</TableHead>
-                          <TableHead>Fecha de Registro</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead className="text-right">Comisión</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {referrals.map((referral) => (
-                          <TableRow key={referral.id}>
-                            <TableCell>{referral.referred_email}</TableCell>
-                            <TableCell>
-                              {format(new Date(referral.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                  referral.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                                    : referral.status === "converted"
-                                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                                }`}
-                              >
-                                {referral.status}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              ${referral.commission_amount?.toLocaleString() || "0.00"}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
+                  {referralHistory.map((referral) => (
+                    <div
+                      key={referral.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                          <UserPlus className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{referral.name}</p>
+                          <p className="text-sm text-muted-foreground">{referral.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <p className="font-medium">${referral.earnings}</p>
+                          <p className="text-sm text-muted-foreground">{referral.plan}</p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={
+                            referral.status === "Activo"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : referral.status === "Pendiente"
+                                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                : "bg-red-50 text-red-700 border-red-200"
+                          }
+                        >
+                          {referral.status}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">{referral.joinDate}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

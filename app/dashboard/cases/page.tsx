@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createClient } from "@/lib/supabase-server"
 import {
   FileText,
+  Plus,
   Search,
   Filter,
   Calendar,
@@ -22,7 +22,6 @@ import {
   Eye,
   Edit,
   MoreHorizontal,
-  PlusCircle,
 } from "lucide-react"
 import {
   Dialog,
@@ -34,20 +33,89 @@ import {
 } from "@/components/ui/dialog"
 import NewCaseForm from "@/components/new-case-form" // Import the new form component
 
-export default async function CasesPage() {
-  const supabase = createClient()
+export default function CasesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
 
-  const { data: casesData, error } = await supabase.from("cases").select("*")
-
-  if (error) {
-    console.error("Error fetching cases:", error)
-    return <div>Error loading cases.</div>
-  }
-
-  const cases = casesData || []
+  const cases = [
+    {
+      id: 1,
+      title: "Asesoría Financiera Personal",
+      type: "Asesoría Financiera",
+      status: "En Progreso",
+      priority: "Alta",
+      client: "Juan Pérez",
+      advisor: "Dr. María González",
+      createdDate: "2024-01-15",
+      dueDate: "2024-02-15",
+      progress: 65,
+      description:
+        "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
+      lastActivity: "Hace 2 horas",
+      messages: 12,
+    },
+    {
+      id: 2,
+      title: "Mediación Familiar",
+      type: "Relaciones Familiares",
+      status: "Programada",
+      priority: "Media",
+      client: "María López",
+      advisor: "Lic. Carlos Rodríguez",
+      createdDate: "2024-01-10",
+      dueDate: "2024-01-30",
+      progress: 25,
+      description: "Resolución de conflictos familiares y mejora de la comunicación entre miembros.",
+      lastActivity: "Hace 1 día",
+      messages: 8,
+    },
+    {
+      id: 3,
+      title: "Consulta Legal Empresarial",
+      type: "Asesoría Legal",
+      status: "En Revisión",
+      priority: "Baja",
+      client: "Carlos Mendoza",
+      advisor: "Abg. Ana Martínez",
+      createdDate: "2024-01-08",
+      dueDate: "2024-01-25",
+      progress: 80,
+      description: "Consulta sobre derechos laborales y procedimientos legales para empresa.",
+      lastActivity: "Hace 3 horas",
+      messages: 15,
+    },
+    {
+      id: 4,
+      title: "Planificación Patrimonial",
+      type: "Asesoría Financiera",
+      status: "Completada",
+      priority: "Alta",
+      client: "Sofia Herrera",
+      advisor: "Dr. Luis Fernández",
+      createdDate: "2023-12-20",
+      dueDate: "2024-01-20",
+      progress: 100,
+      description: "Estructuración de patrimonio familiar y planificación sucesoria.",
+      lastActivity: "Hace 2 días",
+      messages: 22,
+    },
+    {
+      id: 5,
+      title: "Terapia de Pareja",
+      type: "Relaciones Familiares",
+      status: "En Progreso",
+      priority: "Media",
+      client: "Roberto Silva",
+      advisor: "Dra. Carmen Ruiz",
+      createdDate: "2024-01-12",
+      dueDate: "2024-02-12",
+      progress: 45,
+      description: "Sesiones de terapia para mejorar la comunicación en la pareja.",
+      lastActivity: "Hace 5 horas",
+      messages: 6,
+    },
+  ]
 
   const caseStats = {
     total: cases.length,
@@ -97,7 +165,7 @@ export default async function CasesPage() {
   }
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -111,8 +179,8 @@ export default async function CasesPage() {
           </Button>
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
-                <PlusCircle className="mr-2 h-4 w-4" />
+              <Button className="bg-emerald-500 hover:bg-emerald-600">
+                <Plus className="w-4 h-4 mr-2" />
                 Nuevo Caso
               </Button>
             </DialogTrigger>
@@ -303,63 +371,57 @@ export default async function CasesPage() {
           {/* Cards View */}
           <TabsContent value="cards" className="space-y-4">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredCases.length === 0 ? (
-                <p className="col-span-full text-center text-muted-foreground">No hay casos registrados aún.</p>
-              ) : (
-                filteredCases.map((case_item) => (
-                  <Card key={case_item.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline" className={getStatusColor(case_item.status)}>
-                          {case_item.status}
-                        </Badge>
-                        <Badge variant="outline" className={getPriorityColor(case_item.priority)}>
-                          {case_item.priority}
-                        </Badge>
+              {filteredCases.map((case_item) => (
+                <Card key={case_item.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className={getStatusColor(case_item.status)}>
+                        {case_item.status}
+                      </Badge>
+                      <Badge variant="outline" className={getPriorityColor(case_item.priority)}>
+                        {case_item.priority}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-lg">{case_item.title}</CardTitle>
+                    <CardDescription className="line-clamp-2">{case_item.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Progreso</span>
+                        <span className="font-medium">{case_item.progress}%</span>
                       </div>
-                      <CardTitle className="text-lg">{case_item.title}</CardTitle>
-                      <CardDescription className="line-clamp-2">
-                        {case_item.description?.substring(0, 100)}...
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Progreso</span>
-                          <span className="font-medium">{case_item.progress}%</span>
-                        </div>
-                        <Progress value={case_item.progress} className="h-2" />
-                      </div>
+                      <Progress value={case_item.progress} className="h-2" />
+                    </div>
 
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                          <span>Cliente: {case_item.client}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span>Vence: {case_item.dueDate}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                          <span>{case_item.messages} mensajes</span>
-                        </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center space-x-2">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <span>Cliente: {case_item.client}</span>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span>Vence: {case_item.dueDate}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                        <span>{case_item.messages} mensajes</span>
+                      </div>
+                    </div>
 
-                      <div className="flex items-center space-x-2 pt-2">
-                        <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                          <Eye className="w-4 h-4 mr-1" />
-                          Ver
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                          <Edit className="w-4 h-4 mr-1" />
-                          Editar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+                    <div className="flex items-center space-x-2 pt-2">
+                      <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                        <Eye className="w-4 h-4 mr-1" />
+                        Ver
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                        <Edit className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
         </Tabs>

@@ -2,9 +2,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Plus, Send, Eye, X, FileText, ArrowRight } from "lucide-react"
-import Link from "next/link"
-import { createClient } from "@/lib/supabase-server"
+import { Plus, Send, Eye, X, FileText } from "lucide-react"
 
 interface AdvisorCase {
   id: number
@@ -29,7 +27,7 @@ interface AdvisorCasesSectionProps {
   setCaseFilter: (filter: string) => void
 }
 
-export default async function AdvisorCasesSection({
+export function AdvisorCasesSection({
   advisorCases,
   openChatForCase,
   selectedCase,
@@ -37,14 +35,6 @@ export default async function AdvisorCasesSection({
   caseFilter,
   setCaseFilter,
 }: AdvisorCasesSectionProps) {
-  const supabase = createClient()
-  const { data: recentCases, error } = await supabase.from("cases").select("*").limit(3) // Fetch a few recent cases
-
-  if (error) {
-    console.error("Error fetching advisor cases:", error)
-    return <p>Error loading cases.</p>
-  }
-
   const filteredCases = advisorCases.filter((case_item) => {
     if (caseFilter === "all") return true
     return case_item.status.toLowerCase().includes(caseFilter.toLowerCase())
@@ -74,44 +64,6 @@ export default async function AdvisorCasesSection({
           </Button>
         </div>
       </div>
-
-      <Card className="border-border/40">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg font-medium">Casos Recientes</CardTitle>
-          <Link href="/dashboard/cases">
-            <Button variant="link" size="sm" className="text-emerald-500">
-              Ver todos <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recentCases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tienes casos recientes asignados actualmente.</p>
-          ) : (
-            <ul className="space-y-3">
-              {recentCases.map((caseItem) => (
-                <li key={caseItem.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{caseItem.title}</p>
-                    <p className="text-xs text-muted-foreground">Cliente: {caseItem.client_name || "N/A"}</p>
-                  </div>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      caseItem.status === "pending"
-                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                        : caseItem.status === "active"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                    }`}
-                  >
-                    {caseItem.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
 
       <Card className="border-border/40">
         <CardContent className="p-0">

@@ -3,9 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Share2, Gift, UserPlus, DollarSign, TrendingUp, CheckCircle, Copy, ArrowRight, Users } from "lucide-react"
-import Link from "next/link"
-import { createClient } from "@/lib/supabase-server"
+import { Share2, Gift, UserPlus, Users, DollarSign, TrendingUp, CheckCircle, Copy } from "lucide-react"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -35,22 +33,13 @@ interface ReferralsSectionProps {
   referralStats: ReferralStats
 }
 
-export default async function ReferralsSection({
+export function ReferralsSection({
   profile,
   referralCode,
   copySuccess,
   copyReferralLink,
   referralStats,
 }: ReferralsSectionProps) {
-  const supabase = createClient()
-  // In a real app, you'd fetch referrals for the advisor
-  const { data: referrals, error } = await supabase.from("referrals").select("*").limit(3)
-
-  if (error) {
-    console.error("Error fetching referrals:", error)
-    return <p>Error loading referrals.</p>
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -228,45 +217,6 @@ export default async function ReferralsSection({
               Email
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* My Referrals Card */}
-      <Card className="border-border/40">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg font-medium">Mis Referidos</CardTitle>
-          <Link href="/dashboard/referrals">
-            <Button variant="link" size="sm" className="text-emerald-500">
-              Ver todos <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {referrals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tienes referidos aún.</p>
-          ) : (
-            <ul className="space-y-3">
-              {referrals.map((referral) => (
-                <li key={referral.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{referral.referred_email}</p>
-                    <p className="text-xs text-muted-foreground">Estado: {referral.status}</p>
-                  </div>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      referral.status === "pending"
-                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                        : referral.status === "converted"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                    }`}
-                  >
-                    {referral.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
         </CardContent>
       </Card>
     </div>

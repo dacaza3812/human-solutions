@@ -6,6 +6,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-04-10",
 })
 
+const priceIdMap: { [key: number]: string } = {
+  1: process.env.STRIPE_PRICE_ID_STANDARD!,
+  2: process.env.STRIPE_PRICE_ID_PREMIUM!,
+  3: process.env.STRIPE_PRICE_ID_COLLABORATIVE!,
+}
+
 export async function POST(req: NextRequest) {
   const { planId } = await req.json()
   const supabase = createClient()
@@ -18,20 +24,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User not authenticated" }, { status: 401 })
   }
 
-  let priceId: string
+  const priceId = priceIdMap[planId]
 
-  switch (planId) {
-    case 1:
-      priceId = process.env.STRIPE_PRICE_ID_STANDARD!
-      break
-    case 2:
-      priceId = process.env.STRIPE_PRICE_ID_PREMIUM!
-      break
-    case 3:
-      priceId = process.env.STRIPE_PRICE_ID_COLLABORATIVE!
-      break
-    default:
-      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 })
+  if (!priceId) {
+    return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 })
   }
 
   try {
@@ -52,9 +48,9 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json({ sessionId: session.id, url: session.url })
-  } catch (error) {
+    return NextResponse.json({ sessionId: session.id })
+  } catch (error: any) {
     console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

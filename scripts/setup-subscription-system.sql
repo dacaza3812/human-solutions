@@ -44,6 +44,32 @@ CREATE TABLE IF NOT EXISTS public.payments (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create user subscriptions table
+CREATE TABLE IF NOT EXISTS public.user_subscriptions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  plan_id INT NOT NULL REFERENCES public.plans(id),
+  stripe_customer_id TEXT NOT NULL,
+  stripe_subscription_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  current_period_start TIMESTAMP WITH TIME ZONE NOT NULL,
+  current_period_end TIMESTAMP WITH TIME ZONE NOT NULL,
+  cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Set up RLS for user_subscriptions
+ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own subscriptions." ON public.user_subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own subscriptions." ON public.user_subscriptions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own subscriptions." ON public.user_subscriptions
+  FOR UPDATE USING (auth.uid() = user_id);
+
 -- Create triggers for updated_at
 CREATE TRIGGER handle_plans_updated_at 
   BEFORE UPDATE ON public.plans 

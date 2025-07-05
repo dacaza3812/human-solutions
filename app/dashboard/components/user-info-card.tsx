@@ -1,32 +1,53 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { createClient } from "@/lib/supabase-server"
+import type { User } from "@supabase/supabase-js"
 
-export default async function UserInfoCard() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", user?.id).single()
+// Define un tipo para el perfil de usuario si no existe
+interface UserProfile {
+  id: string
+  first_name?: string | null
+  last_name?: string | null
+  account_type?: string | null
+  phone?: string | null
+  created_at?: string | null
+  referral_code?: string | null
+  stripe_customer_id?: string | null
+  // Añade cualquier otro campo de perfil que uses
+}
 
-  if (error) {
-    console.error("Error fetching user profile:", error)
-    return <p>Error loading user info.</p>
-  }
+interface UserInfoCardProps {
+  user: User | null
+  profile: UserProfile | null
+}
 
+export function UserInfoCard({ user, profile }: UserInfoCardProps) {
   return (
-    <Card className="col-span-full lg:col-span-1">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-medium">Bienvenido, {profile?.full_name || "Usuario"}</CardTitle>
+    <Card className="border-border/40">
+      <CardHeader>
+        <CardTitle className="text-foreground">Información de la Cuenta</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center text-center">
-        <Avatar className="h-24 w-24 mb-4">
-          <AvatarImage src={profile?.avatar_url || "/placeholder-user.jpg"} alt={profile?.full_name || "User Avatar"} />
-          <AvatarFallback className="text-4xl">{profile?.full_name ? profile.full_name[0] : "U"}</AvatarFallback>
-        </Avatar>
-        <h3 className="text-xl font-semibold">{profile?.full_name || "Nombre de Usuario"}</h3>
-        <p className="text-sm text-muted-foreground">{user?.email}</p>
-        <p className="text-sm text-muted-foreground mt-2">Rol: {profile?.role || "Cliente"}</p>
+      <CardContent>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Correo Electrónico</p>
+            <p className="font-medium">{user?.email}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Tipo de Cuenta</p>
+            <p className="font-medium capitalize">{profile?.account_type}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Teléfono</p>
+            <p className="font-medium">{profile?.phone || "No especificado"}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Fecha de Registro</p>
+            <p className="font-medium">
+              {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A"}
+            </p>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

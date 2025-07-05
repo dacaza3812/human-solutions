@@ -9,28 +9,22 @@ import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  allowedRoles?: string[]
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, loading, profile } = useAuth()
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push("/login")
-      } else if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-        // If user is logged in but role is not allowed, redirect to dashboard or an unauthorized page
-        router.push("/dashboard") // Or a specific unauthorized page
-      }
+    if (!loading && !user) {
+      router.push("/login")
     }
-  }, [user, loading, profile, allowedRoles, router])
+  }, [user, loading, router])
 
-  if (loading || !user || (allowedRoles && profile && !allowedRoles.includes(profile.role))) {
+  if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     )
   }

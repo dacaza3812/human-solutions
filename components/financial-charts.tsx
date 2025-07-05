@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TrendingUp, TrendingDown, DollarSign, Users } from "lucide-react"
-import { CartesianGrid, XAxis, Line, LineChart, ResponsiveContainer } from "recharts"
-import { ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 // Mock financial data
 const monthlyEarnings = [
@@ -101,13 +101,24 @@ const transactionData = [
 ]
 
 const chartData = [
-  { month: "Ene", desktop: 186 },
-  { month: "Feb", desktop: 305 },
-  { month: "Mar", desktop: 237 },
-  { month: "Abr", desktop: 73 },
-  { month: "May", desktop: 209 },
-  { month: "Jun", desktop: 214 },
+  { month: "Enero", desktop: 186, mobile: 80 },
+  { month: "Febrero", desktop: 305, mobile: 200 },
+  { month: "Marzo", desktop: 237, mobile: 120 },
+  { month: "Abril", desktop: 73, mobile: 190 },
+  { month: "Mayo", desktop: 209, mobile: 130 },
+  { month: "Junio", desktop: 214, mobile: 140 },
 ]
+
+const chartConfig = {
+  desktop: {
+    label: "Desktop",
+    color: "hsl(var(--chart-1))",
+  },
+  mobile: {
+    label: "Mobile",
+    color: "hsl(var(--chart-2))",
+  },
+} satisfies ChartConfig
 
 interface FinancialChartsProps {
   dateRange: { start: string; end: string }
@@ -248,24 +259,35 @@ export function FinancialCharts({ dateRange }: FinancialChartsProps) {
         </CardContent>
       </Card>
 
-      {/* Desktop Usage Chart */}
+      {/* Bar Chart */}
       <Card className="border-border/40">
         <CardHeader>
-          <CardTitle className="flex items-center text-foreground">
-            <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
-            Uso de Escritorio Mensual
-          </CardTitle>
+          <CardTitle>Gráfico de Barras</CardTitle>
+          <CardDescription>Enero - Junio 2024</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-              <Line dataKey="desktop" type="monotone" stroke="#8884d8" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <ChartContainer config={chartConfig}>
+            <BarChart accessibilityLayer data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tickFormatter={(value) => value.slice(0, 3)}
+              />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+              <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
+              <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
+        <CardFooter className="flex-col items-start gap-2 text-sm">
+          <div className="flex gap-2 font-medium">
+            Tendencia de ingresos en aumento este mes <TrendingUp className="h-4 w-4" />
+          </div>
+          <div className="text-muted-foreground">Basado en datos de los últimos 6 meses</div>
+        </CardFooter>
       </Card>
 
       {/* Transactions Table */}

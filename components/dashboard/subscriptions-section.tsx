@@ -1,74 +1,45 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { CheckCircle, XCircle, Loader2, Info } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useAuth } from "@/contexts/auth-context"
-import { useStripeCheckout } from "@/hooks/use-stripe-checkout"
-import { supabase } from "@/lib/supabase"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import {
-  Loader2,
-  CheckCircle,
-  CreditCard,
-  Calendar,
-  DollarSign,
-  AlertCircle,
-  Crown,
-  Star,
-  Zap,
-  X,
-  RefreshCw,
-} from "lucide-react"
-
-interface SubscriptionInfo {
-  plan_id?: number
-  plan_name?: string
-  plan_price?: number
-  plan_currency?: string
-  plan_billing_interval?: string
-  subscription_status?: string
-  subscription_start_date?: string
-  subscription_end_date?: string
-  stripe_customer_id?: string
-  stripe_subscription_id?: string
-}
 
 interface Subscription {
   id: string
-  plan_id: number
-  plans: { name: string; price: number }
   status: string
-  current_period_start: string
   current_period_end: string
-  stripe_subscription_id: string
   cancel_at_period_end: boolean
+  plan_id: number
 }
 
-const plans = [
+interface Plan {
+  id: number
+  name: string
+  price: string
+  frequency: string
+  features: string[]
+}
+
+const plans: Plan[] = [
   {
     id: 1,
     name: "Standard",
     price: "$49.99",
     frequency: "mensual",
-    description: "Ideal para necesidades básicas de asesoría.",
     features: ["3 consultas/mes", "Soporte por email", "Acceso a recursos básicos", "Prioridad estándar"],
-    buttonText: "Elegir Plan Standard",
-    highlight: false,
-    icon: CheckCircle,
   },
   {
     id: 2,
     name: "Premium",
     price: "$149.99",
     frequency: "mensual",
-    description: "Para un soporte más completo y personalizado.",
     features: [
       "10 consultas/mes",
       "Soporte prioritario",
@@ -76,16 +47,12 @@ const plans = [
       "Seguimiento personalizado",
       "Prioridad alta",
     ],
-    buttonText: "Elegir Plan Premium",
-    highlight: true,
-    icon: Crown,
   },
   {
     id: 3,
     name: "Collaborative",
     price: "$299.99",
     frequency: "mensual",
-    description: "Solución integral para equipos o familias.",
     features: [
       "Consultas ilimitadas",
       "Asesor dedicado 24/7",
@@ -93,508 +60,198 @@ const plans = [
       "Reportes personalizados",
       "Prioridad empresarial",
     ],
-    buttonText: "Elegir Plan Collaborative",
-    highlight: false,
-    icon: Star,
   },
 ]
 
 export function SubscriptionsSection() {
-  const { user, profile } = useAuth()
-  const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripeCheckout()
-  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showPlans, setShowPlans] = useState(false)
-  const [cancelLoading, setCancelLoading] = useState(false)
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const [loadingSubscriptionId, setLoadingSubscriptionId] = useState<string | null>(null)
-  const { toast } = useToast()
+  const [success, setSuccess] = useState<string | null>(null)
+  const supabase = createClientComponentClient()
+  const { user } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
-    if (profile?.id) {
-      fetchSubscriptionInfo()
-    }
-  }, [profile])
-
-  const fetchSubscriptionInfo = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Obtener información de suscripción del perfil del usuario
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select(`
-          plan_id,
-          subscription_status,
-          subscription_start_date,
-          subscription_end_date,
-          stripe_customer_id,
-          stripe_subscription_id,
-          plans:plan_id (
-            id,
-            name,
-            price,
-            currency,
-            billing_interval
-          )
-        `)
-        .eq("id", profile?.id)
-        .single()
-
-      if (profileError) {
-        throw profileError
+    async function fetchSubscription() {
+      if (!user) {
+        setLoading(false)
+        return
       }
 
-      if (profileData && profileData.plans) {
-        setSubscriptionInfo({
-          plan_id: profileData.plan_id,
-          plan_name: profileData.plans.name,
-          plan_price: profileData.plans.price,
-          plan_currency: profileData.plans.currency,
-          plan_billing_interval: profileData.plans.billing_interval,
-          subscription_status: profileData.subscription_status,
-          subscription_start_date: profileData.subscription_start_date,
-          subscription_end_date: profileData.subscription_end_date,
-          stripe_customer_id: profileData.stripe_customer_id,
-          stripe_subscription_id: profileData.stripe_subscription_id,
-        })
-      } else {
-        setSubscriptionInfo(null)
+      const { data, error } = await supabase.from("user_subscriptions").select("*").eq("user_id", user.id).single()
+
+      if (error && error.code !== "PGRST116") {
+        // PGRST116 means no rows found
+        console.error("Error fetching subscription:", error)
+        setError("Error al cargar la información de la suscripción.")
+      } else if (data) {
+        setSubscription(data)
       }
-
-      // Fetch historical subscriptions
-      const { data: subscriptionsData, error: subscriptionsError } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("stripe_customer_id", profileData.stripe_customer_id)
-
-      if (subscriptionsError) {
-        throw subscriptionsError
-      }
-
-      setSubscriptions(subscriptionsData || [])
-    } catch (err: any) {
-      console.error("Error fetching subscription info:", err)
-      setError(err.message || "Error al cargar la información de suscripción")
-    } finally {
       setLoading(false)
     }
-  }
 
-  const handlePlanSelection = async (planId: number) => {
-    await createCheckoutSession(planId)
-  }
+    fetchSubscription()
+  }, [user, supabase])
 
-  const handleCancelSubscription = async (subscriptionId: string) => {
-    setLoadingSubscriptionId(subscriptionId)
+  const handleCancelSubscription = async () => {
+    if (!subscription?.stripe_subscription_id) return
+
+    setActionLoading(true)
+    setError(null)
+    setSuccess(null)
+
     try {
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ subscriptionId }),
+        body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
       })
+
       const data = await response.json()
 
-      if (response.ok && data.success) {
-        toast({
-          title: "Suscripción Cancelada",
-          description: "Tu suscripción ha sido cancelada exitosamente.",
-        })
-        // Update the local state to reflect the cancellation
-        setSubscriptions((prevSubs) =>
-          prevSubs.map((sub) =>
-            sub.stripe_subscription_id === subscriptionId
-              ? {
-                  ...sub,
-                  status: data.subscription.status,
-                  cancel_at_period_end: data.subscription.cancel_at_period_end,
-                }
-              : sub,
-          ),
-        )
+      if (response.ok) {
+        setSuccess("Suscripción cancelada con éxito. Se mantendrá activa hasta el final del período actual.")
+        setSubscription((prev) => (prev ? { ...prev, cancel_at_period_end: true } : null))
       } else {
-        toast({
-          title: "Error al Cancelar",
-          description: data.error || "No se pudo cancelar la suscripción.",
-          variant: "destructive",
-        })
+        setError(data.error || "Error al cancelar la suscripción.")
       }
-    } catch (error) {
-      console.error("Error cancelling subscription:", error)
-      toast({
-        title: "Error de Red",
-        description: "No se pudo conectar con el servidor para cancelar la suscripción.",
-        variant: "destructive",
-      })
+    } catch (err) {
+      console.error("Error cancelling subscription:", err)
+      setError("Error de conexión al cancelar la suscripción.")
     } finally {
-      setLoadingSubscriptionId(null)
+      setActionLoading(false)
     }
   }
 
-  const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case "active":
-        return (
-          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">Activa</Badge>
-        )
-      case "canceled":
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">Cancelada</Badge>
-      case "past_due":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">Vencida</Badge>
-        )
-      default:
-        return <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">Inactiva</Badge>
-    }
-  }
-
-  const getPlanIcon = (planName?: string) => {
-    switch (planName?.toLowerCase()) {
-      case "premium":
-        return Crown
-      case "collaborative":
-        return Star
-      default:
-        return CheckCircle
-    }
+  const handleManageSubscription = () => {
+    // This would typically redirect to Stripe's customer portal
+    // For now, we'll just log or show a message
+    alert("Funcionalidad para gestionar suscripción (portal de clientes de Stripe) no implementada.")
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-            <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-          </div>
-        </div>
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-              <span className="ml-2 text-muted-foreground">Cargando información de suscripción...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Suscripción</CardTitle>
+          <CardDescription>Gestiona tu plan de suscripción.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-40">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
     )
   }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-            <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-          </div>
-        </div>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-        <Button onClick={fetchSubscriptionInfo} variant="outline">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Reintentar
-        </Button>
-      </div>
-    )
-  }
+  const currentPlan = subscription ? plans.find((p) => p.id === subscription.plan_id) : null
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-          <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-        </div>
-        {subscriptionInfo && (
-          <Button
-            variant="outline"
-            onClick={() => setShowPlans(!showPlans)}
-            className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-          >
-            {showPlans ? (
-              <>
-                <X className="w-4 h-4 mr-2" />
-                Ocultar Planes
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 mr-2" />
-                Cambiar Plan
-              </>
-            )}
-          </Button>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Suscripción</CardTitle>
+        <CardDescription>Gestiona tu plan de suscripción.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-      </div>
+        {success && (
+          <Alert>
+            <AlertTitle>Éxito</AlertTitle>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
 
-      {/* Error de checkout */}
-      {checkoutError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{checkoutError}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Información de suscripción actual */}
-      {subscriptionInfo ? (
-        <Card className="border-border/40">
-          <CardHeader>
+        {!user ? (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>No autenticado</AlertTitle>
+            <AlertDescription>
+              Por favor,{" "}
+              <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/login")}>
+                inicia sesión
+              </Button>{" "}
+              para ver y gestionar tu suscripción.
+            </AlertDescription>
+          </Alert>
+        ) : !subscription ? (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Sin suscripción activa</AlertTitle>
+            <AlertDescription>
+              Actualmente no tienes una suscripción activa.{" "}
+              <Button variant="link" className="p-0 h-auto" onClick={() => router.push("/planes")}>
+                Elige un plan
+              </Button>{" "}
+              para comenzar.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {(() => {
-                  const IconComponent = getPlanIcon(subscriptionInfo.plan_name)
-                  return <IconComponent className="w-6 h-6 text-emerald-400" />
-                })()}
-                <div>
-                  <CardTitle className="text-xl text-foreground">Plan {subscriptionInfo.plan_name}</CardTitle>
-                  <CardDescription>Tu suscripción actual</CardDescription>
-                </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Plan Actual</p>
+                <p className="text-2xl font-bold">{currentPlan?.name || "Desconocido"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {currentPlan?.price} / {currentPlan?.frequency}
+                </p>
               </div>
-              {getStatusBadge(subscriptionInfo.subscription_status)}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Precio</p>
-                  <p className="font-semibold text-foreground">
-                    {subscriptionInfo.plan_currency?.toUpperCase()} ${subscriptionInfo.plan_price}
-                    <span className="text-sm text-muted-foreground">/{subscriptionInfo.plan_billing_interval}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Fecha de Inicio</p>
-                  <p className="font-semibold text-foreground">
-                    {subscriptionInfo.subscription_start_date
-                      ? new Date(subscriptionInfo.subscription_start_date).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Próximo Pago</p>
-                  <p className="font-semibold text-foreground">
-                    {subscriptionInfo.subscription_end_date
-                      ? new Date(subscriptionInfo.subscription_end_date).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
+              <Button variant="outline" onClick={() => router.push("/planes")}>
+                Cambiar Plan
+              </Button>
             </div>
 
             <Separator />
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowPlans(!showPlans)}
-                className="flex-1 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Cambiar Plan
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCancelSubscription}
-                disabled={cancelLoading || subscriptionInfo.subscription_status !== "active"}
-                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white bg-transparent"
-              >
-                {cancelLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Cancelando...
-                  </>
-                ) : (
-                  <>
-                    <X className="w-4 h-4 mr-2" />
-                    Cancelar Suscripción
-                  </>
-                )}
-              </Button>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Estado de la Suscripción</p>
+              <div className="flex items-center space-x-2">
+                {subscription.status === "active" && <CheckCircle className="h-5 w-5 text-green-500" />}
+                {subscription.status !== "active" && <XCircle className="h-5 w-5 text-red-500" />}
+                <span className="text-lg font-semibold capitalize">{subscription.status}</span>
+              </div>
+              {subscription.current_period_end && (
+                <p className="text-sm text-muted-foreground">
+                  Período actual termina el: {format(new Date(subscription.current_period_end), "dd/MM/yyyy")}
+                </p>
+              )}
+              {subscription.cancel_at_period_end && (
+                <p className="text-sm text-orange-500 flex items-center">
+                  <Info className="h-4 w-4 mr-1" />
+                  Tu suscripción se cancelará al final del período actual.
+                </p>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        /* Sin suscripción activa */
-        <Card className="border-border/40">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl text-foreground">No tienes una suscripción activa</CardTitle>
-            <CardDescription>Elige un plan para comenzar a disfrutar de nuestros servicios</CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground mb-6">
-              Selecciona uno de nuestros planes para acceder a asesoría personalizada y transformar tu vida.
-            </p>
-            <Button onClick={() => setShowPlans(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white">
-              Ver Planes Disponibles
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Planes disponibles */}
-      {showPlans && (
-        <div className="space-y-6">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold text-foreground mb-2">Planes Disponibles</h3>
-            <p className="text-muted-foreground">
-              {subscriptionInfo ? "Cambia a un plan diferente" : "Elige el plan que mejor se adapte a tus necesidades"}
-            </p>
-          </div>
+            <Separator />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={`border-border/40 ${plan.highlight ? "border-emerald-500 ring-2 ring-emerald-500" : ""} ${
-                  subscriptionInfo?.plan_id === plan.id ? "bg-emerald-500/5 border-emerald-500" : "bg-card/50"
-                } hover:bg-card/80 transition-colors flex flex-col`}
-              >
-                <CardHeader className="text-center pb-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <plan.icon className="w-8 h-8 text-emerald-400" />
-                  </div>
-                  <CardTitle className="text-xl font-bold text-foreground">{plan.name}</CardTitle>
-                  <CardDescription className="text-muted-foreground">{plan.description}</CardDescription>
-                  {subscriptionInfo?.plan_id === plan.id && (
-                    <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-                      Plan Actual
-                    </Badge>
+            <div className="flex flex-col gap-2">
+              {!subscription.cancel_at_period_end && (
+                <Button variant="destructive" onClick={handleCancelSubscription} disabled={actionLoading}>
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cancelando...
+                    </>
+                  ) : (
+                    "Cancelar Suscripción"
                   )}
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-between p-6 pt-0">
-                  <div className="text-center mb-6">
-                    <p className="text-4xl font-bold text-foreground">
-                      {plan.price}
-                      <span className="text-lg text-muted-foreground">/{plan.frequency}</span>
-                    </p>
-                  </div>
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${
-                      plan.highlight
-                        ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                        : "bg-muted-foreground hover:bg-muted-foreground/80 text-white"
-                    }`}
-                    size="lg"
-                    onClick={() => handlePlanSelection(plan.id)}
-                    disabled={checkoutLoading || subscriptionInfo?.plan_id === plan.id}
-                  >
-                    {checkoutLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : subscriptionInfo?.plan_id === plan.id ? (
-                      "Plan Actual"
-                    ) : (
-                      plan.buttonText
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleManageSubscription} disabled={actionLoading}>
+                Gestionar en Stripe
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Historial de Suscripciones */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Historial de Suscripciones</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {subscriptions.length === 0 ? (
-            <p className="text-center text-muted-foreground">No tienes suscripciones activas o pasadas.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Inicio</TableHead>
-                  <TableHead>Fin</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subscriptions.map((sub) => (
-                  <TableRow key={sub.id}>
-                    <TableCell>{sub.plans?.name || "N/A"}</TableCell>
-                    <TableCell>${sub.plans?.price?.toFixed(2) || "0.00"}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          sub.status === "active"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : sub.status === "canceled" || sub.status === "unpaid"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                        }`}
-                      >
-                        {sub.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>{format(new Date(sub.current_period_start), "dd/MM/yyyy", { locale: es })}</TableCell>
-                    <TableCell>{format(new Date(sub.current_period_end), "dd/MM/yyyy", { locale: es })}</TableCell>
-                    <TableCell className="text-right">
-                      {sub.status === "active" && !sub.cancel_at_period_end && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleCancelSubscription(sub.stripe_subscription_id)}
-                          disabled={loadingSubscriptionId === sub.stripe_subscription_id}
-                        >
-                          {loadingSubscriptionId === sub.stripe_subscription_id ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            "Cancelar"
-                          )}
-                        </Button>
-                      )}
-                      {sub.cancel_at_period_end && (
-                        <span className="text-sm text-muted-foreground">Cancela al final del período</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

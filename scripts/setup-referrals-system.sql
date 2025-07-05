@@ -5,32 +5,22 @@ ADD COLUMN IF NOT EXISTS referred_by TEXT;
 
 -- Create referrals table for tracking referral relationships
 CREATE TABLE IF NOT EXISTS public.referrals (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  referrer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  referred_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  referral_code TEXT NOT NULL,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'inactive')),
-  commission_earned DECIMAL(10,2) DEFAULT 0.00,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(referrer_id, referred_id)
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  referrer_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  referred_email TEXT NOT NULL UNIQUE,
+  status TEXT DEFAULT 'pending' NOT NULL, -- e.g., 'pending', 'signed_up', 'converted'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Enable RLS on referrals table
 ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for referrals table
-CREATE POLICY "Users can view own referrals" ON public.referrals
-  FOR SELECT USING (
-    auth.uid() = referrer_id OR 
-    auth.uid() = referred_id
-  );
+CREATE POLICY "Users can view their own referrals." ON public.referrals
+  FOR SELECT USING (auth.uid() = referrer_id);
 
-CREATE POLICY "Users can insert own referrals" ON public.referrals
+CREATE POLICY "Users can insert new referrals." ON public.referrals
   FOR INSERT WITH CHECK (auth.uid() = referrer_id);
-
-CREATE POLICY "Users can update own referrals" ON public.referrals
-  FOR UPDATE USING (auth.uid() = referrer_id);
 
 -- Create function to generate unique referral code
 CREATE OR REPLACE FUNCTION generate_referral_code(first_name TEXT, last_name TEXT)
@@ -109,8 +99,6 @@ BEGIN
     NEW.raw_user_meta_data->>'phone',
     COALESCE(NEW.raw_user_meta_data->>'account_type', 'client'),
     ref_code,
-    NEW.raw_user_meta_data->>'  'client'),
-    ref_code,
     NEW.raw_user_meta_data->>'referral_code'
   );
   
@@ -125,16 +113,12 @@ BEGIN
     IF referrer_profile_id IS NOT NULL THEN
       INSERT INTO public.referrals (
         referrer_id,
-        referred_id,
-        referral_code,
-        status,
-        commission_earned
+        referred_email,
+        status
       ) VALUES (
         referrer_profile_id,
-        NEW.id,
-        NEW.raw_user_meta_data->>'referral_code',
-        'active',
-        25.00
+        NEW.email,
+        'active'
       );
     END IF;
   END IF;
@@ -176,18 +160,16 @@ CREATE TRIGGER handle_referrals_updated_at
 CREATE INDEX IF NOT EXISTS idx_profiles_referral_code ON public.profiles(referral_code);
 CREATE INDEX IF NOT EXISTS idx_profiles_referred_by ON public.profiles(referred_by);
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON public.referrals(referrer_id);
-CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON public.referrals(referred_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred_email ON public.referrals(referred_email);
 CREATE INDEX IF NOT EXISTS idx_referrals_created_at ON public.referrals(created_at);
 
 -- Insert sample referral data (optional)
 -- This is just for testing purposes
-INSERT INTO public.referrals (referrer_id, referred_id, referral_code, status, commission_earned)
+INSERT INTO public.referrals (referrer_id, referred_email, status)
 SELECT 
   p1.id as referrer_id,
-  p2.id as referred_id,
-  p1.referral_code,
-  'active',
-  25.00
+  p2.email as referred_email,
+  'active'
 FROM public.profiles p1
 CROSS JOIN public.profiles p2
 WHERE p1.id != p2.id 
@@ -195,6 +177,6 @@ WHERE p1.id != p2.id
   AND p2.account_type = 'client'
   AND NOT EXISTS (
     SELECT 1 FROM public.referrals r 
-    WHERE r.referrer_id = p1.id AND r.referred_id = p2.id
+    WHERE r.referrer_id = p1.id AND r.referred_email = p2.email
   )
 LIMIT 5;

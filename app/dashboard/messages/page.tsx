@@ -1,10 +1,8 @@
 "use client"
 
 import type React from "react"
-import { createClient } from "@/lib/supabase-server"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
-import { useState, useEffect } from "react"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,24 +26,6 @@ export default function MessagesPage() {
   const [selectedChat, setSelectedChat] = useState(1)
   const [newMessage, setNewMessage] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
-  const [messagesData, setMessagesData] = useState([])
-  const [error, setError] = useState(null)
-  const supabase = createClient()
-
-  useEffect(() => {
-    const fetchMessages = async () => {
-      const { data, error } = await supabase.from("messages").select("*").order("created_at", { ascending: false })
-      setMessagesData(data || [])
-      setError(error)
-    }
-
-    fetchMessages()
-  }, [])
-
-  if (error) {
-    console.error("Error fetching messages:", error)
-    return <div>Error loading messages.</div>
-  }
 
   const conversations = [
     {
@@ -94,7 +74,67 @@ export default function MessagesPage() {
     },
   ]
 
-  const messages = messagesData || []
+  const messages = [
+    {
+      id: 1,
+      senderId: 2,
+      senderName: "Dr. María González",
+      content:
+        "Hola! Espero que estés bien. He revisado tu situación financiera y tengo algunas recomendaciones importantes que compartir contigo.",
+      timestamp: "10:30 AM",
+      type: "text",
+    },
+    {
+      id: 2,
+      senderId: 1,
+      senderName: "Tú",
+      content:
+        "¡Hola doctora! Muchas gracias por tomarse el tiempo. Estoy muy interesado en escuchar sus recomendaciones.",
+      timestamp: "10:32 AM",
+      type: "text",
+    },
+    {
+      id: 3,
+      senderId: 2,
+      senderName: "Dr. María González",
+      content:
+        "Excelente. Primero, creo que sería beneficioso establecer un fondo de emergencia que cubra al menos 6 meses de gastos. También he identificado algunas áreas donde podemos optimizar tus inversiones.",
+      timestamp: "10:35 AM",
+      type: "text",
+    },
+    {
+      id: 4,
+      senderId: 1,
+      senderName: "Tú",
+      content: "Eso suena muy bien. ¿Podríamos programar una videollamada para discutir esto en detalle?",
+      timestamp: "10:37 AM",
+      type: "text",
+    },
+    {
+      id: 5,
+      senderId: 2,
+      senderName: "Dr. María González",
+      content: "Por supuesto! ¿Te parece bien mañana a las 10:00 AM? Te enviaré el enlace de la videollamada.",
+      timestamp: "10:40 AM",
+      type: "text",
+    },
+    {
+      id: 6,
+      senderId: 1,
+      senderName: "Tú",
+      content: "Perfecto, ahí estaré. Muchas gracias!",
+      timestamp: "10:42 AM",
+      type: "text",
+    },
+    {
+      id: 7,
+      senderId: 2,
+      senderName: "Dr. María González",
+      content: "Perfecto, entonces nos vemos mañana a las 10:00 AM para revisar tu plan financiero.",
+      timestamp: "10:45 AM",
+      type: "text",
+    },
+  ]
 
   const selectedConversation = conversations.find((conv) => conv.id === selectedChat)
   const filteredConversations = conversations.filter(
@@ -119,7 +159,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -249,19 +289,19 @@ export default function MessagesPage() {
               {/* Messages */}
               <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender_id === 1 ? "justify-end" : "justify-start"}`}>
+                  <div key={message.id} className={`flex ${message.senderId === 1 ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[70%] p-3 rounded-lg ${
-                        message.sender_id === 1 ? "bg-emerald-500 text-white" : "bg-muted"
+                        message.senderId === 1 ? "bg-emerald-500 text-white" : "bg-muted"
                       }`}
                     >
                       <p className="text-sm">{message.content}</p>
                       <p
                         className={`text-xs mt-1 ${
-                          message.sender_id === 1 ? "text-emerald-100" : "text-muted-foreground"
+                          message.senderId === 1 ? "text-emerald-100" : "text-muted-foreground"
                         }`}
                       >
-                        {format(new Date(message.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                        {message.timestamp}
                       </p>
                     </div>
                   </div>
@@ -307,60 +347,6 @@ export default function MessagesPage() {
           )}
         </Card>
       </div>
-
-      {/* Messages Table */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Todos los Mensajes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {messages.length === 0 ? (
-            <p className="text-center text-muted-foreground">No hay mensajes.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-muted">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Remitente
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Asunto
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                      Fecha
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase"
-                    >
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-muted">
-                  {messages.map((message) => (
-                    <tr key={message.id} className="hover:bg-muted/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
-                        {message.sender_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{message.subject}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {format(new Date(message.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-muted-foreground">
-                        <a href={`/dashboard/messages/${message.id}`} className="text-blue-500 hover:underline">
-                          Ver Mensaje
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   )
 }

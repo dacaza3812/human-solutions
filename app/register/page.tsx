@@ -9,101 +9,74 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { useToast } from "@/components/ui/use-toast"
-import { Toaster } from "@/components/ui/toaster"
-import { createClient } from "@/lib/supabase/client" // Client-side Supabase client
-import { Loader2 } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react"
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [fullName, setFullName] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const router = useRouter()
-  const { toast } = useToast()
-  const supabase = createClient()
+  const supabase = createClientComponentClient()
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setSuccessMessage(null)
     setLoading(true)
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Error de registro",
-        description: "Las contraseñas no coinciden.",
-        variant: "destructive",
-      })
+      setError("Las contraseñas no coinciden.")
       setLoading(false)
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-          role: "client", // Default role for new registrations
-        },
+        emailRedirectTo: `${location.origin}/auth/callback`,
       },
     })
 
-    if (error) {
-      toast({
-        title: "Error de registro",
-        description: error.message,
-        variant: "destructive",
-      })
-    } else if (data.user) {
-      // Optionally, insert into profiles table if not handled by trigger
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
-        full_name: fullName,
-        email: email,
-        role: "client",
-      })
-
-      if (profileError) {
-        console.error("Error inserting profile:", profileError)
-        toast({
-          title: "Error de registro",
-          description: "Hubo un problema al guardar tu perfil. Por favor, intenta de nuevo.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      toast({
-        title: "Registro exitoso",
-        description: "Por favor, revisa tu correo electrónico para verificar tu cuenta.",
-      })
-      router.push("/login") // Redirect to login after successful registration
+    if (signUpError) {
+      setError(signUpError.message)
+    } else {
+      setSuccessMessage("¡Registro exitoso! Por favor, revisa tu correo electrónico para confirmar tu cuenta.")
+      setEmail("")
+      setPassword("")
+      setConfirmPassword("")
     }
     setLoading(false)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Registrarse</CardTitle>
-          <CardDescription>Crea una cuenta para comenzar tu transformación.</CardDescription>
+          <CardTitle className="text-3xl font-bold">Regístrate</CardTitle>
+          <CardDescription>Crea tu cuenta para acceder al dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <Label htmlFor="full-name">Nombre Completo</Label>
-              <Input
-                id="full-name"
-                type="text"
-                placeholder="Tu nombre completo"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-              />
-            </div>
+          <form onSubmit={handleSignUp} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {successMessage && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>Éxito</AlertTitle>
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            )}
             <div>
               <Label htmlFor="email">Correo Electrónico</Label>
               <Input
@@ -137,7 +110,7 @@ export default function RegisterPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -150,13 +123,12 @@ export default function RegisterPage() {
           </form>
           <div className="mt-4 text-center text-sm">
             ¿Ya tienes una cuenta?{" "}
-            <Link href="/login" className="text-emerald-500 hover:underline">
-              Iniciar Sesión
+            <Link href="/login" className="underline">
+              Inicia Sesión
             </Link>
           </div>
         </CardContent>
       </Card>
-      <Toaster />
     </div>
   )
 }

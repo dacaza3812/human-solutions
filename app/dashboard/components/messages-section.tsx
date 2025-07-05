@@ -1,14 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ChatInterface } from "@/components/chat-interface"
-import { ArrowRight } from "lucide-react"
-import Link from "next/link"
-import { createClient } from "@/lib/supabase-server"
-import { formatDistanceToNow } from "date-fns"
-import { es } from "date-fns/locale"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -58,54 +53,9 @@ interface MessagesSectionProps {
   advisorCases: AdvisorCase[]
 }
 
-export default async function MessagesSection({
-  profile,
-  activeChat,
-  setActiveChat,
-  userCases,
-  advisorCases,
-}: MessagesSectionProps) {
-  const supabase = createClient()
-  // In a real app, you'd fetch messages relevant to the user/advisor
-  const { data: messages, error } = await supabase.from("messages").select("*").limit(3)
-
-  if (error) {
-    console.error("Error fetching messages:", error)
-    return <p>Error loading messages.</p>
-  }
-
+export function MessagesSection({ profile, activeChat, setActiveChat, userCases, advisorCases }: MessagesSectionProps) {
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg font-medium">Mensajes Recientes</CardTitle>
-          <Link href="/dashboard/messages">
-            <Button variant="link" size="sm" className="text-emerald-500">
-              Ver todos <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {messages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay mensajes recientes.</p>
-          ) : (
-            <ul className="space-y-3">
-              {messages.map((message) => (
-                <li key={message.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{message.sender_name}</p>
-                    <p className="text-xs text-muted-foreground">{message.subject}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(message.created_at), { addSuffix: true, locale: es })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Mensajes</h2>

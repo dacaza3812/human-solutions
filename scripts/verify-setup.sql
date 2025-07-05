@@ -1,44 +1,39 @@
--- Verify tables exist
-SELECT 
-  table_name,
-  table_type
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-  AND table_name IN ('profiles', 'referrals');
+-- Verify profiles table and RLS
+SELECT * FROM profiles;
+-- As authenticated user: SELECT * FROM profiles WHERE id = auth.uid();
 
--- Verify functions exist
-SELECT 
-  routine_name,
-  routine_type
-FROM information_schema.routines 
-WHERE routine_schema = 'public' 
-  AND routine_name IN (
-    'handle_new_user', 
-    'generate_referral_code', 
-    'get_referral_stats',
-    'create_referral_relationship',
-    'get_referral_count_by_code'
-  );
+-- Verify user_subscriptions table and RLS
+SELECT * FROM user_subscriptions;
+-- As authenticated user: SELECT * FROM user_subscriptions WHERE user_id = auth.uid();
 
--- Verify triggers exist
-SELECT 
-  trigger_name,
-  event_manipulation,
-  event_object_table
-FROM information_schema.triggers 
-WHERE trigger_schema = 'public'
-  AND trigger_name IN ('on_auth_user_created', 'handle_profiles_updated_at');
+-- Verify inquiries table and RLS
+SELECT * FROM inquiries;
+-- As authenticated user: SELECT * FROM inquiries WHERE email = auth.email();
+-- As advisor: SELECT * FROM inquiries; (if advisor policy is set up)
 
--- Test referral code generation
-SELECT generate_referral_code('Test', 'User') as sample_referral_code;
+-- Verify referrals table and R2LS
+SELECT * FROM referrals;
+-- As authenticated user: SELECT * FROM referrals WHERE referrer_id = auth.uid();
 
--- Check profiles table structure
-SELECT 
-  column_name,
-  data_type,
-  is_nullable,
-  column_default
-FROM information_schema.columns 
-WHERE table_schema = 'public' 
-  AND table_name = 'profiles'
-ORDER BY ordinal_position;
+-- Verify cases table and RLS
+SELECT * FROM cases;
+-- As client: SELECT * FROM cases WHERE client_id = auth.uid();
+-- As advisor: SELECT * FROM cases WHERE advisor_id = auth.uid();
+
+-- Verify messages table and RLS
+SELECT * FROM messages;
+-- As user in a case: SELECT * FROM messages WHERE case_id = 'your_case_id';
+
+-- Verify appointments table and RLS
+SELECT * FROM appointments;
+-- As authenticated user: SELECT * FROM appointments WHERE user_id = auth.uid();
+
+-- Verify quotes table and RLS
+SELECT * FROM quotes;
+-- As user in a case: SELECT * FROM quotes WHERE case_id = 'your_case_id';
+-- As advisor: SELECT * FROM quotes WHERE advisor_id = auth.uid();
+
+-- Verify handle_new_user function and trigger
+-- This requires a new user signup to test.
+-- After a new user signs up, check the profiles table:
+-- SELECT * FROM profiles WHERE id = 'new_user_uuid';

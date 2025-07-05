@@ -9,51 +9,60 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { useToast } from "@/components/ui/use-toast"
-import { Toaster } from "@/components/ui/toaster"
-import { createClient } from "@/lib/supabase/client" // Client-side Supabase client
-import { Loader2 } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react"
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const router = useRouter()
-  const { toast } = useToast()
-  const supabase = createClient()
+  const supabase = createClientComponentClient()
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setSuccessMessage(null)
     setLoading(true)
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`, // Redirect to a page where user can set new password
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/update-password`,
     })
 
-    if (error) {
-      toast({
-        title: "Error al restablecer contraseña",
-        description: error.message,
-        variant: "destructive",
-      })
+    if (resetError) {
+      setError(resetError.message)
     } else {
-      toast({
-        title: "Correo enviado",
-        description: "Revisa tu correo electrónico para obtener instrucciones para restablecer tu contraseña.",
-      })
+      setSuccessMessage("Se ha enviado un enlace de restablecimiento de contraseña a tu correo electrónico.")
       setEmail("")
     }
     setLoading(false)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Restablecer Contraseña</CardTitle>
-          <CardDescription>Ingresa tu correo electrónico para recibir un enlace de restablecimiento.</CardDescription>
+          <CardTitle className="text-3xl font-bold">Restablecer Contraseña</CardTitle>
+          <CardDescription>Ingresa tu correo electrónico para restablecer tu contraseña.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetPassword} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {successMessage && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>Éxito</AlertTitle>
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            )}
             <div>
               <Label htmlFor="email">Correo Electrónico</Label>
               <Input
@@ -65,25 +74,24 @@ export default function ResetPasswordPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Enviando...
                 </>
               ) : (
-                "Enviar Enlace de Restablecimiento"
+                "Restablecer Contraseña"
               )}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            <Link href="/login" className="text-muted-foreground hover:underline">
+            <Link href="/login" className="underline">
               Volver al inicio de sesión
             </Link>
           </div>
         </CardContent>
       </Card>
-      <Toaster />
     </div>
   )
 }
