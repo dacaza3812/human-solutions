@@ -13,7 +13,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
+  const supabase = await createClient() // Added await here
   const {
     data: { user },
   } = await supabase.auth.getUser()
