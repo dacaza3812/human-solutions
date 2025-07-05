@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
+      setLoading(true) // Start loading before fetching session
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
       if (error && error.code !== "PGRST116") {
+        // PGRST116 means "No rows found", which is expected if a profile doesn't exist yet
         console.error("Error fetching profile:", error)
         return
       }

@@ -1,27 +1,19 @@
 import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Log the environment variables to help debug if they are undefined
+console.log("NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
+console.log("NEXT_PUBLIC_SUPABASE_ANON_KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-// Types for our user data
-export interface UserProfile {
+export type UserProfile = {
   id: string
   email: string
-  first_name?: string
-  last_name?: string
-  phone?: string
-  account_type?: "client" | "advisor"
-  referral_code?: string
-  referred_by?: string
+  first_name: string
+  last_name: string
+  phone: string
+  account_type: "client" | "advisor"
+  referred_by: string | null
+  referral_code: string | null
   created_at: string
-  updated_at: string
-}
-
-export interface ReferralStats {
-  total_referrals: number
-  active_referrals: number
-  total_earnings: number
-  monthly_earnings: number
 }
