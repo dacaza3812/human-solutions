@@ -210,7 +210,7 @@ export default function SolucionesHumanas() {
       price: "$99.99",
       frequency: "mensual",
       description: "Ideal para necesidades básicas de asesoría.",
-      features: ["Contacto directo con el CEO una vez por semana", "Acceso a conocimiento esotérico", "comisión de un 50% por la activación de cada plan de sus referidos"],
+      features: ["Contacto directo con el CEO una vez por semana", "Acceso a conocimiento esotérico", "comisión de un 50% por la activación de cada plan de sus referidos directos"],
       buttonText: "Elegir Plan Standard",
       highlight: false,
     },
@@ -370,13 +370,11 @@ export default function SolucionesHumanas() {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Transforma tus problemas en <span className="text-emerald-400">oportunidades</span>
+              Agudiza tu pensamiento  <span className="text-emerald-400">táctico</span>
             </h1>
 
             <p className="text-xl text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se previenen o se resuelven todo tipo de
-              problemas individuales luego de un análisis extremadamente detallado por expertos protegiendo siempre la
-              privacidad y confidencialidad del cliente
+              Fox Lawyer es la plataforma de asesoría personalizada donde se le enseña a usted a comprender la vida tal y como es, no como a usted le gustaría que fuera.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
