@@ -555,10 +555,10 @@ export default function SolucionesHumanas() {
                   <div className="p-4 h-80 rounded-lg border border-purple-500/20 bg-purple-500/5">
                     <h4 className="font-semibold text-purple-400 mb-2">Bonos de Liderazgo</h4>
                     <p className="text-sm text-muted-foreground mb-2">Incentivos adicionales por volumen y mentorías</p>
-                    <div className="flex items-center text-xs text-purple-400">
+                    {/* <div className="flex items-center text-xs text-purple-400">
                       <Award className="w-3 h-3 mr-1" />
                       Hasta $500 USD adicionales mensuales
-                    </div>
+                    </div> */}
                     <p className="text-sm text-muted-foreground mb-2 mt-2">
                       ¡Potencia tu impacto y multiplica tus ingresos con nuestro programa Bonos de Liderazgo ! Diseñado
                       para aquellos que no solo destacan por su desempeño individual.

@@ -194,7 +194,7 @@ export default function Register() {
               )}
 
               {/* Account Type Selection */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="text-sm font-medium">Tipo de Cuenta</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -222,7 +222,7 @@ export default function Register() {
                     Asesor
                   </button>
                 </div>
-              </div>
+              </div> */}
 
               {/* Name Fields */}
               <div className="grid grid-cols-2 gap-4">
