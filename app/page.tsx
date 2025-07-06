@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -41,19 +41,87 @@ import {
   TwitterIcon,
   Loader2,
   AlertCircle,
+  File,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
+import { submitContactForm } from "@/actions/contact"
+
+// Componente para el botón de envío con estado de carga
+function SubmitButton({ isPending }: { isPending: boolean }) {
+  return (
+    <Button type="submit" disabled={isPending} className="flex-1 bg-emerald-500 hover:bg-emerald-600">
+      {isPending ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Enviando...
+        </>
+      ) : (
+        "Enviar Mensaje"
+      )}
+    </Button>
+  )
+}
 
 export default function SolucionesHumanas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [referrals, setReferrals] = useState(1)
   const [monthlyEarnings, setMonthlyEarnings] = useState(50)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const contactFormRef = useRef<HTMLFormElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null)
+
 
   const router = useRouter()
   const { user } = useAuth()
+  const { toast } = useToast()
   const { createCheckoutSession, loading, error } = useStripeCheckout()
+
+  const [isPending, startTransition] = useTransition()
+  const [formState, setFormState] = useState({
+    success: false,
+    message: "",
+    errors: {},
+  })
+
+  useEffect(() => {
+    if (formState.message) {
+      toast({
+        title: formState.success ? "Éxito" : "Error",
+        description: formState.message,
+        variant: formState.success ? "default" : "destructive",
+      })
+      if (formState.success) {
+        contactFormRef.current?.reset()
+        setSelectedFile(null)
+        setFilePreviewUrl(null)
+      }
+    }
+  }, [formState.message, formState.success, toast])
+
+  const handleContactFormSubmit = async (formData: FormData) => {
+      startTransition(async () => {
+        const result = await submitContactForm(formState, formData) // Pass prevState as first argument
+        setFormState(result)
+      })
+    }
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null
+        setSelectedFile(file)
+        if (file) {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            setFilePreviewUrl(reader.result as string)
+          }
+          reader.readAsDataURL(file)
+        } else {
+          setFilePreviewUrl(null)
+        }
+      }
 
   const calculateEarnings = (refs: number) => {
     const directCommission = refs * 50 // $50 USD por cada cliente referido directamente
@@ -243,7 +311,7 @@ export default function SolucionesHumanas() {
         "Asesor dedicado 24/7",
         "Acceso para equipos",
         "Reportes personalizados",
-        
+
       ],
       buttonText: "Elegir Plan Collaborative",
       highlight: false,
@@ -366,9 +434,9 @@ export default function SolucionesHumanas() {
             <div className="inline-flex items-center space-x-2 bg-card border border-border/40 rounded-full px-4 py-2 mb-8">
               <span className="text-sm text-muted-foreground">Asesoría Personalizada</span>
               <Link href="http://localhost:3000/#contacto" passHref>
-              <Button variant="link" className="text-sm p-0 h-auto text-emerald-400 hover:text-emerald-300">
-                Contáctanos <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
+                <Button variant="link" className="text-sm p-0 h-auto text-emerald-400 hover:text-emerald-300">
+                  Contáctanos <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
               </Link>
             </div>
 
@@ -653,9 +721,8 @@ export default function SolucionesHumanas() {
             {plans.map((plan, index) => (
               <Card
                 key={index}
-                className={`border-border/40 ${
-                  plan.highlight ? "border-emerald-500 ring-2 ring-emerald-500" : ""
-                } bg-card/50 hover:bg-card/80 transition-colors flex flex-col`}
+                className={`border-border/40 ${plan.highlight ? "border-emerald-500 ring-2 ring-emerald-500" : ""
+                  } bg-card/50 hover:bg-card/80 transition-colors flex flex-col`}
               >
                 <CardHeader className="text-center pb-4">
                   <CardTitle className="text-2xl font-bold text-foreground">{plan.name}</CardTitle>
@@ -677,11 +744,10 @@ export default function SolucionesHumanas() {
                     ))}
                   </ul>
                   <Button
-                    className={`w-full ${
-                      plan.highlight
+                    className={`w-full ${plan.highlight
                         ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                         : "bg-muted-foreground hover:bg-muted-foreground/80 text-white"
-                    }`}
+                      }`}
                     size="lg"
                     onClick={() => handlePlanSelection(plan.id)}
                     disabled={loading}
@@ -827,80 +893,100 @@ export default function SolucionesHumanas() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
+                <form ref={contactFormRef} action={handleContactFormSubmit} className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">Nombre</Label>
+                      <Input id="firstName" name="firstName" placeholder="Tu nombre" className="mt-1" />
+                      {formState.errors?.firstName && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.firstName[0]}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Apellido</Label>
+                      <Input id="lastName" name="lastName" placeholder="Tu apellido" className="mt-1" />
+                      {formState.errors?.lastName && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.lastName[0]}</p>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
-                    <Label htmlFor="firstName">Nombre</Label>
-                    <Input id="firstName" placeholder="Tu nombre" className="mt-1" />
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input id="email" name="email" type="email" placeholder="tu@ejemplo.com" className="mt-1" />
+                    {formState.errors?.email && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.email[0]}</p>
+                    )}
                   </div>
+
                   <div>
-                    <Label htmlFor="lastName">Apellido</Label>
-                    <Input id="lastName" placeholder="Tu apellido" className="mt-1" />
+                    <Label htmlFor="phone">Teléfono (opcional)</Label>
+                    <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
+                    {formState.errors?.phone && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.phone[0]}</p>
+                    )}
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="email">Correo Electrónico</Label>
-                  <Input id="email" type="email" placeholder="tu@email.com" className="mt-1" />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input id="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
-                </div>
-
-               {/* <div>
-                  <Label htmlFor="service">Importancia</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona un área</option>
-                    <option value="financial">Asesoría Financiera</option>
-                    <option value="family">Relaciones Familiares</option>
-                    <option value="love">Relaciones Amorosas</option>
-                    <option value="advisor">Quiero ser Asesor</option>
-                  </select>
-                </div> */}
-
-                {/*<div>
-                  <Label htmlFor="service">Área de Interés</Label>
-                  <select className="w-full p-3 mt-1 border border-input bg-background rounded-md text-sm">
-                    <option value="">Selecciona el nivel de priodidad</option>
-                    <option value="lov">Baja</option>
-                    <option value="mid">Media</option>
-                    <option value="high">Alta</option>
-                  </select>
-                </div> */}
-
-                <div>
-                  <Label htmlFor="message">Mensaje</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Cuéntanos sobre tu situación y objetivos..."
-                    rows={4}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="file">Subir Documento (opcional)</Label>
-                  <div className="mt-1">
-                    <Input id="file" type="file" className="hidden" />
-                    <Button
-                      variant="outline"
-                      onClick={() => document.getElementById("file")?.click()}
-                      className="w-full border-dashed"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Seleccionar archivo
-                    </Button>
+                  <div>
+                    <Label htmlFor="message">Mensaje</Label>
+                    <Textarea
+                      id="message"
+                      name="message"
+                      placeholder="Cuéntanos sobre tu situación y objetivos..."
+                      rows={4}
+                      className="mt-1"
+                    />
+                    {formState.errors?.message && (
+                      <p className="text-red-500 text-sm mt-1">{formState.errors.message[0]}</p>
+                    )}
                   </div>
-                </div>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600">Enviar Mensaje</Button>
-                  <Button variant="outline" className="flex-1 border-border/40">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Agendar Consulta
-                  </Button>
-                </div>
+                  <div>
+                    <Label htmlFor="file">Subir Documento (opcional)</Label>
+                    <div className="mt-1">
+                      <Input
+                        id="file"
+                        name="file"
+                        type="file"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full border-dashed"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {selectedFile ? selectedFile.name : "Seleccionar archivo"}
+                      </Button>
+                      {formState.errors?.file && (
+                        <p className="text-red-500 text-sm mt-1">{formState.errors.file[0]}</p>
+                      )}
+                      {filePreviewUrl && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          {selectedFile?.type.startsWith("image/") ? (
+                            <Image
+                              src={filePreviewUrl || "/placeholder.svg"}
+                              alt="File preview"
+                              width={64}
+                              height={64}
+                              className="rounded-md object-cover"
+                            />
+                          ) : (
+                            <File className="h-16 w-16 text-muted-foreground" />
+                          )}
+                          <span className="text-sm text-muted-foreground">{selectedFile?.name}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <SubmitButton isPending={isPending} />
+                  </div>
+                </form>
               </CardContent>
             </Card>
           </div>
