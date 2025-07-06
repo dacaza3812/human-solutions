@@ -28,7 +28,7 @@ interface ReferralStats {
 }
 
 interface ReferralsSectionProps {
-  profile: UserProfile | null
+  profile?: UserProfile | null
   referralCode: string
   copySuccess: boolean
   copyReferralLink: () => Promise<void>
