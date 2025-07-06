@@ -60,8 +60,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         { id: "clients", name: "Clientes", icon: Users, href: "/dashboard/clients" },
         { id: "cases", name: "Casos", icon: FileText, href: "/dashboard/cases" },
         { id: "financial", name: "Vista Financiera", icon: PieChart, href: "/dashboard/financial" },
-        { id: "analytics", name: "Análisis", icon: BarChart3, href: "/dashboard/analytics" },
-        { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
+        // { id: "analytics", name: "Análisis", icon: BarChart3, href: "/dashboard/analytics" },
+        // { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
         { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
         { id: "inquiries", name: "Contactos", icon: Contact, href: "/dashboard/inquiries" },
         ...baseItems.slice(1), // Keep test and settings
