@@ -85,31 +85,31 @@ export default function SolucionesHumanas() {
   ]
 
   const features = [
-    {
-      icon: DollarSign,
-      title: "Asesoría Financiera",
-      description: "Haz que tu salario alcance hasta el final del mes",
-      details: "Planificación para tus finanzas personales a corto, mediano y largo plazo.",
-      features: ["Generación de ingresos", "Técnicas de ahorro", "Inversión de tu capital"],
-    },
-    {
-      icon: Users,
-      title: "Relaciones Familiares",
-      description: "Fortalece los vínculos familiares",
-      details: "Mejora la comunicación y resuelve conflictos en el hogar.",
-      features: ["Mediación de conflictos", "Comunicación efectiva", "Terapia familiar"],
-    },
-    {
-      icon: Heart,
-      title: "Problemas de relación",
-      description: "Construye relaciones sólidas y duraderas",
-      details: "Resolución de conflictos con familiares, amigos, parejas, compañeros o jefes",
-      features: [
-        "Como potenciar tu inteligencia interpersonal e intrapersonal",
-        "Coaching social",
-        "Comunicación asertiva",
-      ],
-    },
+    // {
+    //   icon: DollarSign,
+    //   title: "Asesoría Financiera",
+    //   description: "Haz que tu salario alcance hasta el final del mes",
+    //   details: "Planificación para tus finanzas personales a corto, mediano y largo plazo.",
+    //   features: ["Generación de ingresos", "Técnicas de ahorro", "Inversión de tu capital"],
+    // },
+    // {
+    //   icon: Users,
+    //   title: "Relaciones Familiares",
+    //   description: "Fortalece los vínculos familiares",
+    //   details: "Mejora la comunicación y resuelve conflictos en el hogar.",
+    //   features: ["Mediación de conflictos", "Comunicación efectiva", "Terapia familiar"],
+    // },
+    // {
+    //   icon: Heart,
+    //   title: "Problemas de relación",
+    //   description: "Construye relaciones sólidas y duraderas",
+    //   details: "Resolución de conflictos con familiares, amigos, parejas, compañeros o jefes",
+    //   features: [
+    //     "Como potenciar tu inteligencia interpersonal e intrapersonal",
+    //     "Coaching social",
+    //     "Comunicación asertiva",
+    //   ],
+    // },
     {
       icon: Shield,
       title: "Confidencialidad Total",
