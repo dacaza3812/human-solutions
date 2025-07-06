@@ -26,6 +26,7 @@ import {
   CreditCard,
   TestTube,
   FileQuestionIcon,
+  Contact
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
@@ -62,7 +63,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         { id: "analytics", name: "Análisis", icon: BarChart3, href: "/dashboard/analytics" },
         { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
         { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
-        { id: "inquiries", name: "Contactos", icon: FileQuestionIcon, href: "/dashboard/inquiries" },
+        { id: "inquiries", name: "Contactos", icon: Contact, href: "/dashboard/inquiries" },
         ...baseItems.slice(1), // Keep test and settings
       ]
     } else {
