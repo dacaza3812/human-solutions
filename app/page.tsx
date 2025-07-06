@@ -367,7 +367,7 @@ export default function SolucionesHumanas() {
               <span className="text-sm text-muted-foreground">Asesoría Personalizada</span>
               <Link href="http://localhost:3000/#contacto" passHref>
               <Button variant="link" className="text-sm p-0 h-auto text-emerald-400 hover:text-emerald-300">
-                Toma la encuesta <ArrowRight className="w-3 h-3 ml-1" />
+                Contáctanos <ArrowRight className="w-3 h-3 ml-1" />
               </Button>
               </Link>
             </div>
