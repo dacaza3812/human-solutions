@@ -49,7 +49,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const getMenuItems = () => {
     const baseItems = [
       { id: "overview", name: "Resumen", icon: Home, href: "/dashboard" },
-      { id: "test", name: "Prueba", icon: TestTube, href: "/dashboard/test" },
+      // { id: "test", name: "Prueba", icon: TestTube, href: "/dashboard/test" },
       { id: "settings", name: "Configuración", icon: Settings, href: "/dashboard/settings" },
     ]
 
@@ -72,8 +72,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         { id: "subscriptions", name: "Suscripciones", icon: CreditCard, href: "/dashboard/subscriptions" },
         { id: "referrals", name: "Referidos", icon: UserPlus, href: "/dashboard/referrals" },
         { id: "cases", name: "Mis Casos", icon: FileText, href: "/dashboard/cases" },
-        { id: "quotes", name: "Citas", icon: CalendarDays, href: "/dashboard/quotes" },
-        { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
+        // { id: "quotes", name: "Citas", icon: CalendarDays, href: "/dashboard/quotes" },
+        // { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
         { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
         ...baseItems.slice(1), // Keep test and settings
       ]
