@@ -96,10 +96,12 @@ const { session, profile } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (profile?.id) {
-      fetchSubscriptionInfo()
-    }
-  }, [profile?.id])
+  if (profile && profile.id) {
+    fetchSubscriptionInfo();
+  } else {
+    setLoading(false); // Si no hay perfil, termina la carga
+  }
+}, [profile?.id]);
 
   const fetchSubscriptionInfo = async () => {
   try {
@@ -160,6 +162,17 @@ const { session, profile } = useAuth()
     setLoading(false)
   }
 }
+useEffect(() => {
+  const timer = setTimeout(() => {
+    if (loading) {
+      setError("La carga está tardando demasiado. Inténtalo nuevamente.");
+      setLoading(false);
+    }
+  }, 5000); // 10 segundos
+
+  return () => clearTimeout(timer);
+}, [loading]);
+
 
   const handlePlanSelection = async (planId: number) => {
     await createCheckoutSession(planId.toString())
