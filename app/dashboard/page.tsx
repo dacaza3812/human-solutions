@@ -112,6 +112,34 @@ export default function DashboardPage() {
     }
   }, [profile]) // Dependency on profile to update when profile data is available
 
+  const fetchReferralStats = async () => {
+        try {
+            // Use the new SQL function to get referral stats
+            const { data, error } = await supabase.rpc("get_referral_stats4", {
+                user_referral_code: profile?.referral_code || referralCode,
+            })
+
+            
+
+            if (error) {
+                console.error("Error fetching referral stats:", error)
+                return
+            }
+
+            if (data && data.length > 0) {
+                const stats = data[0]
+                setReferralStats({
+                    total_referrals: stats.total_referrals || 0,
+                    active_referrals: stats.active_referrals || 0,
+                    total_earnings: stats.total_earnings || 0,
+                    monthly_earnings: stats.monthly_earnings || 0,
+                })
+            }
+        } catch (error) {
+            console.error("Error fetching referral stats:", error)
+        }
+    }
+
   // Mock data for current user's cases (client view)
   const userCases: ClientCase[] = [
     {
@@ -261,31 +289,7 @@ export default function DashboardPage() {
     }
   }, [profile, referralCode]) // Added referralCode to dependencies
 
-  const fetchReferralStats = async () => {
-    try {
-      // Use the new SQL function to get referral stats
-      const { data, error } = await supabase.rpc("get_referral_stats", {
-        user_referral_code: referralCode,
-      })
-
-      if (error) {
-        console.error("Error fetching referral stats:", error)
-        return
-      }
-
-      if (data && data.length > 0) {
-        const stats = data[0]
-        setReferralStats({
-          total_referrals: stats.total_referrals || 0,
-          active_referrals: stats.active_referrals || 0,
-          total_earnings: stats.total_earnings || 0,
-          monthly_earnings: stats.monthly_earnings || 0,
-        })
-      }
-    } catch (error) {
-      console.error("Error fetching referral stats:", error)
-    }
-  }
+  
 
   const copyReferralLink = async () => {
     const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
