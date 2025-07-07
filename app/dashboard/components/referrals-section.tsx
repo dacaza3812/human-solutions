@@ -53,7 +53,7 @@ export function ReferralsSection({
 
     async function loadStats() {
       const { data, error } = await supabase
-        .rpc("get_referral_stats", { user_referral_code: referralCode })
+        .rpc("get_referral_stats4", { user_referral_code: referralCode })
 
       if (error) {
         console.error("Error fetching referral stats:", error)
