@@ -19,9 +19,11 @@ export default function referalPage() {
     const fetchReferralStats = async () => {
         try {
             // Use the new SQL function to get referral stats
-            const { data, error } = await supabase.rpc("get_referral_stats", {
-                user_referral_code: profile?.referral_code,
+            const { data, error } = await supabase.rpc("get_referral_stats4", {
+                user_referral_code: referralCode,
             })
+
+            
 
             if (error) {
                 console.error("Error fetching referral stats:", error)
