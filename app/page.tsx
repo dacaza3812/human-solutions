@@ -291,27 +291,21 @@ export default function SolucionesHumanas() {
       description: "Para un soporte más completo y personalizado.",
       features: [
         "Pago único anual",
-        "Soporte prioritario",
-        "Acceso a todos los recursos",
-        "Seguimiento personalizado",
-        "Prioridad alta",
+        "Ahorra +200 USD en tu curso anual",
+        "Mayor compromiso con tu transformación"
       ],
       buttonText: "Elegir Plan Premium",
       highlight: true,
     },
     {
       id: 3,
-      name: "Profesional Fox",
+      name: "Professional Fox",
       price: "$5000.00",
       frequency: "anual",
       description: "Solución integral para equipos o familias.",
       features: [
         "Asesoría de forma presencial con el CEO",
-        "Consultas ilimitadas",
-        "Asesor dedicado 24/7",
-        "Acceso para equipos",
-        "Reportes personalizados",
-
+        "Todas las demás características del plan Standard y Premium"
       ],
       buttonText: "Elegir Plan Collaborative",
       highlight: false,
@@ -690,7 +684,7 @@ export default function SolucionesHumanas() {
                   <p>• No incluye bonos de liderazgo adicionales</p>
                 </div>
 
-                <Button className="w-full bg-emerald-500 hover:bg-emerald-600">Comenzar como Asesor</Button>
+                <Button className="w-full bg-emerald-500 hover:bg-emerald-600">Regístrate y empieza a ganar</Button>
               </CardContent>
             </Card>
           </div>
@@ -921,7 +915,7 @@ export default function SolucionesHumanas() {
 
                   <div>
                     <Label htmlFor="phone">Teléfono (opcional)</Label>
-                    <Input id="phone" name="phone" type="tel" placeholder="+52 123 456 7890" className="mt-1" />
+                    <Input id="phone" name="phone" type="tel" placeholder="+1 123 456 7890" className="mt-1" />
                     {formState.errors?.phone && (
                       <p className="text-red-500 text-sm mt-1">{formState.errors.phone[0]}</p>
                     )}
