@@ -3,24 +3,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/supabase"
-import { Share2, Gift, UserPlus, Users, DollarSign, TrendingUp, CheckCircle, Copy } from "lucide-react"
-import { useEffect, useState } from "react"
+import {
+  Share2,
+  Gift,
+  UserPlus,
+  Users,
+  DollarSign,
+  TrendingUp,
+  CheckCircle,
+  Copy,
+} from "lucide-react"
 
-// Define un tipo para el perfil de usuario si no existe
-interface UserProfile {
-  id: string
-  first_name?: string | null
-  last_name?: string | null
-  account_type?: string | null
-  phone?: string | null
-  created_at?: string | null
-  referral_code?: string | null
-  stripe_customer_id?: string | null
-  // Añade cualquier otro campo de perfil que uses
-}
-
-interface ReferralStats {
+// Define el tipo si no lo importas de otro lado
+type ReferralStats = {
   total_referrals: number
   active_referrals: number
   total_earnings: number
@@ -28,50 +23,20 @@ interface ReferralStats {
 }
 
 interface ReferralsSectionProps {
-  profile?: UserProfile | null
+  referralStats: ReferralStats
   referralCode: string
   copySuccess: boolean
   copyReferralLink: () => Promise<void>
-  referralStats: ReferralStats
 }
 
 export function ReferralsSection({
-  profile,
-  referralCode,
-  copySuccess,
-  copyReferralLink,
   referralStats,
+  referralCode,
+  copyReferralLink,
+  copySuccess,
 }: ReferralsSectionProps) {
-  const [stats, setStats] = useState<ReferralStats>({
-    total_referrals: 0,
-    active_referrals: 0,
-    total_earnings: 0,
-    monthly_earnings: 0,
-  })
-  useEffect(() => {
-    if (!referralCode) return
+  const stats = referralStats
 
-    async function loadStats() {
-      const { data, error } = await supabase
-        .rpc("get_referral_stats4", { user_referral_code: referralCode })
-
-      if (error) {
-        console.error("Error fetching referral stats:", error)
-        return
-      }
-      // data es un array con un solo objeto
-      const row = (data as ReferralStats[])[0] || {}
-      console.log(JSON.stringify(row, null, 2))
-      setStats({
-        total_referrals: row.total_referrals,
-        active_referrals: row.active_referrals,
-        total_earnings: row.total_earnings,
-        monthly_earnings: row.monthly_earnings,
-      })
-    }
-
-    loadStats()
-  }, [referralCode])
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -101,22 +66,11 @@ export function ReferralsSection({
                 readOnly
                 className="flex-1"
               />
-              <Button
-                onClick={copyReferralLink}
-                variant="outline"
-                className="ml-2 bg-transparent"
-                disabled={copySuccess}
-              >
+              <Button onClick={copyReferralLink} variant="outline" className="ml-2 bg-transparent" disabled={copySuccess}>
                 {copySuccess ? (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Copiado
-                  </>
+                  <><CheckCircle className="w-4 h-4 mr-2" />Copiado</>
                 ) : (
-                  <>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copiar
-                  </>
+                  <><Copy className="w-4 h-4 mr-2" />Copiar</>
                 )}
               </Button>
             </div>
