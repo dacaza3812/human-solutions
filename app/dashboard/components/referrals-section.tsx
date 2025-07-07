@@ -136,7 +136,7 @@ export function ReferralsSection({
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> 
 
         <Card className="border-border/40">
           <CardContent className="p-6">
