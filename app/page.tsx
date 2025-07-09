@@ -279,7 +279,7 @@ export default function SolucionesHumanas() {
       price: "$99.99",
       frequency: "mensual",
       description: "Ideal para necesidades básicas de asesoría.",
-      features: ["Contacto directo con el CEO una vez por semana", "Acceso a conocimiento esotérico", "comisión de un 50% por la activación de cada plan de sus referidos directos"],
+      features: ["Contacto directo con el CEO una vez por semana", "Acceso a conocimiento esotérico", "Comisión de un 50% por la activación de cada plan de sus referidos directos"],
       buttonText: "Elegir Plan Standard",
       highlight: false,
     },
@@ -537,11 +537,11 @@ export default function SolucionesHumanas() {
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Para el asesor:</span>
-                        <span className="font-semibold text-emerald-400">$25</span>
+                        <span className="font-semibold text-emerald-400">$50</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Para la plataforma:</span>
-                        <span className="font-semibold text-emerald-400">$25</span>
+                        <span className="font-semibold text-emerald-400">$50</span>
                       </div>
                     </div>
                   </CardContent>
@@ -1006,10 +1006,10 @@ export default function SolucionesHumanas() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <a href="#" className="hover:text-foreground transition-colors">
-                    Asesoría Financiera
+                    Agudizar tu pensamiento táctic para la resolución de problemas individuales del ser humano
                   </a>
                 </li>
-                <li>
+                {/* <li>
                   <a href="#" className="hover:text-foreground transition-colors">
                     Relaciones Familiares
                   </a>
@@ -1023,17 +1023,18 @@ export default function SolucionesHumanas() {
                   <a href="#" className="hover:text-foreground transition-colors">
                     Programa de Asesores
                   </a>
-                </li>
+                </li> */}
               </ul>
             </div>
 
             <div>
               <h5 className="font-semibold mb-4 text-foreground">Contacto</h5>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>contacto@foxlawyer.com</li>
-                <li>+52 123 456 7890</li>
-                <li>Lun - Vie: 9:00 - 18:00</li>
-                <li>Sáb: 9:00 - 14:00</li>
+                <li>contacto@foxlawyer.net</li>
+                <li>+1 (786) 554-7415</li>
+                <li>24 horas</li>
+                {/* <li>Lun - Dom: 9:00 - 18:00</li> */}
+                {/* <li>Sáb: 9:00 - 14:00</li> */}
               </ul>
             </div>
 
