@@ -18,6 +18,7 @@ export interface UserProfile {
   referred_by?: string
   created_at: string
   updated_at: string
+  subscription_status: "active" | "inactive" | "cancelled" | null
 }
 
 export interface ReferralStats {
