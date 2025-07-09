@@ -83,7 +83,7 @@ export function ReferralsSection({
             </div>
             <ul className="text-sm text-muted-foreground space-y-1">
               <li>• Comparte tu enlace único con amigos y familiares</li>
-              <li>• Gana $25 USD por cada persona que se registre usando tu enlace</li>
+              <li>• Gana $50 USD por cada persona que se registre usando tu enlace</li>
               <li>• Los pagos se procesan automáticamente cada mes</li>
               <li>• No hay límite en la cantidad de referidos</li>
             </ul>
