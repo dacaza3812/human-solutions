@@ -5,8 +5,8 @@ import { createServerClient } from "@supabase/ssr"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 
-// Devuelve todas las transacciones de referidos para un advisor
-export async function getReferralTransactions(advisorId: string) {
+// Devuelve todas las transacciones de referidos en la plataforma, con datos del usuario que refirió y del referido
+export async function getReferralTransactions() {
   // Inicializa el Supabase Client con service role y cookies
   const cookieStore = cookies()
   const supabase = createServerClient(
@@ -21,11 +21,13 @@ export async function getReferralTransactions(advisorId: string) {
     }
   )
 
-  // Consulta a la tabla de transacciones con embedding de referee
+  // Consulta a la tabla de transacciones con embedding de referrer y referee
   const { data, error } = await supabase
     .from("referral_transactions")
     .select(
-      `*, referee:profiles!referral_transactions_referee_id_fkey(email, first_name, last_name)`
+      `*, 
+      referrer:profiles!referral_transactions_referrer_id_fkey(email, first_name, last_name),
+      referee:profiles!referral_transactions_referee_id_fkey(email, first_name, last_name)`
     )
     .order("created_at", { ascending: false })
 
@@ -37,10 +39,10 @@ export async function getReferralTransactions(advisorId: string) {
   // Mapea para agregar campos de conveniencia
   return (data || []).map((transaction) => ({
     ...transaction,
+    referrer_email: transaction.referrer?.email || "N/A",
+    referrer_name: (`${transaction.referrer?.first_name || ""} ${transaction.referrer?.last_name || ""}`.trim()) || "N/A",
     referee_email: transaction.referee?.email || "N/A",
-    referee_name:
-      (`${transaction.referee?.first_name || ""} ${transaction.referee?.last_name || ""}`.trim()) ||
-      "N/A",
+    referee_name: (`${transaction.referee?.first_name || ""} ${transaction.referee?.last_name || ""}`.trim()) || "N/A",
   }))
 }
 

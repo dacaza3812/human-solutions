@@ -18,6 +18,7 @@ interface ReferralTransaction {
   created_at: string
   paid: boolean
   referee_email: string
+  referrer_email: string
   referee_name: string
 }
 
@@ -73,7 +74,8 @@ export function ReferralTransactionsTable({ advisorId }: ReferralTransactionsTab
           <TableRow>
             <TableHead>Referido</TableHead>
             <TableHead>Email del Referido</TableHead>
-            <TableHead>Monto</TableHead>
+            <TableHead>Email del Usuario que Refirió</TableHead>
+            <TableHead>Monto a pagar</TableHead>
             <TableHead>Porcentaje</TableHead>
             <TableHead>Fecha</TableHead>
             <TableHead className="text-center">Pagado</TableHead>
@@ -91,6 +93,7 @@ export function ReferralTransactionsTable({ advisorId }: ReferralTransactionsTab
               <TableRow key={transaction.id}>
                 <TableCell>{transaction.referee_name}</TableCell>
                 <TableCell>{transaction.referee_email}</TableCell>
+                <TableCell>{transaction.referrer_email}</TableCell>
                 <TableCell>${transaction.amount.toFixed(2)}</TableCell>
                 <TableCell>{transaction.percentage}%</TableCell>
                 <TableCell>{format(new Date(transaction.created_at), "dd/MM/yyyy")}</TableCell>
