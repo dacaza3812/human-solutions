@@ -18,18 +18,22 @@ export function UpcomingAppointmentsCard({ upcomingAppointments }: UpcomingAppoi
         <CardTitle className="text-foreground">Próximas Citas</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {upcomingAppointments.map((appointment, index) => (
-          <div
-            key={index}
-            className={`p-4 rounded-lg border border-${appointment.colorClass}-500/20 bg-${appointment.colorClass}-500/5`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-medium text-foreground">{appointment.title}</p>
-              <span className={`text-xs text-${appointment.colorClass}-400`}>{appointment.time}</span>
+        {upcomingAppointments.length === 0 ? (
+          <p className="text-muted-foreground text-center py-4">No hay próximas citas.</p>
+        ) : (
+          upcomingAppointments.map((appointment, index) => (
+            <div
+              key={index}
+              className={`p-4 rounded-lg border border-${appointment.colorClass}-500/20 bg-${appointment.colorClass}-500/5`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-medium text-foreground">{appointment.title}</p>
+                <span className={`text-xs text-${appointment.colorClass}-400`}>{appointment.time}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{appointment.description}</p>
             </div>
-            <p className="text-sm text-muted-foreground">{appointment.description}</p>
-          </div>
-        ))}
+          ))
+        )}
       </CardContent>
     </Card>
   )

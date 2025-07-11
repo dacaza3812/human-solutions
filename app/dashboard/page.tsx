@@ -3,13 +3,17 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context" // Re-imported useAuth
-import { supabase } from "@/lib/supabase" // Re-imported supabase
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
 import { Plus, DollarSign, Target, Award, Users, FileText, UserPlus, Calendar } from "lucide-react"
 import { UserInfoCard } from "./components/user-info-card"
 import { StatsGrid } from "./components/stats-grid"
 import { RecentActivityCard } from "./components/recent-activity-card"
 import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
+import { formatDistanceToNowStrict } from "date-fns"
+import { es } from "date-fns/locale"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" // Ensure Card components are imported
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -23,7 +27,7 @@ interface UserProfile {
   stripe_customer_id?: string | null
 }
 
-// Define tipos para los datos mock
+// Define tipos para los datos mock (these will be replaced by fetched data)
 interface ClientCase {
   id: number
   title: string
@@ -64,10 +68,33 @@ interface AdvisorCase {
   progress: number
 }
 
+// New types for fetched data
+interface ReferredProfile {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  created_at: string
+}
+
+interface ReferralTransaction {
+  id: string
+  amount: number
+  created_at: string
+  referee_id: string
+  profiles: { first_name: string | null; last_name: string | null } | null
+}
+
+interface Case {
+  id: string
+  title: string
+  description: string | null
+  status: "pendiente" | "en ejecución" | "completado"
+  created_at: string
+}
+
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState("overview")
   const [referralStats, setReferralStats] = useState({
-    // Re-introduced referralStats state
     total_referrals: 0,
     active_referrals: 0,
     total_earnings: 0,
@@ -80,7 +107,7 @@ export default function DashboardPage() {
   const [activeChat, setActiveChat] = useState<number | null>(null)
   const [clientFilter, setClientFilter] = useState("")
   const [caseFilter, setCaseFilter] = useState("all")
-  const { user, profile, updateUserProfile, changePassword } = useAuth() // Re-introduced useAuth hook
+  const { user, profile, updateUserProfile, changePassword } = useAuth()
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [dateRange, setDateRange] = useState({
@@ -104,13 +131,29 @@ export default function DashboardPage() {
   const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
   const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
 
+  // States for fetched data
+  const [recentActivityData, setRecentActivityData] = useState<
+    {
+      id: string
+      type: string
+      description: string
+      time: string
+      status: "success" | "completed" | "payment" | "scheduled"
+    }[]
+  >([])
+  const [upcomingAppointmentsData, setUpcomingAppointmentsData] = useState<
+    { title: string; time: string; description: string; colorClass: string }[]
+  >([])
+  const [loadingRecentActivity, setLoadingRecentActivity] = useState(true)
+  const [loadingUpcomingAppointments, setLoadingUpcomingAppointments] = useState(true)
+
   useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name || "")
       setLastName(profile.last_name || "")
       setNewReferralCode(profile.referral_code || "")
     }
-  }, [profile]) // Dependency on profile to update when profile data is available
+  }, [profile])
 
   // Mock data for current user's cases (client view)
   const userCases: ClientCase[] = [
@@ -256,15 +299,126 @@ export default function DashboardPage() {
   // Fetch referral stats for clients
   useEffect(() => {
     if (profile?.account_type === "client" && profile.id && referralCode) {
-      // Added referralCode dependency
       fetchReferralStats()
     }
-  }, [profile, referralCode]) // Added referralCode to dependencies
+  }, [profile, referralCode])
+
+  // New useEffect for fetching dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user || !profile) {
+        setLoadingRecentActivity(false)
+        setLoadingUpcomingAppointments(false)
+        return
+      }
+
+      // Fetch Recent Activity
+      setLoadingRecentActivity(true)
+      try {
+        const { data: referredUsers, error: referredUsersError } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, created_at")
+          .eq("referred_by", profile.referral_code)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (referredUsersError) throw referredUsersError
+
+        const { data: referralPayments, error: referralPaymentsError } = await supabase
+          .from("referral_transactions")
+          .select("id, amount, created_at, referee_id, profiles(first_name, last_name)")
+          .eq("referrer_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (referralPaymentsError) throw referralPaymentsError
+
+        const rawCombinedActivity = [
+          ...referredUsers.map((item) => ({ ...item, type: "referral", raw_created_at: item.created_at })),
+          ...referralPayments.map((item) => ({ ...item, type: "payment", raw_created_at: item.created_at })),
+        ]
+
+        rawCombinedActivity.sort((a, b) => new Date(b.raw_created_at).getTime() - new Date(a.raw_created_at).getTime())
+
+        const formattedCombinedActivity = rawCombinedActivity
+          .map((item) => {
+            if (item.type === "referral") {
+              const refUser = item as ReferredProfile & { raw_created_at: string }
+              return {
+                id: refUser.id,
+                type: "Nuevo Referido",
+                description: `${refUser.first_name || ""} ${refUser.last_name || ""} se ha registrado.`,
+                time: formatDistanceToNowStrict(new Date(refUser.raw_created_at), { addSuffix: true, locale: es }),
+                status: "success" as const,
+              }
+            } else {
+              const payment = item as ReferralTransaction & { raw_created_at: string }
+              return {
+                id: payment.id,
+                type: "Pago de Referido",
+                description: `Pago de $${payment.amount} USD de ${payment.profiles?.first_name || ""} ${payment.profiles?.last_name || ""}.`,
+                time: formatDistanceToNowStrict(new Date(payment.raw_created_at), { addSuffix: true, locale: es }),
+                status: "payment" as const,
+              }
+            }
+          })
+          .slice(0, 5) // Limit to 5 most recent activities
+
+        setRecentActivityData(formattedCombinedActivity)
+      } catch (error) {
+        console.error("Error fetching recent activity:", error)
+        setRecentActivityData([])
+      } finally {
+        setLoadingRecentActivity(false)
+      }
+
+      // Fetch Upcoming Appointments (Inquiries/Cases)
+      setLoadingUpcomingAppointments(true)
+      try {
+        const { data: casesData, error: casesError } = await supabase
+          .from("cases")
+          .select("id, title, description, status, created_at")
+          .eq("user_id", user.id)
+          .in("status", ["pendiente", "en ejecución"])
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (casesError) throw casesError
+
+        const formattedAppointments = casesData.map((caseItem: Case) => {
+          let colorClass = "gray"
+          if (caseItem.status === "pendiente") {
+            colorClass = "orange"
+          } else if (caseItem.status === "en ejecución") {
+            colorClass = "blue"
+          }
+
+          return {
+            title: caseItem.title,
+            time: new Date(caseItem.created_at).toLocaleDateString("es-ES", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            }),
+            description: caseItem.description || "Sin descripción",
+            colorClass: colorClass,
+          }
+        })
+        setUpcomingAppointmentsData(formattedAppointments)
+      } catch (error) {
+        console.error("Error fetching upcoming appointments:", error)
+        setUpcomingAppointmentsData([])
+      } finally {
+        setLoadingUpcomingAppointments(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [user, profile])
 
   const fetchReferralStats = async () => {
     try {
-      // Use the new SQL function to get referral stats
-      const { data, error } = await supabase.rpc("get_referral_stats", {
+      const { data, error } = await supabase.rpc("get_referral_stats4", {
         user_referral_code: referralCode,
       })
 
@@ -288,7 +442,7 @@ export default function DashboardPage() {
   }
 
   const copyReferralLink = async () => {
-    const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
+    const referralLink = `${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${referralCode}`
     try {
       await navigator.clipboard.writeText(referralLink)
       setCopySuccess(true)
@@ -371,7 +525,7 @@ export default function DashboardPage() {
     },
     {
       title: "Próximas Citas",
-      value: userScheduledCases.length.toString(),
+      value: upcomingAppointmentsData.length.toString(), // Use fetched data length
       change: "Esta semana",
       icon: Calendar,
       color: "text-orange-400",
@@ -380,59 +534,6 @@ export default function DashboardPage() {
 
   // Determine which set of stats to pass
   const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
-
-  const recentActivity = [
-    {
-      id: 1,
-      type: "Nuevo Cliente",
-      description: "María González se registró para asesoría financiera",
-      time: "Hace 2 horas",
-      status: "success",
-    },
-    {
-      id: 2,
-      type: "Caso Completado",
-      description: "Caso de mediación familiar #1234 resuelto exitosamente",
-      time: "Hace 4 horas",
-      status: "completed",
-    },
-    {
-      id: 3,
-      type: "Pago Recibido",
-      description: "Pago de $150 USD recibido de Carlos Rodríguez",
-      time: "Hace 6 horas",
-      status: "payment",
-    },
-    {
-      id: 4,
-      type: "Consulta Programada",
-      description: "Nueva consulta programada para mañana a las 10:00 AM",
-      time: "Hace 1 día",
-      status: "scheduled",
-    },
-  ]
-
-  // Data for UpcomingAppointmentsCard
-  const upcomingAppointmentsData = [
-    {
-      title: "Consulta Financiera",
-      time: "10:00 AM",
-      description: "Ana Martínez - Planificación presupuestaria",
-      colorClass: "emerald",
-    },
-    {
-      title: "Mediación Familiar",
-      time: "2:30 PM",
-      description: "Familia Rodríguez - Resolución de conflictos",
-      colorClass: "blue",
-    },
-    {
-      title: "Consulta Profesional",
-      time: "4:00 PM",
-      description: "Luis Fernández - Asesoría empresarial",
-      colorClass: "purple",
-    },
-  ]
 
   // Handlers for Settings section
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -526,10 +627,36 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <StatsGrid stats={displayStats} />
 
-        {/* Recent Activity */}
+        {/* Recent Activity & Upcoming Appointments */}
         <div className="grid lg:grid-cols-2 gap-6">
-          <RecentActivityCard recentActivity={recentActivity} />
-          <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
+          {loadingRecentActivity ? (
+            <Card className="border-border/40">
+              <CardHeader>
+                <CardTitle>Actividad Reciente</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-20 w-full rounded-lg" />
+                <Skeleton className="h-20 w-full rounded-lg" />
+                <Skeleton className="h-20 w-full rounded-lg" />
+              </CardContent>
+            </Card>
+          ) : (
+            <RecentActivityCard recentActivity={recentActivityData} />
+          )}
+          {loadingUpcomingAppointments ? (
+            <Card className="border-border/40">
+              <CardHeader>
+                <CardTitle>Próximas Citas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-20 w-full rounded-lg" />
+                <Skeleton className="h-20 w-full rounded-lg" />
+                <Skeleton className="h-20 w-full rounded-lg" />
+              </CardContent>
+            </Card>
+          ) : (
+            <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
+          )}
         </div>
       </div>
     </div>
