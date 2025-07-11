@@ -1,26 +1,38 @@
 "use server"
 
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { supabase } from "@/lib/supabase"
+import { revalidatePath } from "next/cache"
 
-type InquiryStatus = "new" | "in_progress" | "resolved" | "archived"
+export async function createInquiry(formData: FormData) {
+  const title = formData.get("title") as string
+  const description = formData.get("description") as string
+  const userId = formData.get("userId") as string // Assuming userId is passed from the client
 
-export async function updateInquiryStatus(inquiryId: string, newStatus: InquiryStatus) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-    cookies: {
-      get: (name: string) => cookieStore.get(name)?.value,
-      set: (name: string, value: string, options: any) => cookieStore.set(name, value, options),
-      remove: (name: string) => cookieStore.delete(name), // Corrected the remove function
-    },
-  })
-
-  const { data, error } = await supabase.from("inquiries").update({ status: newStatus }).eq("id", inquiryId)
-
-  if (error) {
-    console.error("Error updating inquiry status:", error)
-    return { success: false, message: `Error al actualizar el estado: ${error.message}` }
+  if (!title || !description || !userId) {
+    return { success: false, message: "Title, description, and user ID are required." }
   }
 
-  return { success: true, message: "Estado de la consulta actualizado con éxito." }
+  const { data, error } = await supabase
+    .from("inquiries")
+    .insert([{ title, description, user_id: userId, status: "pending" }])
+    .select()
+
+  if (error) {
+    console.error("Error creating inquiry:", error)
+    return { success: false, message: error.message }
+  }
+
+  revalidatePath("/dashboard/inquiries")
+  return { success: true, data }
+}
+
+export async function getInquiries() {
+  const { data, error } = await supabase.from("inquiries").select("*").order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching inquiries:", error)
+    return { success: false, message: error.message, data: [] }
+  }
+
+  return { success: true, data }
 }

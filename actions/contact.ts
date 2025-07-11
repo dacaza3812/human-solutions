@@ -4,6 +4,9 @@ import { z } from "zod"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { v4 as uuidv4 } from "uuid"
+import { Resend } from "resend"
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const contactFormSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido."),
@@ -108,6 +111,17 @@ export async function submitContactForm(prevState: any, formData: FormData) {
       }
     }
 
+    // Send email notification
+    const emailResponse = await sendContactEmail(formData)
+    if (!emailResponse.success) {
+      console.error("Error sending email:", emailResponse.message)
+      return {
+        success: false,
+        message: emailResponse.message,
+        errors: {},
+      }
+    }
+
     return {
       success: true,
       message: "¡Mensaje enviado con éxito! Nos pondremos en contacto pronto.",
@@ -120,5 +134,32 @@ export async function submitContactForm(prevState: any, formData: FormData) {
       message: "Error inesperado al enviar el mensaje.",
       errors: {},
     }
+  }
+}
+
+async function sendContactEmail(formData: FormData) {
+  const name = `${formData.get("firstName")} ${formData.get("lastName")}`
+  const email = formData.get("email") as string
+  const message = formData.get("message") as string
+
+  if (!name || !email || !message) {
+    return { success: false, message: "All fields are required." }
+  }
+
+  try {
+    await resend.emails.send({
+      from: "onboarding@resend.dev", // Replace with your verified sender email
+      to: "delivered@resend.dev", // Replace with your recipient email
+      subject: `New Contact Form Submission from ${name}`,
+      html: `
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Message:</strong> ${message}</p>
+      `,
+    })
+    return { success: true, message: "Your message has been sent successfully!" }
+  } catch (error) {
+    console.error("Error sending email:", error)
+    return { success: false, message: "Failed to send message. Please try again later." }
   }
 }

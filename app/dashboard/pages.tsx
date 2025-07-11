@@ -1,65 +1,20 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { ProtectedRoute } from "@/components/protected-route"
-import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
-import { SubscriptionsSection } from "@/components/dashboard/subscriptions-section"
-import {
-  Home,
-  Users,
-  FileText,
-  Settings,
-  BarChart3,
-  Calendar,
-  MessageCircle,
-  Bell,
-  Search,
-  Plus,
-  DollarSign,
-  Target,
-  Award,
-  LogOut,
-  Menu,
-  X,
-  User,
-  UserPlus,
-  CalendarDays,
-  PieChart,
-  CreditCard,
-} from "lucide-react"
 import { Input } from "@/components/ui/input"
-import Link from "next/link"
-import { UserInfoCard } from "./components/user-info-card"
-import { StatsGrid } from "./components/stats-grid"
-import { RecentActivityCard } from "./components/recent-activity-card"
-import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-card"
-import { ClientCasesSection } from "./components/client-cases-section"
-import { AdvisorCasesSection } from "./components/advisor-cases-section"
-import { AdvisorClientsSection } from "./components/advisor-clients-section"
-import { MessagesSection } from "./components/messages-section"
-import { QuotesSection } from "./components/quotes-section"
-import { FinancialOverviewSection } from "./components/financial-overview-section"
-import { ReferralsSection } from "./components/referrals-section"
-import { SettingsSection } from "./components/settings-section"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Plus, Search, Filter, MessageSquare, Edit, Trash2, ChevronDown, Users, Calendar } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Progress } from "@/components/ui/progress"
 
-// Define un tipo para el perfil de usuario si no existe
-interface UserProfile {
-  id: string
-  first_name?: string | null
-  last_name?: string | null
-  account_type?: string | null
-  phone?: string | null
-  created_at?: string | null
-  referral_code?: string | null
-  stripe_customer_id?: string | null
-  // Añade cualquier otro campo de perfil que uses
-}
-
-// Define tipos para los datos mock
 interface ClientCase {
   id: number
   title: string
@@ -71,19 +26,6 @@ interface ClientCase {
   createdDate: string
   nextAppointment: string | null
   progress: number
-}
-
-interface AdvisorClient {
-  id: number
-  name: string
-  email: string
-  phone: string
-  avatar: string
-  totalCases: number
-  activeCases: number
-  completedCases: number
-  joinDate: string
-  lastActivity: string
 }
 
 interface AdvisorCase {
@@ -100,62 +42,23 @@ interface AdvisorCase {
   progress: number
 }
 
-function DashboardContent() {
-  const [activeView, setActiveView] = useState("overview")
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [showSearchResults, setShowSearchResults] = useState(false)
-  const [referralStats, setReferralStats] = useState({
-    total_referrals: 0,
-    active_referrals: 0,
-    total_earnings: 0,
-    monthly_earnings: 0,
+export default function CasesPage() {
+  const [isAdvisor, setIsAdvisor] = useState(true) // Toggle this based on user role
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const [filterPriority, setFilterPriority] = useState("all")
+  const [newCase, setNewCase] = useState({
+    title: "",
+    description: "",
+    type: "",
+    priority: "",
+    client: "",
+    dueDate: "",
   })
-  const [referralCode, setReferralCode] = useState("")
-  const [copySuccess, setCopySuccess] = useState(false)
-  const [selectedCase, setSelectedCase] = useState<AdvisorCase | null>(null)
-  const [selectedClient, setSelectedClient] = useState<AdvisorClient | null>(null)
-  const [activeChat, setActiveChat] = useState<number | null>(null)
-  const [clientFilter, setClientFilter] = useState("")
-  const [caseFilter, setCaseFilter] = useState("all")
-  const { user, profile, signOut, updateUserProfile, changePassword } = useAuth()
+  const [selectedCase, setSelectedCase] = useState<ClientCase | AdvisorCase | null>(null)
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [dateRange, setDateRange] = useState({
-    start: "2024-01-01",
-    end: "2024-12-31",
-  })
-
-  // State for Settings section
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmNewPassword, setConfirmNewPassword] = useState("")
-  const [passwordChangeMessage, setPasswordChangeMessage] = useState("")
-  const [passwordChangeError, setPasswordChangeError] = useState("")
-
-  const [firstName, setFirstName] = useState(profile?.first_name || "")
-  const [lastName, setLastName] = useState(profile?.last_name || "")
-  const [profileUpdateMessage, setProfileUpdateMessage] = useState("")
-  const [profileUpdateError, setProfileUpdateError] = useState("")
-
-  const [newReferralCode, setNewReferralCode] = useState(profile?.referral_code || "")
-  const [referralCodeUpdateMessage, setReferralCodeUpdateMessage] = useState("")
-  const [referralCodeUpdateError, setReferralCodeUpdateError] = useState("")
-
-  console.log(JSON.stringify(profile, null, 2))
-  //console.log(JSON.stringify(user, null, 2))
-
-  useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name || "")
-      setLastName(profile.last_name || "")
-      setNewReferralCode(profile.referral_code || "")
-    }
-  }, [profile])
-
-  // Mock data for current user's cases (client view)
-  const userCases: ClientCase[] = [
+  // Mock data for client's cases
+  const clientCases: ClientCase[] = [
     {
       id: 1,
       title: "Asesoría Financiera Personal",
@@ -193,45 +96,17 @@ function DashboardContent() {
       nextAppointment: null,
       progress: 100,
     },
-  ]
-
-  // Mock data for advisor's clients
-  const advisorClients: AdvisorClient[] = [
     {
-      id: 1,
-      name: "Juan Pérez",
-      email: "juan@email.com",
-      phone: "+52 123 456 7890",
-      avatar: "/placeholder-user.jpg",
-      totalCases: 3,
-      activeCases: 2,
-      completedCases: 1,
-      joinDate: "2024-01-10",
-      lastActivity: "2024-01-18",
-    },
-    {
-      id: 2,
-      name: "María López",
-      email: "maria@email.com",
-      phone: "+52 098 765 4321",
-      avatar: "/placeholder-user.jpg",
-      totalCases: 2,
-      activeCases: 1,
-      completedCases: 1,
-      joinDate: "2024-01-05",
-      lastActivity: "2024-01-17",
-    },
-    {
-      id: 3,
-      name: "Carlos Mendoza",
-      email: "carlos@email.com",
-      phone: "+52 555 123 4567",
-      avatar: "/placeholder-user.jpg",
-      totalCases: 4,
-      activeCases: 3,
-      completedCases: 1,
-      joinDate: "2023-12-15",
-      lastActivity: "2024-01-19",
+      id: 4,
+      title: "Planificación de Herencia",
+      type: "Asesoría Legal",
+      status: "Pendiente",
+      advisor: "Abg. Ana Martínez",
+      advisorAvatar: "/placeholder-user.jpg",
+      description: "Asesoría para la creación de un testamento y planificación de herencia.",
+      createdDate: "2024-02-01",
+      nextAppointment: "2024-02-10 11:00 AM",
+      progress: 10,
     },
   ]
 
@@ -240,7 +115,7 @@ function DashboardContent() {
     {
       id: 1,
       clientName: "Juan Pérez",
-      clientId: 1,
+      clientId: 101,
       title: "Asesoría Financiera Personal",
       type: "Asesoría Financiera",
       status: "En Progreso",
@@ -254,7 +129,7 @@ function DashboardContent() {
     {
       id: 2,
       clientName: "María López",
-      clientId: 2,
+      clientId: 102,
       title: "Mediación Familiar",
       type: "Relaciones Familiares",
       status: "Programada",
@@ -267,7 +142,7 @@ function DashboardContent() {
     {
       id: 3,
       clientName: "Carlos Mendoza",
-      clientId: 3,
+      clientId: 103,
       title: "Consulta Legal",
       type: "Asesoría Legal",
       status: "En Revisión",
@@ -277,677 +152,375 @@ function DashboardContent() {
       description: "Consulta sobre derechos laborales y procedimientos legales.",
       progress: 80,
     },
-  ]
-
-  // Filter user's scheduled cases for quotes section
-  const userScheduledCases = userCases.filter((case_item) => case_item.status !== "Completada")
-
-  // Generate referral code on component mount
-  useEffect(() => {
-  if (profile?.referral_code) {
-    setReferralCode(profile.referral_code)
-  }
-}, [profile])
-
-  // Fetch referral stats for clients
-  useEffect(() => {
-    if (profile?.account_type === "client" && profile.id) {
-      fetchReferralStats()
-    }
-  }, [profile])
-
-  const fetchReferralStats = async () => {
-    try {
-      // Use the new SQL function to get referral stats
-      const { data, error } = await supabase.rpc("get_referral_stats", {
-  user_referral_code: profile?.referral_code,
-})
-
-      if (error) {
-        console.error("Error fetching referral stats:", error)
-        return
-      }
-
-      if (data && data.length > 0) {
-        const stats = data[0]
-        setReferralStats({
-          total_referrals: stats.total_referrals || 0,
-          active_referrals: stats.active_referrals || 0,
-          total_earnings: stats.total_earnings || 0,
-          monthly_earnings: stats.monthly_earnings || 0,
-        })
-      }
-    } catch (error) {
-      console.error("Error fetching referral stats:", error)
-    }
-  }
-
-  // Menu items based on user role
-  const getMenuItems = () => {
-    const baseItems = [
-      { id: "overview", name: "Resumen", icon: Home },
-      { id: "settings", name: "Configuración", icon: Settings },
-    ]
-
-    if (profile?.account_type === "advisor") {
-      return [
-        ...baseItems.slice(0, 1), // Keep overview
-        { id: "clients", name: "Clientes", icon: Users },
-        { id: "cases", name: "Casos", icon: FileText },
-        { id: "financial", name: "Vista Financiera", icon: PieChart },
-        { id: "analytics", name: "Análisis", icon: BarChart3 },
-        { id: "calendar", name: "Calendario", icon: Calendar },
-        { id: "messages", name: "Mensajes", icon: MessageCircle },
-        ...baseItems.slice(1), // Keep settings
-      ]
-    } else {
-      // Client menu
-      return [
-        ...baseItems.slice(0, 1), // Keep overview
-        { id: "subscriptions", name: "Suscripciones", icon: CreditCard },
-        { id: "referrals", name: "Referidos", icon: UserPlus },
-        { id: "cases", name: "Mis Casos", icon: FileText },
-        { id: "quotes", name: "Citas", icon: CalendarDays },
-        { id: "calendar", name: "Calendario", icon: Calendar },
-        { id: "messages", name: "Mensajes", icon: MessageCircle },
-        ...baseItems.slice(1), // Keep settings
-      ]
-    }
-  }
-
-  const sidebarItems = getMenuItems()
-
-  // Datos de ejemplo para la búsqueda
-  const searchableData = [
-    { type: "client", name: "María González", description: "Cliente - Asesoría financiera", id: "1" },
-    { type: "client", name: "Carlos Rodríguez", description: "Cliente - Mediación familiar", id: "2" },
-    { type: "client", name: "Ana Martínez", description: "Cliente - Planificación presupuestaria", id: "3" },
-    { type: "case", name: "Caso #1234", description: "Mediación familiar - En progreso", id: "4" },
-    { type: "case", name: "Caso #1235", description: "Asesoría financiera - Completado", id: "5" },
-    { type: "appointment", name: "Consulta 10:00 AM", description: "Ana Martínez - Hoy", id: "6" },
-    { type: "appointment", name: "Consulta 2:30 PM", description: "Familia Rodríguez - Hoy", id: "7" },
-  ]
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-
-    if (query.trim() === "") {
-      setSearchResults([])
-      setShowSearchResults(false)
-      return
-    }
-
-    const results = searchableData.filter(
-      (item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.description.toLowerCase().includes(query.toLowerCase()),
-    )
-
-    setSearchResults(results)
-    setShowSearchResults(true)
-  }
-
-  const handleSearchResultClick = (result: any) => {
-    setSearchQuery(result.name)
-    setShowSearchResults(false)
-    console.log("Resultado seleccionado:", result)
-  }
-
-  const copyReferralLink = async () => {
-    const referralLink = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
-    try {
-      await navigator.clipboard.writeText(referralLink)
-      setCopySuccess(true)
-      setTimeout(() => setCopySuccess(false), 2000)
-    } catch (err) {
-      console.error("Error copying to clipboard:", err)
-    }
-  }
-
-  const openChatForCase = (caseId: number) => {
-    setActiveChat(caseId)
-    setActiveView("messages")
-  }
-
-  const filteredClients = advisorClients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(clientFilter.toLowerCase()) ||
-      client.email.toLowerCase().includes(clientFilter.toLowerCase()),
-  )
-
-  const filteredCases = advisorCases.filter((case_item) => {
-    if (caseFilter === "all") return true
-    return case_item.status.toLowerCase().includes(caseFilter.toLowerCase())
-  })
-
-  // Define stats for advisor
-  const advisorStats = [
-    {
-      title: "Clientes Activos",
-      value: "124",
-      change: "+12%",
-      icon: Users,
-      color: "text-emerald-400",
-    },
-    {
-      title: "Casos Resueltos",
-      value: "89",
-      change: "+8%",
-      icon: Target,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ingresos Mensuales",
-      value: "$12,450",
-      change: "+23%",
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Satisfacción",
-      value: "98%",
-      change: "+2%",
-      icon: Award,
-      color: "text-orange-400",
-    },
-  ]
-
-  // Define stats for client
-  const clientStats = [
-    {
-      title: "Casos Activos",
-      value: userCases.filter((c) => c.status !== "Completada").length.toString(),
-      change: "+1",
-      icon: FileText,
-      color: "text-emerald-400",
-    },
-    {
-      title: "Referidos Totales",
-      value: referralStats.total_referrals.toString(),
-      change: `+${referralStats.monthly_earnings > 0 ? Math.floor(referralStats.monthly_earnings / 25) : 0}`,
-      icon: UserPlus,
-      color: "text-blue-400",
-    },
-    {
-      title: "Ganancias Totales",
-      value: `$${referralStats.total_earnings}`,
-      change: `+$${referralStats.monthly_earnings}`,
-      icon: DollarSign,
-      color: "text-purple-400",
-    },
-    {
-      title: "Próximas Citas",
-      value: userScheduledCases.length.toString(),
-      change: "Esta semana",
-      icon: Calendar,
-      color: "text-orange-400",
-    },
-  ]
-
-  // Determine which set of stats to pass
-  const displayStats = profile?.account_type === "advisor" ? advisorStats : clientStats
-
-  const recentActivity = [
-    {
-      id: 1,
-      type: "Nuevo Cliente",
-      description: "María González se registró para asesoría financiera",
-      time: "Hace 2 horas",
-      status: "success",
-    },
-    {
-      id: 2,
-      type: "Caso Completado",
-      description: "Caso de mediación familiar #1234 resuelto exitosamente",
-      time: "Hace 4 horas",
-      status: "completed",
-    },
-    {
-      id: 3,
-      type: "Pago Recibido",
-      description: "Pago de $150 USD recibido de Carlos Rodríguez",
-      time: "Hace 6 horas",
-      status: "payment",
-    },
     {
       id: 4,
-      type: "Consulta Programada",
-      description: "Nueva consulta programada para mañana a las 10:00 AM",
-      time: "Hace 1 día",
-      status: "scheduled",
+      clientName: "Laura García",
+      clientId: 104,
+      title: "Divorcio Amigable",
+      type: "Asesoría Legal",
+      status: "Completada",
+      priority: "Alta",
+      createdDate: "2023-11-01",
+      dueDate: "2023-12-15",
+      description: "Proceso de divorcio de mutuo acuerdo con división de bienes.",
+      progress: 100,
     },
   ]
 
-  // Data for UpcomingAppointmentsCard
-  const upcomingAppointmentsData = [
-    {
-      title: "Consulta Financiera",
-      time: "10:00 AM",
-      description: "Ana Martínez - Planificación presupuestaria",
-      colorClass: "emerald",
-    },
-    {
-      title: "Mediación Familiar",
-      time: "2:30 PM",
-      description: "Familia Rodríguez - Resolución de conflictos",
-      colorClass: "blue",
-    },
-    {
-      title: "Consulta Profesional",
-      time: "4:00 PM",
-      description: "Luis Fernández - Asesoría empresarial",
-      colorClass: "purple",
-    },
-  ]
-
-  // Handlers for Settings section
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPasswordChangeMessage("")
-    setPasswordChangeError("")
-
-    if (newPassword !== confirmNewPassword) {
-      setPasswordChangeError("Las nuevas contraseñas no coinciden.")
-      return
-    }
-    if (newPassword.length < 6) {
-      setPasswordChangeError("La nueva contraseña debe tener al menos 6 caracteres.")
-      return
-    }
-    // Add more robust password strength validation here if needed (e.g., regex for special chars, numbers)
-
-    // Supabase's updateUser does not require current password for security,
-    // but it's good practice to include it for user experience and to prevent accidental changes.
-    // For simplicity, we're not validating currentPassword against Supabase here.
-    // A more secure approach would involve re-authenticating the user or using a server-side function.
-
-    const { error } = await changePassword(newPassword)
-
-    if (error) {
-      setPasswordChangeError(`Error al cambiar contraseña: ${error.message}`)
-    } else {
-      setPasswordChangeMessage("Contraseña cambiada exitosamente.")
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmNewPassword("")
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target
+    setNewCase((prev) => ({ ...prev, [id]: value }))
   }
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setProfileUpdateMessage("")
-    setProfileUpdateError("")
-
-    if (!firstName.trim() || !lastName.trim()) {
-      setProfileUpdateError("El nombre y apellido no pueden estar vacíos.")
-      return
-    }
-
-    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
-
-    if (error) {
-      setProfileUpdateError(`Error al actualizar perfil: ${error.message}`)
-    } else {
-      setProfileUpdateMessage("Información de perfil actualizada exitosamente.")
-    }
+  const handleSelectChange = (value: string, id: string) => {
+    setNewCase((prev) => ({ ...prev, [id]: value }))
   }
 
-  const handleReferralCodeUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setReferralCodeUpdateMessage("")
-    setReferralCodeUpdateError("")
-
-    if (!newReferralCode.trim()) {
-      setReferralCodeUpdateError("El código de referido no puede estar vacío.")
-      return
-    }
-    // Basic validation: only alphanumeric characters
-    if (!/^[a-zA-Z0-9]+$/.test(newReferralCode)) {
-      setReferralCodeUpdateError("El código de referido solo puede contener letras y números.")
-      return
-    }
-
-    // In a real scenario, you'd check for uniqueness on the server-side (e.g., via a Supabase function/trigger)
-    // For this mock, we'll just assume it's unique.
-
-    const { error } = await updateUserProfile({ referral_code: newReferralCode })
-
-    if (error) {
-      setReferralCodeUpdateError(`Error al actualizar código de referido: ${error.message}`)
-    } else {
-      setReferralCodeUpdateMessage("Código de referido actualizado exitosamente.")
-      setReferralCode(newReferralCode) // Update the local state used for referral link
-    }
+  const handleCreateCase = () => {
+    console.log("New Case:", newCase)
+    // Here you would typically send this data to your backend
+    // and then refresh the cases list.
+    setNewCase({
+      title: "",
+      description: "",
+      type: "",
+      priority: "",
+      client: "",
+      dueDate: "",
+    })
   }
+
+  const handleViewCase = (caseItem: ClientCase | AdvisorCase) => {
+    setSelectedCase(caseItem)
+  }
+
+  const handleCloseCaseView = () => {
+    setSelectedCase(null)
+  }
+
+  const filteredClientCases = clientCases.filter(
+    (caseItem) =>
+      caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (filterStatus === "all" || caseItem.status.toLowerCase() === filterStatus.toLowerCase()),
+  )
+
+  const filteredAdvisorCases = advisorCases.filter(
+    (caseItem) =>
+      (caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        caseItem.clientName.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (filterStatus === "all" || caseItem.status.toLowerCase() === filterStatus.toLowerCase()) &&
+      (filterPriority === "all" || caseItem.priority.toLowerCase() === filterPriority.toLowerCase()),
+  )
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer">
-              <img src="/fox-lawyer-logo.png" alt="Fox Lawyer" className="w-8 h-8" />
-              <h1 className="text-xl font-bold text-foreground">Fox Lawyer</h1>
-            </Link>
-
-            <div className="flex items-center space-x-4">
-              {/* Search Bar with Results - Fixed Icon Position */}
-              <div className="hidden md:flex items-center space-x-2 relative">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold text-foreground">Mis Casos</h2>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-500 hover:bg-emerald-600">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Caso
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Crear Nuevo Caso</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="title" className="text-right">
+                  Título
+                </Label>
+                <Input id="title" value={newCase.title} onChange={handleInputChange} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Descripción
+                </Label>
+                <Textarea
+                  id="description"
+                  value={newCase.description}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="type" className="text-right">
+                  Tipo
+                </Label>
+                <Select value={newCase.type} onValueChange={(value) => handleSelectChange(value, "type")}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asesoria_legal">Asesoría Legal</SelectItem>
+                    <SelectItem value="asesoria_financiera">Asesoría Financiera</SelectItem>
+                    <SelectItem value="relaciones_familiares">Relaciones Familiares</SelectItem>
+                    <SelectItem value="otros">Otros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {isAdvisor && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="client" className="text-right">
+                    Cliente
+                  </Label>
                   <Input
-                    placeholder="Buscar clientes, casos, citas..."
-                    className="w-64 pl-10"
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onFocus={() => searchQuery && setShowSearchResults(true)}
-                    onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+                    id="client"
+                    value={newCase.client}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    placeholder="Nombre del Cliente"
                   />
-
-                  {/* Search Results Dropdown */}
-                  {showSearchResults && searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.id}
-                          onClick={() => handleSearchResultClick(result)}
-                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
-                        >
-                          <div className="font-medium text-sm text-foreground">{result.name}</div>
-                          <div className="text-xs text-muted-foreground">{result.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* No Results Message */}
-                  {showSearchResults && searchResults.length === 0 && searchQuery.trim() !== "" && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 p-3">
-                      <div className="text-sm text-muted-foreground text-center">
-                        No se encontraron resultados para "{searchQuery}"
-                      </div>
-                    </div>
-                  )}
                 </div>
+              )}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="priority" className="text-right">
+                  Prioridad
+                </Label>
+                <Select value={newCase.priority} onValueChange={(value) => handleSelectChange(value, "priority")}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Seleccionar prioridad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="media">Media</SelectItem>
+                    <SelectItem value="baja">Baja</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <ThemeToggle />
-
-              {/* User Profile Dropdown */}
-              <div className="flex items-center space-x-2">
-                <div className="hidden md:flex flex-col items-end">
-                  <span className="text-sm font-medium text-foreground">
-                    {profile?.first_name} {profile?.last_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground capitalize">{profile?.account_type}</span>
-                </div>
-                <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              </div>
-
-              {/* Mobile Menu Button */}
-              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                <Menu className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={`${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-40 w-64 bg-card border-r border-border/40 transition-transform duration-300 ease-in-out`}
-        >
-          <div className="flex flex-col h-full">
-            <div className="p-6">
-              <div className="flex items-center justify-between lg:hidden">
-                <span className="text-lg font-semibold">Menú</span>
-                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-
-              {/* Mobile Search */}
-              <div className="lg:hidden mt-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-                  <Input
-                    placeholder="Buscar..."
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                  />
-
-                  {/* Mobile Search Results */}
-                  {showSearchResults && searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/40 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.id}
-                          onClick={() => handleSearchResultClick(result)}
-                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors border-b border-border/20 last:border-b-0"
-                        >
-                          <div className="font-medium text-sm text-foreground">{result.name}</div>
-                          <div className="text-xs text-muted-foreground">{result.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="dueDate" className="text-right">
+                  Fecha Límite
+                </Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={newCase.dueDate}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
               </div>
             </div>
-
-            <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-              {sidebarItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveView(item.id)
-                    setSidebarOpen(false)
-                  }}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeView === item.id
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </button>
-              ))}
-            </nav>
-
-            <div className="p-4 border-t border-border/40">
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-muted-foreground hover:text-foreground"
-                onClick={signOut}
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                Cerrar Sesión
-              </Button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          {activeView === "overview" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-foreground">Bienvenido, {profile?.first_name}</h2>
-                  <p className="text-muted-foreground">Aquí tienes un resumen de tu actividad</p>
-                </div>
-                {profile?.account_type === "advisor" && (
-                  <Button className="bg-emerald-500 hover:bg-emerald-600">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nuevo Caso
-                  </Button>
-                )}
-              </div>
-
-              {/* User Info Card */}
-              <UserInfoCard user={user} profile={profile} />
-
-              {/* Stats Grid */}
-              <StatsGrid stats={displayStats} />
-
-              {/* Recent Activity */}
-              <div className="grid lg:grid-cols-2 gap-6">
-                <RecentActivityCard recentActivity={recentActivity} />
-
-                <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
-              </div>
-            </div>
-          )}
-
-          {/* Subscriptions Section - Only for Clients */}
-          {activeView === "subscriptions" && profile?.account_type === "client" && <SubscriptionsSection />}
-
-          {/* Client Cases Section */}
-          {activeView === "cases" && profile?.account_type === "client" && (
-            <ClientCasesSection userCases={userCases} openChatForCase={openChatForCase} />
-          )}
-
-          {/* Advisor Cases Section */}
-          {activeView === "cases" && profile?.account_type === "advisor" && (
-            <AdvisorCasesSection
-              advisorCases={advisorCases}
-              caseFilter={caseFilter}
-              setCaseFilter={setCaseFilter}
-              setSelectedCase={setSelectedCase}
-              openChatForCase={openChatForCase}
-              selectedCase={selectedCase}
-              setSelectedClient={setSelectedClient}
-            />
-          )}
-
-          {/* Advisor Clients Section */}
-          {activeView === "clients" && profile?.account_type === "advisor" && (
-            <AdvisorClientsSection
-              advisorClients={advisorClients}
-              clientFilter={clientFilter}
-              setClientFilter={setClientFilter}
-              setSelectedClient={setSelectedClient}
-              selectedClient={selectedClient}
-              advisorCases={advisorCases}
-              openChatForCase={openChatForCase}
-            />
-          )}
-
-          {/* Messages Section */}
-          {activeView === "messages" && (
-            <MessagesSection
-              profile={profile}
-              userCases={userCases}
-              advisorCases={advisorCases}
-              activeChat={activeChat}
-              setActiveChat={setActiveChat}
-            />
-          )}
-
-          {/* Quotes Section - Only for Clients */}
-          {activeView === "quotes" && profile?.account_type === "client" && (
-            <QuotesSection
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              userScheduledCases={userScheduledCases}
-            />
-          )}
-
-          {/* Financial Overview Section - Only for Advisors */}
-          {activeView === "financial" && profile?.account_type === "advisor" && (
-            <FinancialOverviewSection dateRange={dateRange} setDateRange={setDateRange} />
-          )}
-
-          {/* Referrals Section - Only for Clients */}
-          {activeView === "referrals" && profile?.account_type === "client" && (
-            <ReferralsSection
-              referralStats={referralStats}
-              referralCode={referralCode}
-              copyReferralLink={copyReferralLink}
-              copySuccess={copySuccess}
-            />
-          )}
-
-          {/* Settings Section */}
-          {activeView === "settings" && (
-            <SettingsSection
-              currentPassword={currentPassword}
-              setCurrentPassword={setCurrentPassword}
-              newPassword={newPassword}
-              setNewPassword={setNewPassword}
-              confirmNewPassword={confirmNewPassword}
-              setConfirmNewPassword={setConfirmNewPassword}
-              passwordChangeMessage={passwordChangeMessage}
-              setPasswordChangeMessage={setPasswordChangeMessage}
-              passwordChangeError={passwordChangeError}
-              setPasswordChangeError={setPasswordChangeError}
-              handlePasswordChange={handlePasswordChange}
-              firstName={firstName}
-              setFirstName={setFirstName}
-              lastName={lastName}
-              setLastName={setLastName}
-              profileUpdateMessage={profileUpdateMessage}
-              setProfileUpdateMessage={setProfileUpdateMessage}
-              profileUpdateError={profileUpdateError}
-              setProfileUpdateError={setProfileUpdateError}
-              handleProfileUpdate={handleProfileUpdate}
-              newReferralCode={newReferralCode}
-              setNewReferralCode={setNewReferralCode}
-              referralCodeUpdateMessage={referralCodeUpdateMessage}
-              setReferralCodeUpdateMessage={setReferralCodeUpdateMessage}
-              referralCodeUpdateError={referralCodeUpdateError}
-              setReferralCodeUpdateError={setReferralCodeUpdateError}
-              handleReferralCodeUpdate={handleReferralCodeUpdate}
-              profile={profile}
-            />
-          )}
-
-          {activeView !== "overview" &&
-            activeView !== "subscriptions" &&
-            activeView !== "referrals" &&
-            activeView !== "quotes" &&
-            activeView !== "financial" &&
-            activeView !== "cases" &&
-            activeView !== "clients" &&
-            activeView !== "messages" &&
-            activeView !== "settings" && (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Vista en Desarrollo</h3>
-                <p className="text-muted-foreground">
-                  La sección "{sidebarItems.find((item) => item.id === activeView)?.name}" estará disponible
-                  próximamente.
-                </p>
-              </div>
-            )}
-        </main>
+            <Button onClick={handleCreateCase}>Crear Caso</Button>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar casos..."
+            className="w-full pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-full md:w-[180px]">
+            <Filter className="mr-2 h-4 w-4" />
+            <SelectValue placeholder="Filtrar por estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="pendiente">Pendiente</SelectItem>
+            <SelectItem value="en progreso">En Progreso</SelectItem>
+            <SelectItem value="programada">Programada</SelectItem>
+            <SelectItem value="en revision">En Revisión</SelectItem>
+            <SelectItem value="completada">Completada</SelectItem>
+          </SelectContent>
+        </Select>
+        {isAdvisor && (
+          <Select value={filterPriority} onValueChange={setFilterPriority}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <ChevronDown className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Filtrar por prioridad" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las prioridades</SelectItem>
+              <SelectItem value="alta">Alta</SelectItem>
+              <SelectItem value="media">Media</SelectItem>
+              <SelectItem value="baja">Baja</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {isAdvisor
+          ? filteredAdvisorCases.map((caseItem) => (
+              <Card key={caseItem.id} className="border-border/40">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-lg font-semibold">{caseItem.title}</CardTitle>
+                  <Badge
+                    className={`px-2 py-1 text-xs ${
+                      caseItem.status === "En Progreso"
+                        ? "bg-blue-500/20 text-blue-400"
+                        : caseItem.status === "Programada"
+                          ? "bg-orange-500/20 text-orange-400"
+                          : caseItem.status === "Completada"
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-gray-500/20 text-gray-400"
+                    }`}
+                  >
+                    {caseItem.status}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    <span>Cliente: {caseItem.clientName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    <span>Creado: {caseItem.createdDate}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    <span>Fecha Límite: {caseItem.dueDate}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span
+                      className={`font-medium ${
+                        caseItem.priority === "Alta"
+                          ? "text-red-500"
+                          : caseItem.priority === "Media"
+                            ? "text-yellow-500"
+                            : "text-green-500"
+                      }`}
+                    >
+                      Prioridad: {caseItem.priority}
+                    </span>
+                  </div>
+                  <Progress value={caseItem.progress} className="w-full" />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => handleViewCase(caseItem)}>
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="sr-only">Ver Detalles</span>
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                      <Edit className="w-4 h-4" />
+                      <span className="sr-only">Editar Caso</span>
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                      <Trash2 className="w-4 h-4" />
+                      <span className="sr-only">Eliminar Caso</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          : filteredClientCases.map((caseItem) => (
+              <Card key={caseItem.id} className="border-border/40">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-lg font-semibold">{caseItem.title}</CardTitle>
+                  <Badge
+                    className={`px-2 py-1 text-xs ${
+                      caseItem.status === "En Progreso"
+                        ? "bg-blue-500/20 text-blue-400"
+                        : caseItem.status === "Programada"
+                          ? "bg-orange-500/20 text-orange-400"
+                          : caseItem.status === "Completada"
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-gray-500/20 text-gray-400"
+                    }`}
+                  >
+                    {caseItem.status}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={caseItem.advisorAvatar || "/placeholder.svg"} />
+                      <AvatarFallback>{caseItem.advisor.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span>Asesor: {caseItem.advisor}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    <span>Creado: {caseItem.createdDate}</span>
+                  </div>
+                  {caseItem.nextAppointment && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      <span>Próxima Cita: {caseItem.nextAppointment}</span>
+                    </div>
+                  )}
+                  <Progress value={caseItem.progress} className="w-full" />
+                  <div className="flex justify-end">
+                    <Button variant="ghost" size="icon" onClick={() => handleViewCase(caseItem)}>
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="sr-only">Ver Detalles</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+      </div>
+
+      {selectedCase && (
+        <Dialog open={!!selectedCase} onOpenChange={handleCloseCaseView}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>{selectedCase.title}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {isAdvisor && "clientName" in selectedCase && (
+                <p>
+                  <strong>Cliente:</strong> {selectedCase.clientName}
+                </p>
+              )}
+              {"advisor" in selectedCase && (
+                <p>
+                  <strong>Asesor:</strong> {selectedCase.advisor}
+                </p>
+              )}
+              <p>
+                <strong>Tipo:</strong> {selectedCase.type}
+              </p>
+              <p>
+                <strong>Estado:</strong> <Badge>{selectedCase.status}</Badge>
+              </p>
+              {"priority" in selectedCase && (
+                <p>
+                  <strong>Prioridad:</strong> {selectedCase.priority}
+                </p>
+              )}
+              <p>
+                <strong>Descripción:</strong> {selectedCase.description}
+              </p>
+              <p>
+                <strong>Fecha de Creación:</strong> {selectedCase.createdDate}
+              </p>
+              {"dueDate" in selectedCase && (
+                <p>
+                  <strong>Fecha Límite:</strong> {selectedCase.dueDate}
+                </p>
+              )}
+              {"nextAppointment" in selectedCase && selectedCase.nextAppointment && (
+                <p>
+                  <strong>Próxima Cita:</strong> {selectedCase.nextAppointment}
+                </p>
+              )}
+              <p>
+                <strong>Progreso:</strong> {selectedCase.progress}%
+              </p>
+              <Progress value={selectedCase.progress} className="w-full" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button onClick={handleCloseCaseView}>Cerrar</Button>
+              {isAdvisor && (
+                <>
+                  <Button variant="outline">Editar</Button>
+                  <Button variant="destructive">Eliminar</Button>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
-  )
-}
-
-export default function Dashboard() {
-  return (
-    <ProtectedRoute>
-      <DashboardContent />
-    </ProtectedRoute>
   )
 }

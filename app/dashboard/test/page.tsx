@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
+import { useState } from "react"
 import {
   TestTube,
   Play,
@@ -21,6 +24,49 @@ import {
 } from "lucide-react"
 
 export default function TestPage() {
+  const { user, profile, signOut } = useAuth()
+  const [message, setMessage] = useState("")
+  const [error, setError] = useState("")
+
+  const testDbConnection = async () => {
+    setError("")
+    setMessage("")
+    try {
+      const { data, error: dbError } = await supabase.from("profiles").select("*").limit(1)
+      if (dbError) {
+        setError(`Database error: ${dbError.message}`)
+      } else {
+        setMessage("Database connection successful!")
+        console.log("DB Data:", data)
+      }
+    } catch (err: any) {
+      setError(`Unexpected error: ${err.message}`)
+    }
+  }
+
+  const testAuthStatus = () => {
+    setMessage("")
+    setError("")
+    if (user) {
+      setMessage(`User is logged in: ${user.email}. Account type: ${profile?.account_type}`)
+      console.log("User:", user)
+      console.log("Profile:", profile)
+    } else {
+      setMessage("User is not logged in.")
+    }
+  }
+
+  const handleSignOut = async () => {
+    setError("")
+    setMessage("")
+    try {
+      await signOut()
+      setMessage("Signed out successfully!")
+    } catch (err: any) {
+      setError(`Sign out error: ${err.message}`)
+    }
+  }
+
   const testStats = [
     {
       title: "Pruebas Totales",
@@ -127,7 +173,7 @@ export default function TestPage() {
   ]
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -135,16 +181,23 @@ export default function TestPage() {
           <p className="text-muted-foreground mt-1">Monitorea y ejecuta pruebas del sistema</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={testDbConnection}>
             <RefreshCw className="w-4 h-4 mr-2" />
-            Actualizar
+            Probar Conexión DB
           </Button>
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
+          <Button onClick={testAuthStatus} className="bg-emerald-500 hover:bg-emerald-600">
             <Play className="w-4 h-4 mr-2" />
-            Ejecutar Todas las Pruebas
+            Probar Estado Auth
+          </Button>
+          <Button onClick={handleSignOut} variant="destructive">
+            <X className="w-4 h-4 mr-2" />
+            Cerrar Sesión
           </Button>
         </div>
       </div>
+
+      {message && <p className="text-emerald-500 mt-4">{message}</p>}
+      {error && <p className="text-red-500 mt-4">{error}</p>}
 
       <div className="space-y-6">
         {/* Stats Grid */}
@@ -342,6 +395,40 @@ export default function TestPage() {
             </div>
           </TabsContent>
         </Tabs>
+      </div>
+
+      <div className="mt-8 p-4 border rounded-lg bg-muted/20">
+        <h3 className="text-xl font-semibold text-foreground">Información del Usuario (si está logueado)</h3>
+        {user ? (
+          <div className="mt-2 text-muted-foreground">
+            <p>
+              <strong>ID de Usuario:</strong> {user.id}
+            </p>
+            <p>
+              <strong>Email:</strong> {user.email}
+            </p>
+            <p>
+              <strong>Tipo de Cuenta:</strong> {profile?.account_type || "Cargando..."}
+            </p>
+            <p>
+              <strong>Nombre:</strong> {profile?.first_name || "N/A"} {profile?.last_name || "N/A"}
+            </p>
+            <p>
+              <strong>Código de Referido:</strong> {profile?.referral_code || "N/A"}
+            </p>
+            <p>
+              <strong>ID de Cliente Stripe:</strong> {profile?.stripe_customer_id || "N/A"}
+            </p>
+            <p>
+              <strong>ID de Suscripción Stripe:</strong> {profile?.stripe_subscription_id || "N/A"}
+            </p>
+            <p>
+              <strong>Estado de Suscripción:</strong> {profile?.subscription_status || "N/A"}
+            </p>
+          </div>
+        ) : (
+          <p className="text-muted-foreground">No hay usuario logueado.</p>
+        )}
       </div>
     </div>
   )

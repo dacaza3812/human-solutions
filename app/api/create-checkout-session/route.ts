@@ -1,72 +1,78 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
-import { createClient } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-05-28.basil",
+  apiVersion: "2024-04-10",
 })
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+export async function POST(req: NextRequest) {
+  const { priceId, userId, userEmail } = await req.json()
 
-export async function POST(request: NextRequest) {
+  if (!priceId || !userId || !userEmail) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+  }
+
   try {
-    const { planId } = await request.json()
+    // Check if user already has a Stripe customer ID
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", userId)
+      .single()
 
-    // Get the user from the request headers or session
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader) {
-      return NextResponse.json({ error: "No authorization header" }, { status: 401 })
+    if (profileError) {
+      console.error("Error fetching user profile:", profileError)
+      throw new Error("Failed to fetch user profile.")
     }
 
-    const token = authHeader.replace("Bearer ", "")
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token)
+    let customerId = profileData?.stripe_customer_id
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Invalid user" }, { status: 401 })
+    if (!customerId) {
+      // Create a new Stripe customer if one doesn't exist
+      const customer = await stripe.customers.create({
+        email: userEmail,
+        metadata: {
+          userId: userId,
+        },
+      })
+      customerId = customer.id
+
+      // Save the new customer ID to the user's profile in Supabase
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: customerId })
+        .eq("id", userId)
+
+      if (updateError) {
+        console.error("Error updating user profile with Stripe customer ID:", updateError)
+        throw new Error("Failed to update user profile with Stripe customer ID.")
+      }
     }
 
-    // Get plan details from database
-    const { data: plan, error: planError } = await supabase.from("plans").select("*").eq("id", planId).single()
-
-    if (planError || !plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 })
-    }
-
-    // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+      customer: customerId,
       line_items: [
         {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: plan.name,
-              description: plan.description,
-            },
-            unit_amount: Math.round(plan.price * 100), // Convert to cents
-            recurring: {
-              interval: "month",
-            },
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment_process?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/?canceled=true`,
-      customer_email: user.email,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/session-success?session_id={CHECKOUT_SESSION_ID}&user_id=${userId}&price_id=${priceId}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/subscriptions?canceled=true`,
       metadata: {
-        userId: user.id,
-        planId: planId.toString(),
+        userId: userId,
+        priceId: priceId,
       },
     })
 
-    return NextResponse.json({ sessionId: session.id })
+    return NextResponse.json({ sessionId: session.id, url: session.url })
   } catch (error) {
     console.error("Error creating checkout session:", error)
-    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "An unknown error occurred" },
+      { status: 500 },
+    )
   }
 }

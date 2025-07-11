@@ -1,82 +1,102 @@
 "use client"
 
 import type React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+
+import { useState } from "react"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Key } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { CheckCircle, XCircle } from "lucide-react"
 
-interface PasswordSettingsProps {
-  currentPassword: string
-  setCurrentPassword: (value: string) => void
-  newPassword: string
-  setNewPassword: (value: string) => void
-  confirmNewPassword: string
-  setConfirmNewPassword: (value: string) => void
-  passwordChangeMessage: string
-  passwordChangeError: string
-  handlePasswordChange: (e: React.FormEvent) => Promise<void>
-}
+export function PasswordSettings() {
+  const { changePassword } = useAuth()
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmNewPassword, setConfirmNewPassword] = useState("")
+  const [message, setMessage] = useState("")
+  const [isError, setIsError] = useState(false)
 
-export function PasswordSettings({
-  currentPassword,
-  setCurrentPassword,
-  newPassword,
-  setNewPassword,
-  confirmNewPassword,
-  setConfirmNewPassword,
-  passwordChangeMessage,
-  passwordChangeError,
-  handlePasswordChange,
-}: PasswordSettingsProps) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage("")
+    setIsError(false)
+
+    if (newPassword !== confirmNewPassword) {
+      setMessage("Las nuevas contraseñas no coinciden.")
+      setIsError(true)
+      return
+    }
+    if (newPassword.length < 6) {
+      setMessage("La nueva contraseña debe tener al menos 6 caracteres.")
+      setIsError(true)
+      return
+    }
+
+    // Note: Supabase's changePassword function typically only requires the new password
+    // and handles re-authentication internally if needed. If you need to verify
+    // the current password, you'd typically do a re-authentication step first.
+    const { error } = await changePassword(newPassword)
+
+    if (error) {
+      setMessage(`Error al cambiar contraseña: ${error.message}`)
+      setIsError(true)
+    } else {
+      setMessage("Contraseña cambiada exitosamente.")
+      setIsError(false)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmNewPassword("")
+    }
+  }
+
   return (
-    <Card className="border-border/40">
-      <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <Key className="w-5 h-5 mr-2 text-purple-400" />
-          Cambiar Contraseña
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handlePasswordChange} className="space-y-4">
-          <div>
-            <Label htmlFor="currentPassword">Contraseña Actual</Label>
-            <Input
-              id="currentPassword"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="newPassword">Nueva Contraseña</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="confirmNewPassword">Confirmar Nueva Contraseña</Label>
-            <Input
-              id="confirmNewPassword"
-              type="password"
-              value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
-              required
-            />
-          </div>
-          {passwordChangeError && <p className="text-red-500 text-sm">{passwordChangeError}</p>}
-          {passwordChangeMessage && <p className="text-emerald-500 text-sm">{passwordChangeMessage}</p>}
-          <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
-            Actualizar Contraseña
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {message && (
+        <Alert variant={isError ? "destructive" : "default"}>
+          {isError ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+          <AlertTitle>{isError ? "Error" : "Éxito"}</AlertTitle>
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
+      {/* Current password input is typically not needed for Supabase's update user password,
+          but kept here if your auth flow requires re-authentication first.
+          If not, you can remove this field. */}
+      <div>
+        <Label htmlFor="currentPassword">Contraseña Actual</Label>
+        <Input
+          id="currentPassword"
+          type="password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          className="mt-1"
+          disabled // Disable if not used for direct verification
+        />
+      </div>
+      <div>
+        <Label htmlFor="newPassword">Nueva Contraseña</Label>
+        <Input
+          id="newPassword"
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          className="mt-1"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="confirmNewPassword">Confirmar Nueva Contraseña</Label>
+        <Input
+          id="confirmNewPassword"
+          type="password"
+          value={confirmNewPassword}
+          onChange={(e) => setConfirmNewPassword(e.target.value)}
+          className="mt-1"
+          required
+        />
+      </div>
+      <Button type="submit">Cambiar Contraseña</Button>
+    </form>
   )
 }

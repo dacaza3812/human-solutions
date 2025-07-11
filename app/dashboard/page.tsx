@@ -13,7 +13,7 @@ import { UpcomingAppointmentsCard } from "./components/upcoming-appointments-car
 import { formatDistanceToNowStrict } from "date-fns"
 import { es } from "date-fns/locale"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card" // Ensure Card components are imported
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 // Define un tipo para el perfil de usuario si no existe
 interface UserProfile {
@@ -326,7 +326,7 @@ export default function DashboardPage() {
 
         const { data: referralPayments, error: referralPaymentsError } = await supabase
           .from("referral_transactions")
-          .select("id, amount, created_at, referee_id, profiles(first_name, last_name)")
+          .select("id, amount, created_at, referee_id, profiles!referee_id(first_name, last_name)") // Explicitly specify relationship
           .eq("referrer_id", user.id)
           .order("created_at", { ascending: false })
           .limit(5)

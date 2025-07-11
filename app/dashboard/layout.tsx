@@ -1,18 +1,15 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, Fragment } from "react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { ProtectedRoute } from "@/components/protected-route" // Re-imported ProtectedRoute
 import { useAuth } from "@/contexts/auth-context" // Re-imported useAuth
 import {
   Home,
   Users,
   FileText,
   Settings,
-  BarChart3,
-  Calendar,
   MessageCircle,
   Bell,
   Search,
@@ -21,17 +18,28 @@ import {
   X,
   User,
   UserPlus,
-  CalendarDays,
   PieChart,
   CreditCard,
-  TestTube,
-  FileQuestionIcon,
-  Contact
+  Contact,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Suspense } from "react"
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
+import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/contexts/auth-context"
+import { Toaster } from "@/components/ui/toaster"
+import { Separator } from "@/components/ui/separator"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -295,11 +303,58 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   )
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const pathSegments = pathname.split("/").filter(Boolean) // Remove empty strings
+
   return (
-    <ProtectedRoute>
-      {/* ✅ render directo, sin Suspense */}
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </ProtectedRoute>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <AuthProvider>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset>
+            <Suspense fallback={null}>
+              <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="mr-2 h-4" />
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink asChild>
+                        <Link href="/dashboard">Dashboard</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    {pathSegments.slice(1).map((segment, index) => {
+                      const href = "/" + pathSegments.slice(0, index + 2).join("/")
+                      const isLast = index === pathSegments.slice(1).length - 1
+                      const displayName = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ")
+
+                      return (
+                        <Fragment key={segment}>
+                          <BreadcrumbSeparator />
+                          <BreadcrumbItem>
+                            {isLast ? (
+                              <BreadcrumbPage>{displayName}</BreadcrumbPage>
+                            ) : (
+                              <BreadcrumbLink asChild>
+                                <Link href={href}>{displayName}</Link>
+                              </BreadcrumbLink>
+                            )}
+                          </BreadcrumbItem>
+                        </Fragment>
+                      )
+                    })}
+                  </BreadcrumbList>
+                </Breadcrumb>
+              </header>
+            </Suspense>
+            <main className="flex-1 overflow-auto">
+              <DashboardLayoutContent>{children}</DashboardLayoutContent>
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+        <Toaster />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

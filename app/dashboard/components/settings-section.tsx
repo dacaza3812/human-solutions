@@ -1,6 +1,9 @@
 "use client"
 
 import type React from "react"
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PasswordSettings } from "./settings/password-settings"
 import { ProfileSettings } from "./settings/profile-settings"
 import { ReferralCodeSettings } from "./settings/referral-code-settings"
@@ -83,6 +86,8 @@ export function SettingsSection({
   referralCodeUpdateError,
   setReferralCodeUpdateError,
 }: SettingsSectionProps) {
+  const [activeTab, setActiveTab] = useState("profile")
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
     setPasswordChangeMessage("")
@@ -152,45 +157,72 @@ export function SettingsSection({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Configuración de la Cuenta</h2>
-          <p className="text-muted-foreground">Gestiona tu información personal y de seguridad</p>
-        </div>
-      </div>
+    <div className="p-6 space-y-6">
+      <h2 className="text-3xl font-bold text-foreground mb-6">Configuración</h2>
 
-      <PasswordSettings
-        currentPassword={currentPassword}
-        setCurrentPassword={setCurrentPassword}
-        newPassword={newPassword}
-        setNewPassword={setNewPassword}
-        confirmNewPassword={confirmNewPassword}
-        setConfirmNewPassword={setConfirmNewPassword}
-        passwordChangeMessage={passwordChangeMessage}
-        passwordChangeError={passwordChangeError}
-        handlePasswordChange={handlePasswordChange}
-      />
-
-      <ProfileSettings
-        firstName={firstName}
-        setFirstName={setFirstName}
-        lastName={lastName}
-        setLastName={setLastName}
-        profileUpdateMessage={profileUpdateMessage}
-        profileUpdateError={profileUpdateError}
-        handleProfileUpdate={handleProfileUpdate}
-      />
-
-      {profile?.account_type === "client" && (
-        <ReferralCodeSettings
-          newReferralCode={newReferralCode}
-          setNewReferralCode={setNewReferralCode}
-          referralCodeUpdateMessage={referralCodeUpdateMessage}
-          referralCodeUpdateError={referralCodeUpdateError}
-          handleReferralCodeUpdate={handleReferralCodeUpdate}
-        />
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="profile">Perfil</TabsTrigger>
+          <TabsTrigger value="password">Contraseña</TabsTrigger>
+          <TabsTrigger value="referral">Referidos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile">
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardTitle>Configuración de Perfil</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProfileSettings
+                firstName={firstName}
+                setFirstName={setFirstName}
+                lastName={lastName}
+                setLastName={setLastName}
+                profileUpdateMessage={profileUpdateMessage}
+                profileUpdateError={profileUpdateError}
+                handleProfileUpdate={handleProfileUpdate}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="password">
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardTitle>Cambiar Contraseña</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PasswordSettings
+                currentPassword={currentPassword}
+                setCurrentPassword={setCurrentPassword}
+                newPassword={newPassword}
+                setNewPassword={setNewPassword}
+                confirmNewPassword={confirmNewPassword}
+                setConfirmNewPassword={setConfirmNewPassword}
+                passwordChangeMessage={passwordChangeMessage}
+                passwordChangeError={passwordChangeError}
+                handlePasswordChange={handlePasswordChange}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="referral">
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardTitle>Código de Referido</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {profile?.account_type === "client" && (
+                <ReferralCodeSettings
+                  newReferralCode={newReferralCode}
+                  setNewReferralCode={setNewReferralCode}
+                  referralCodeUpdateMessage={referralCodeUpdateMessage}
+                  referralCodeUpdateError={referralCodeUpdateError}
+                  handleReferralCodeUpdate={handleReferralCodeUpdate}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

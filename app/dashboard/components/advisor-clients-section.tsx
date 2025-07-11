@@ -1,8 +1,16 @@
 "use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Plus, Users, FileText, CheckCircle, Award, MessageCircle, X } from "lucide-react"
+import { Search, MessageSquare, Eye, Plus } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AdvisorClient {
   id: number
@@ -17,269 +25,255 @@ interface AdvisorClient {
   lastActivity: string
 }
 
-interface AdvisorCase {
-  id: number
-  clientName: string
-  clientId: number
-  title: string
-  type: string
-  status: string
-  priority: string
-  createdDate: string
-  dueDate: string
-  description: string
-  progress: number
-}
+export function AdvisorClientsSection() {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedClient, setSelectedClient] = useState<AdvisorClient | null>(null)
+  const [newClient, setNewClient] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    accountType: "client", // Default to client
+  })
 
-interface AdvisorClientsSectionProps {
-  advisorClients: AdvisorClient[]
-  advisorCases: AdvisorCase[] // Needed to find a case for chat
-  selectedClient: AdvisorClient | null
-  setSelectedClient: (client: AdvisorClient | null) => void
-  clientFilter: string
-  setClientFilter: (filter: string) => void
-  openChatForCase: (caseId: number) => void
-}
+  // Mock data for advisor's clients
+  const advisorClients: AdvisorClient[] = [
+    {
+      id: 1,
+      name: "Juan Pérez",
+      email: "juan@email.com",
+      phone: "+52 123 456 7890",
+      avatar: "/placeholder-user.jpg",
+      totalCases: 3,
+      activeCases: 2,
+      completedCases: 1,
+      joinDate: "2024-01-10",
+      lastActivity: "2024-01-18",
+    },
+    {
+      id: 2,
+      name: "María López",
+      email: "maria@email.com",
+      phone: "+52 098 765 4321",
+      avatar: "/placeholder-user.jpg",
+      totalCases: 2,
+      activeCases: 1,
+      completedCases: 1,
+      joinDate: "2024-01-05",
+      lastActivity: "2024-01-17",
+    },
+    {
+      id: 3,
+      name: "Carlos Mendoza",
+      email: "carlos@email.com",
+      phone: "+52 555 123 4567",
+      avatar: "/placeholder-user.jpg",
+      totalCases: 4,
+      activeCases: 3,
+      completedCases: 1,
+      joinDate: "2023-12-15",
+      lastActivity: "2024-01-19",
+    },
+    {
+      id: 4,
+      name: "Laura García",
+      email: "laura@email.com",
+      phone: "+52 999 888 7777",
+      avatar: "/placeholder-user.jpg",
+      totalCases: 1,
+      activeCases: 0,
+      completedCases: 1,
+      joinDate: "2024-01-20",
+      lastActivity: "2024-01-20",
+    },
+  ]
 
-export function AdvisorClientsSection({
-  advisorClients,
-  advisorCases,
-  selectedClient,
-  setSelectedClient,
-  clientFilter,
-  setClientFilter,
-  openChatForCase,
-}: AdvisorClientsSectionProps) {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target
+    setNewClient((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const handleSelectChange = (value: string, id: string) => {
+    setNewClient((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const handleAddClient = () => {
+    console.log("New Client:", newClient)
+    // Here you would typically send this data to your backend
+    // and then refresh the clients list.
+    setNewClient({ name: "", email: "", phone: "", accountType: "client" })
+  }
+
+  const handleViewClient = (client: AdvisorClient) => {
+    setSelectedClient(client)
+  }
+
+  const handleCloseClientView = () => {
+    setSelectedClient(null)
+  }
+
   const filteredClients = advisorClients.filter(
     (client) =>
-      client.name.toLowerCase().includes(clientFilter.toLowerCase()) ||
-      client.email.toLowerCase().includes(clientFilter.toLowerCase()),
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Mis Clientes</h2>
-          <p className="text-muted-foreground">Gestiona la información de tus clientes</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              placeholder="Buscar clientes..."
-              className="pl-10 w-64"
-              value={clientFilter}
-              onChange={(e) => setClientFilter(e.target.value)}
-            />
-          </div>
-          <Button className="bg-emerald-500 hover:bg-emerald-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Cliente
-          </Button>
-        </div>
+        <h2 className="text-3xl font-bold text-foreground">Mis Clientes</h2>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-500 hover:bg-emerald-600">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Cliente
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Nombre
+                </Label>
+                <Input id="name" value={newClient.name} onChange={handleInputChange} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newClient.email}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="phone" className="text-right">
+                  Teléfono
+                </Label>
+                <Input id="phone" value={newClient.phone} onChange={handleInputChange} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="accountType" className="text-right">
+                  Tipo de Cuenta
+                </Label>
+                <Select
+                  value={newClient.accountType}
+                  onValueChange={(value) => handleSelectChange(value, "accountType")}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">Cliente</SelectItem>
+                    <SelectItem value="advisor">Asesor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button onClick={handleAddClient}>Agregar Cliente</Button>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Client Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Clientes</p>
-                <p className="text-2xl font-bold text-foreground">{advisorClients.length}</p>
-                <p className="text-sm text-emerald-400">+2 este mes</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-emerald-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Casos Activos</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {advisorClients.reduce((sum, client) => sum + client.activeCases, 0)}
-                </p>
-                <p className="text-sm text-blue-400">En progreso</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Casos Completados</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {advisorClients.reduce((sum, client) => sum + client.completedCases, 0)}
-                </p>
-                <p className="text-sm text-purple-400">Este mes</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Satisfacción</p>
-                <p className="text-2xl font-bold text-foreground">98%</p>
-                <p className="text-sm text-orange-400">Promedio</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Award className="w-6 h-6 text-orange-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Buscar clientes por nombre o email..."
+          className="w-full pl-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
-      {/* Clients Grid */}
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClients.map((client) => (
-          <Card
-            key={client.id}
-            className="border-border/40 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setSelectedClient(client)}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={client.avatar || "/placeholder.svg"} />
-                    <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold text-lg text-foreground">{client.name}</h3>
-                    <p className="text-sm text-muted-foreground">{client.email}</p>
-                    <p className="text-sm text-muted-foreground">{client.phone}</p>
-                  </div>
+          <Card key={client.id} className="border-border/40">
+            <CardContent className="flex flex-col items-center p-6">
+              <Avatar className="w-20 h-20 mb-4">
+                <AvatarImage src={client.avatar || "/placeholder.svg"} />
+                <AvatarFallback>{client.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <h3 className="text-xl font-semibold text-foreground">{client.name}</h3>
+              <p className="text-sm text-muted-foreground">{client.email}</p>
+              <p className="text-sm text-muted-foreground">{client.phone}</p>
+              <div className="grid grid-cols-3 gap-4 mt-4 w-full text-center">
+                <div>
+                  <p className="text-lg font-bold text-foreground">{client.totalCases}</p>
+                  <p className="text-xs text-muted-foreground">Casos Totales</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Última actividad</p>
-                  <p className="text-sm font-medium">{new Date(client.lastActivity).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border/40">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-emerald-400">{client.totalCases}</p>
-                  <p className="text-xs text-muted-foreground">Total Casos</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-400">{client.activeCases}</p>
+                <div>
+                  <p className="text-lg font-bold text-foreground">{client.activeCases}</p>
                   <p className="text-xs text-muted-foreground">Activos</p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-400">{client.completedCases}</p>
+                <div>
+                  <p className="text-lg font-bold text-foreground">{client.completedCases}</p>
                   <p className="text-xs text-muted-foreground">Completados</p>
                 </div>
+              </div>
+              <div className="flex gap-2 mt-6">
+                <Button variant="outline" onClick={() => handleViewClient(client)}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Ver Detalles
+                </Button>
+                <Button>
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Mensaje
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Client Detail Modal */}
       {selectedClient && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={selectedClient.avatar || "/placeholder.svg"} />
-                    <AvatarFallback>{selectedClient.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-xl">{selectedClient.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
-                  <X className="w-4 h-4" />
-                </Button>
+        <Dialog open={!!selectedClient} onOpenChange={handleCloseClientView}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Detalles del Cliente</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="flex flex-col items-center">
+                <Avatar className="w-24 h-24 mb-4">
+                  <AvatarImage src={selectedClient.avatar || "/placeholder.svg"} />
+                  <AvatarFallback>{selectedClient.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <h3 className="text-2xl font-bold text-foreground">{selectedClient.name}</h3>
+                <p className="text-md text-muted-foreground">{selectedClient.email}</p>
+                <p className="text-md text-muted-foreground">{selectedClient.phone}</p>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-sm text-muted-foreground">Teléfono</p>
-                  <p className="font-medium">{selectedClient.phone}</p>
+                  <p className="font-medium">Casos Totales:</p>
+                  <p>{selectedClient.totalCases}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Fecha de Registro</p>
-                  <p className="font-medium">{new Date(selectedClient.joinDate).toLocaleDateString()}</p>
+                  <p className="font-medium">Casos Activos:</p>
+                  <p>{selectedClient.activeCases}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Última Actividad</p>
-                  <p className="font-medium">{new Date(selectedClient.lastActivity).toLocaleDateString()}</p>
+                  <p className="font-medium">Casos Completados:</p>
+                  <p>{selectedClient.completedCases}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Estado</p>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-                    Activo
-                  </span>
+                  <p className="font-medium">Fecha de Ingreso:</p>
+                  <p>{selectedClient.joinDate}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Última Actividad:</p>
+                  <p>{selectedClient.lastActivity}</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <Card className="border-border/40">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-emerald-400">{selectedClient.totalCases}</p>
-                    <p className="text-sm text-muted-foreground">Total Casos</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/40">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-blue-400">{selectedClient.activeCases}</p>
-                    <p className="text-sm text-muted-foreground">Casos Activos</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/40">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-purple-400">{selectedClient.completedCases}</p>
-                    <p className="text-sm text-muted-foreground">Completados</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="flex space-x-3">
-                <Button
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-600"
-                  onClick={() => {
-                    // Find a case for this client to open chat
-                    const clientCase = advisorCases.find((c) => c.clientId === selectedClient.id)
-                    if (clientCase) {
-                      openChatForCase(clientCase.id)
-                      setSelectedClient(null)
-                    }
-                  }}
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Enviar Mensaje
-                </Button>
-                <Button variant="outline" className="flex-1 bg-transparent">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Ver Casos
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleCloseClientView}>Cerrar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

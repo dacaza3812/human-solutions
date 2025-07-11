@@ -1,62 +1,75 @@
 "use client"
 
 import type React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+
+import { useState, useEffect } from "react"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { UserRound } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { CheckCircle, XCircle } from "lucide-react"
 
-interface ProfileSettingsProps {
-  firstName: string
-  setFirstName: (value: string) => void
-  lastName: string
-  setLastName: (value: string) => void
-  profileUpdateMessage: string
-  profileUpdateError: string
-  handleProfileUpdate: (e: React.FormEvent) => Promise<void>
-}
+export function ProfileSettings() {
+  const { profile, updateUserProfile } = useAuth()
+  const [firstName, setFirstName] = useState(profile?.first_name || "")
+  const [lastName, setLastName] = useState(profile?.last_name || "")
+  const [message, setMessage] = useState("")
+  const [isError, setIsError] = useState(false)
 
-export function ProfileSettings({
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
-  profileUpdateMessage,
-  profileUpdateError,
-  handleProfileUpdate,
-}: ProfileSettingsProps) {
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name || "")
+      setLastName(profile.last_name || "")
+    }
+  }, [profile])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage("")
+    setIsError(false)
+
+    if (!firstName.trim() || !lastName.trim()) {
+      setMessage("El nombre y apellido no pueden estar vacíos.")
+      setIsError(true)
+      return
+    }
+
+    const { error } = await updateUserProfile({ first_name: firstName, last_name: lastName })
+
+    if (error) {
+      setMessage(`Error al actualizar perfil: ${error.message}`)
+      setIsError(true)
+    } else {
+      setMessage("Información de perfil actualizada exitosamente.")
+      setIsError(false)
+    }
+  }
+
   return (
-    <Card className="border-border/40">
-      <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <UserRound className="w-5 h-5 mr-2 text-blue-400" />
-          Actualizar Información de Perfil
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleProfileUpdate} className="space-y-4">
-          <div>
-            <Label htmlFor="firstName">Nombre</Label>
-            <Input
-              id="firstName"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="lastName">Apellido</Label>
-            <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-          </div>
-          {profileUpdateError && <p className="text-red-500 text-sm">{profileUpdateError}</p>}
-          {profileUpdateMessage && <p className="text-emerald-500 text-sm">{profileUpdateMessage}</p>}
-          <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
-            Guardar Cambios
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {message && (
+        <Alert variant={isError ? "destructive" : "default"}>
+          {isError ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+          <AlertTitle>{isError ? "Error" : "Éxito"}</AlertTitle>
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
+      <div>
+        <Label htmlFor="firstName">Nombre</Label>
+        <Input
+          id="firstName"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          className="mt-1"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="lastName">Apellido</Label>
+        <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="mt-1" required />
+      </div>
+      <Button type="submit">Guardar Cambios</Button>
+    </form>
   )
 }

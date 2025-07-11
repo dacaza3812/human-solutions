@@ -1,210 +1,318 @@
 "use client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Share2,
-  Gift,
-  UserPlus,
-  Users,
-  DollarSign,
-  TrendingUp,
-  CheckCircle,
-  Copy,
-} from "lucide-react"
 
-// Define el tipo si no lo importas de otro lado
-type ReferralStats = {
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Copy, DollarSign, Users, TrendingUp } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
+import { Skeleton } from "@/components/ui/skeleton"
+
+interface ReferralStats {
   total_referrals: number
   active_referrals: number
   total_earnings: number
   monthly_earnings: number
 }
 
-interface ReferralsSectionProps {
-  referralStats: ReferralStats
-  referralCode: string
-  copySuccess: boolean
-  copyReferralLink: () => Promise<void>
+interface ReferredUser {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  created_at: string
+  payments: Array<{ amount: number; status: string }>
 }
 
-export function ReferralsSection({
-  referralStats,
-  referralCode,
-  copyReferralLink,
-  copySuccess,
-}: ReferralsSectionProps) {
-  const stats = referralStats
+interface ReferralTransaction {
+  id: string
+  amount: number
+  created_at: string
+  referee_id: string
+  profiles: { first_name: string | null; last_name: string | null } | null
+}
+
+export function ReferralsSection() {
+  const { user, profile } = useAuth()
+  const [referralCode, setReferralCode] = useState("")
+  const [copySuccess, setCopySuccess] = useState(false)
+  const [referralStats, setReferralStats] = useState<ReferralStats>({
+    total_referrals: 0,
+    active_referrals: 0,
+    total_earnings: 0,
+    monthly_earnings: 0,
+  })
+  const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([])
+  const [referralTransactions, setReferralTransactions] = useState<ReferralTransaction[]>([])
+  const [loadingStats, setLoadingStats] = useState(true)
+  const [loadingReferredUsers, setLoadingReferredUsers] = useState(true)
+  const [loadingTransactions, setLoadingTransactions] = useState(true)
+
+  useEffect(() => {
+    if (profile?.referral_code) {
+      setReferralCode(profile.referral_code)
+      fetchReferralStats(profile.referral_code)
+      fetchReferredUsers(profile.referral_code)
+      fetchReferralTransactions()
+    } else if (user) {
+      // If no referral code exists, generate one (this logic might be better in auth-context or a server action)
+      const generateAndSetReferralCode = async () => {
+        const firstName = profile?.first_name?.toLowerCase() || ""
+        const lastName = profile?.last_name?.toLowerCase() || ""
+        const randomNum = Math.floor(Math.random() * 10000)
+        const newCode = `${firstName}${lastName}${randomNum}`.replace(/[^a-z0-9]/g, "") // Sanitize
+        setReferralCode(newCode)
+        // Update profile in DB
+        await supabase.from("profiles").update({ referral_code: newCode }).eq("id", user.id)
+        fetchReferralStats(newCode)
+      }
+      generateAndSetReferralCode()
+    }
+  }, [profile, user])
+
+  const fetchReferralStats = async (code: string) => {
+    setLoadingStats(true)
+    try {
+      const { data, error } = await supabase.rpc("get_referral_stats4", {
+        user_referral_code: code,
+      })
+
+      if (error) {
+        console.error("Error fetching referral stats:", error)
+        setReferralStats({ total_referrals: 0, active_referrals: 0, total_earnings: 0, monthly_earnings: 0 })
+        return
+      }
+
+      if (data && data.length > 0) {
+        const stats = data[0]
+        setReferralStats({
+          total_referrals: stats.total_referrals || 0,
+          active_referrals: stats.active_referrals || 0,
+          total_earnings: stats.total_earnings || 0,
+          monthly_earnings: stats.monthly_earnings || 0,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching referral stats:", error)
+    } finally {
+      setLoadingStats(false)
+    }
+  }
+
+  const fetchReferredUsers = async (code: string) => {
+    setLoadingReferredUsers(true)
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, created_at, payments(amount, status)")
+        .eq("referred_by", code)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching referred users:", error)
+        setReferredUsers([])
+        return
+      }
+      setReferredUsers(data as ReferredUser[])
+    } catch (error) {
+      console.error("Error fetching referred users:", error)
+    } finally {
+      setLoadingReferredUsers(false)
+    }
+  }
+
+  const fetchReferralTransactions = async () => {
+    setLoadingTransactions(true)
+    try {
+      if (!user?.id) return
+
+      const { data, error } = await supabase
+        .from("referral_transactions")
+        .select("id, amount, created_at, referee_id, profiles!referee_id(first_name, last_name)")
+        .eq("referrer_id", user.id)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching referral transactions:", error)
+        setReferralTransactions([])
+        return
+      }
+      setReferralTransactions(data as ReferralTransaction[])
+    } catch (error) {
+      console.error("Error fetching referral transactions:", error)
+    } finally {
+      setLoadingTransactions(false)
+    }
+  }
+
+  const copyReferralLink = async () => {
+    const referralLink = `${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${referralCode}`
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error("Error copying to clipboard:", err)
+    }
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Programa de Referidos</h2>
-          <p className="text-muted-foreground">Gana dinero compartiendo Fox Lawyer con tus amigos</p>
-        </div>
-      </div>
+    <div className="p-6 space-y-6">
+      <h2 className="text-3xl font-bold text-foreground mb-6">Programa de Referidos</h2>
 
-      {/* Referral Link Card */}
       <Card className="border-border/40">
         <CardHeader>
-          <CardTitle className="flex items-center text-foreground">
-            <Share2 className="w-5 h-5 mr-2 text-emerald-400" />
-            Tu Enlace de Referido
-          </CardTitle>
+          <CardTitle>Tu Código de Referido</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="referralLink" className="text-sm font-medium">
-              Enlace de Referido
-            </Label>
-            <div className="flex mt-2">
-              <Input
-                id="referralLink"
-                value={`https://foxlawyer.vercel.app/register?ref=${referralCode}`}
-                readOnly
-                className="flex-1"
-              />
-              <Button onClick={copyReferralLink} variant="outline" className="ml-2 bg-transparent" disabled={copySuccess}>
-                {copySuccess ? (
-                  <><CheckCircle className="w-4 h-4 mr-2" />Copiado</>
-                ) : (
-                  <><Copy className="w-4 h-4 mr-2" />Copiar</>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-            <div className="flex items-center space-x-2 mb-2">
-              <Gift className="w-5 h-5 text-emerald-400" />
-              <h4 className="font-semibold text-emerald-400">¿Cómo funciona?</h4>
-            </div>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Comparte tu enlace único con amigos y familiares</li>
-              <li>• Gana $25 USD por cada persona que se registre usando tu enlace</li>
-              <li>• Los pagos se procesan automáticamente cada mes</li>
-              <li>• No hay límite en la cantidad de referidos</li>
-            </ul>
-          </div>
+        <CardContent className="flex flex-col md:flex-row items-center gap-4">
+          <Input readOnly value={referralCode} className="flex-1" />
+          <Button onClick={copyReferralLink}>
+            <Copy className="w-4 h-4 mr-2" />
+            {copySuccess ? "¡Copiado!" : "Copiar Enlace"}
+          </Button>
         </CardContent>
       </Card>
 
-      {/* Referral Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Referidos</p>
-                <p className="text-2xl font-bold text-foreground">{stats.total_referrals}</p>
-                <p className="text-sm text-emerald-400">Todos los tiempos</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <UserPlus className="w-6 h-6 text-emerald-400" />
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Referidos Totales</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loadingStats ? (
+              <Skeleton className="h-8 w-1/2" />
+            ) : (
+              <div className="text-2xl font-bold">{referralStats.total_referrals}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Usuarios registrados con tu código</p>
           </CardContent>
         </Card>
-
         <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Referidos Activos</p>
-                <p className="text-2xl font-bold text-foreground">{stats.active_referrals}</p>
-                <p className="text-sm text-blue-400">Usuarios activos</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-400" />
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Referidos Activos</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loadingStats ? (
+              <Skeleton className="h-8 w-1/2" />
+            ) : (
+              <div className="text-2xl font-bold">{referralStats.active_referrals}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Referidos que han realizado un pago</p>
           </CardContent>
         </Card>
-
         <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Ganancias Totales</p>
-                <p className="text-2xl font-bold text-foreground">${stats.total_earnings}</p>
-                <p className="text-sm text-purple-400">USD ganados</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ganancias Totales</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loadingStats ? (
+              <Skeleton className="h-8 w-1/2" />
+            ) : (
+              <div className="text-2xl font-bold">${referralStats.total_earnings.toFixed(2)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Comisiones acumuladas</p>
           </CardContent>
         </Card>
-
         <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Este Mes</p>
-                <p className="text-2xl font-bold text-foreground">${stats.monthly_earnings}</p>
-                <p className="text-sm text-orange-400">Ganancias mensuales</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-orange-400" />
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ganancias del Mes</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loadingStats ? (
+              <Skeleton className="h-8 w-1/2" />
+            ) : (
+              <div className="text-2xl font-bold">${referralStats.monthly_earnings.toFixed(2)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Comisiones este mes</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Share Options */}
-      <Card className="border-border/40">
-        <CardHeader>
-          <CardTitle className="text-foreground">Compartir en Redes Sociales</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const text = `¡Únete a Fox Lawyer y transforma tus problemas en oportunidades! Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
-              }}
-            >
-              WhatsApp
-            </Button>
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank")
-              }}
-            >
-              Twitter
-            </Button>
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(text)}`, "_blank")
-              }}
-            >
-              Facebook
-            </Button>
-            <Button
-              variant="outline"
-              className="h-12 bg-transparent"
-              onClick={() => {
-                const subject = "Únete a Fox Lawyer"
-                const body = `¡Hola! Te invito a unirte a Fox Lawyer, una plataforma increíble de asesoría personalizada. Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
-                window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
-              }}
-            >
-              Email
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border-border/40">
+          <CardHeader>
+            <CardTitle>Usuarios Referidos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingReferredUsers ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : referredUsers.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">Aún no tienes referidos.</p>
+            ) : (
+              <div className="space-y-3">
+                {referredUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border/40"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {user.first_name} {user.last_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Registrado: {new Date(user.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        user.payments && user.payments.some((p) => p.status === "succeeded")
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : "bg-orange-500/20 text-orange-400"
+                      }`}
+                    >
+                      {user.payments && user.payments.some((p) => p.status === "succeeded") ? "Activo" : "Pendiente"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/40">
+          <CardHeader>
+            <CardTitle>Transacciones de Referidos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingTransactions ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : referralTransactions.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">No hay transacciones de referidos.</p>
+            ) : (
+              <div className="space-y-3">
+                {referralTransactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border/40"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">
+                        Comisión de {transaction.profiles?.first_name} {transaction.profiles?.last_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Fecha: {new Date(transaction.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="font-bold text-emerald-400">${transaction.amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
