@@ -4,30 +4,14 @@ import type React from "react"
 import { useState, Fragment } from "react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuth } from "@/contexts/auth-context" // Re-imported useAuth
-import {
-  Home,
-  Users,
-  FileText,
-  Settings,
-  MessageCircle,
-  Bell,
-  Search,
-  LogOut,
-  Menu,
-  X,
-  User,
-  UserPlus,
-  PieChart,
-  CreditCard,
-  Contact,
-} from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { Bell, Search, LogOut, Menu, X, User } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Suspense } from "react"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
+import { AppSidebar } from "@/components/app-sidebar" // Import the new AppSidebar
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
@@ -50,46 +34,9 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
-  const { user, profile, signOut } = useAuth() // Re-introduced useAuth hook
+  const { user, profile, signOut } = useAuth()
 
   const pathname = usePathname()
-
-  // Menu items based on user role
-  const getMenuItems = () => {
-    const baseItems = [
-      { id: "overview", name: "Resumen", icon: Home, href: "/dashboard" },
-      // { id: "test", name: "Prueba", icon: TestTube, href: "/dashboard/test" },
-      { id: "settings", name: "Configuración", icon: Settings, href: "/dashboard/settings" },
-    ]
-
-    if (profile?.account_type === "advisor") {
-      return [
-        ...baseItems.slice(0, 1), // Keep overview
-        { id: "clients", name: "Clientes", icon: Users, href: "/dashboard/clients" },
-        { id: "cases", name: "Casos", icon: FileText, href: "/dashboard/cases" },
-        { id: "financial", name: "Vista Financiera", icon: PieChart, href: "/dashboard/financial" },
-        // { id: "analytics", name: "Análisis", icon: BarChart3, href: "/dashboard/analytics" },
-        // { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
-        { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
-        { id: "inquiries", name: "Contactos", icon: Contact, href: "/dashboard/inquiries" },
-        ...baseItems.slice(1), // Keep test and settings
-      ]
-    } else {
-      // Client menu
-      return [
-        ...baseItems.slice(0, 1), // Keep overview
-        { id: "subscriptions", name: "Suscripciones", icon: CreditCard, href: "/dashboard/subscriptions" },
-        { id: "referrals", name: "Referidos", icon: UserPlus, href: "/dashboard/referrals" },
-        { id: "cases", name: "Mis Casos", icon: FileText, href: "/dashboard/cases" },
-        // { id: "quotes", name: "Citas", icon: CalendarDays, href: "/dashboard/quotes" },
-        // { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
-        { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
-        ...baseItems.slice(1), // Keep test and settings
-      ]
-    }
-  }
-
-  const sidebarItems = getMenuItems()
 
   // Datos de ejemplo para la búsqueda
   const searchableData = [
@@ -125,14 +72,6 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
     setSearchQuery(result.name)
     setShowSearchResults(false)
     console.log("Resultado seleccionado:", result)
-  }
-
-  // Check if current path matches menu item
-  const isActiveRoute = (href: string) => {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard"
-    }
-    return pathname.startsWith(href)
   }
 
   return (
@@ -260,7 +199,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
               </div>
             </div>
 
-            <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+            {/* This section is now handled by AppSidebar */}
+            {/* <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
               {sidebarItems.map((item) => (
                 <Link
                   key={item.id}
@@ -276,13 +216,13 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
                   <span>{item.name}</span>
                 </Link>
               ))}
-            </nav>
+            </nav> */}
 
             <div className="p-4 border-t border-border/40">
               <Button
                 variant="ghost"
                 className="w-full justify-start text-muted-foreground hover:text-foreground"
-                onClick={signOut} // Re-connected signOut
+                onClick={signOut}
               >
                 <LogOut className="w-4 h-4 mr-3" />
                 Cerrar Sesión
@@ -311,7 +251,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <AuthProvider>
         <SidebarProvider>
-          <AppSidebar />
+          <AppSidebar /> {/* Render AppSidebar here */}
           <SidebarInset>
             <Suspense fallback={null}>
               <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">

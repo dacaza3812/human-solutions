@@ -1,17 +1,19 @@
 "use server"
 
-import { createServerSupabaseClient } from "@/lib/supabase-server"
+import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 
 export async function getReferralTransactions(advisorId: string) {
-  const supabase = createServerSupabaseClient()
-
+  const supabase = createClient()
   const { data, error } = await supabase
     .from("referral_transactions")
-    .select(`
+    .select(
+      `
       *,
-      referee:profiles(email, first_name, last_name)
-    `)
+      payments (amount, created_at),
+      referee:profiles!referral_transactions_referee_id_fkey (first_name, last_name, email)
+    `,
+    )
     .eq("referrer_id", advisorId)
     .order("created_at", { ascending: false })
 
@@ -22,24 +24,28 @@ export async function getReferralTransactions(advisorId: string) {
 
   return data.map((transaction) => ({
     ...transaction,
-    referee_email: transaction.referee?.email || "N/A",
-    referee_name: `${transaction.referee?.first_name || ""} ${transaction.referee?.last_name || ""}`.trim() || "N/A",
+    referee_name: `${transaction.referee?.first_name || ""} ${transaction.referee?.last_name || ""}`.trim(),
+    referee_email: transaction.referee?.email || "",
+    payment_amount: transaction.payments?.amount || 0,
+    payment_date: transaction.payments?.created_at || "",
   }))
 }
 
 export async function toggleReferralTransactionPaidStatus(transactionId: string, currentStatus: boolean) {
-  const supabase = createServerSupabaseClient()
-
-  const { error } = await supabase
+  const supabase = createClient()
+  const { data, error } = await supabase
     .from("referral_transactions")
     .update({ paid: !currentStatus })
     .eq("id", transactionId)
+    .select()
 
   if (error) {
     console.error("Error updating referral transaction paid status:", error)
     return { success: false, message: "Error al actualizar el estado de pago." }
   }
 
-  revalidatePath("/dashboard/financial") // Revalidate the financial page to show updated status
+  revalidatePath("/dashboard/financial")
   return { success: true, message: "Estado de pago actualizado correctamente." }
 }
+
+export type ReferralTransactionWithDetails = Awaited<ReturnType<typeof getReferralTransactions>>[number]

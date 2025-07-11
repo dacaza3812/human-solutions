@@ -1,13 +1,12 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import type { Database } from "@/database.types"
 
-export function createServerSupabaseClient() {
+export function createClient() {
   const cookieStore = cookies()
 
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role key for server-side operations
     {
       cookies: {
         get(name: string) {
@@ -17,16 +16,18 @@ export function createServerSupabaseClient() {
           try {
             cookieStore.set({ name, value, ...options })
           } catch (error) {
-            // The `cookies().set()` method can only be called from a Server Component or Server Action.
-            // This error can be ignored if you are processing a form submission or similar.
+            // The `cookies().set()` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value: "", ...options })
           } catch (error) {
-            // The `cookies().set()` method can only be called from a Server Component or Server Action.
-            // This error can be ignored if you are processing a form submission or similar.
+            // The `cookies().delete()` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
           }
         },
       },

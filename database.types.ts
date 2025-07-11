@@ -198,17 +198,50 @@ export type Database = {
           },
         ]
       }
+      inquiries: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          status: Database["public"]["Enums"]["inquiry_status"]
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
           created_at: string
           id: string
           status: string
+          stripe_checkout_session_id: string | null
           stripe_customer_id: string | null
           stripe_invoice_id: string | null
           stripe_payment_intent_id: string | null
           stripe_price_id: string | null
-          stripe_product_id: string | null
           stripe_subscription_id: string | null
           updated_at: string
           user_id: string
@@ -218,11 +251,11 @@ export type Database = {
           created_at?: string
           id?: string
           status: string
+          stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
           stripe_invoice_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_price_id?: string | null
-          stripe_product_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
@@ -232,11 +265,11 @@ export type Database = {
           created_at?: string
           id?: string
           status?: string
+          stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
           stripe_invoice_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_price_id?: string | null
-          stripe_product_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
@@ -246,53 +279,56 @@ export type Database = {
             foreignKeyName: "payments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
       profiles: {
         Row: {
-          account_type: Database["public"]["Enums"]["account_type"] | null
+          account_type: Database["public"]["Enums"]["account_type"]
           avatar_url: string | null
-          created_at: string
-          email: string
-          first_name: string | null
-          founder: boolean | null
+          billing_address: Json | null
+          full_name: string | null
           id: string
-          last_name: string | null
-          phone: string | null
           referral_code: string | null
           referred_by: string | null
-          updated_at: string
+          updated_at: string | null
+          username: string | null
+          website: string | null
+          first_name: string | null
+          last_name: string | null
+          founder: boolean
         }
         Insert: {
-          account_type?: Database["public"]["Enums"]["account_type"] | null
+          account_type?: Database["public"]["Enums"]["account_type"]
           avatar_url?: string | null
-          created_at?: string
-          email: string
-          first_name?: string | null
-          founder?: boolean | null
+          billing_address?: Json | null
+          full_name?: string | null
           id: string
-          last_name?: string | null
-          phone?: string | null
           referral_code?: string | null
           referred_by?: string | null
-          updated_at?: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          founder?: boolean
         }
         Update: {
-          account_type?: Database["public"]["Enums"]["account_type"] | null
+          account_type?: Database["public"]["Enums"]["account_type"]
           avatar_url?: string | null
-          created_at?: string
-          email?: string
-          first_name?: string | null
-          founder?: boolean | null
+          billing_address?: Json | null
+          full_name?: string | null
           id?: string
-          last_name?: string | null
-          phone?: string | null
           referral_code?: string | null
           referred_by?: string | null
-          updated_at?: string
+          updated_at?: string | null
+          username?: string | null
+          website?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          founder?: boolean
         }
         Relationships: [
           {
@@ -362,38 +398,35 @@ export type Database = {
       subscriptions: {
         Row: {
           created_at: string
-          current_period_end: string
-          current_period_start: string
+          current_period_end: string | null
+          current_period_start: string | null
           id: string
-          plan_id: string
-          status: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
-          updated_at: string
+          price_id: string | null
+          status: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
-          current_period_end: string
-          current_period_start: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           id?: string
-          plan_id: string
-          status: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
-          updated_at?: string
+          price_id?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
-          current_period_end?: string
-          current_period_start?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           id?: string
-          plan_id?: string
-          status?: string
-          stripe_customer_id?: string
-          stripe_subscription_id?: string
-          updated_at?: string
+          price_id?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -401,7 +434,7 @@ export type Database = {
             foreignKeyName: "subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -418,7 +451,7 @@ export type Database = {
         Returns: {
           total_referrals: number
           active_referrals: number
-        }[]
+        }
       }
       get_referral_stats3: {
         Args: {
@@ -429,7 +462,7 @@ export type Database = {
           active_referrals: number
           total_earnings: number
           monthly_earnings: number
-        }[]
+        }
       }
       get_referral_stats4: {
         Args: {
@@ -440,7 +473,7 @@ export type Database = {
           active_referrals: number
           total_earnings: number
           monthly_earnings: number
-        }[]
+        }
       }
       handle_referral_on_payment_insert: {
         Args: Record<PropertyKey, never>
@@ -454,6 +487,7 @@ export type Database = {
     Enums: {
       account_type: "client" | "advisor"
       case_status: "pendiente" | "en ejecución" | "completado"
+      inquiry_status: "pending" | "resolved" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
