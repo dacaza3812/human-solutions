@@ -62,7 +62,7 @@ export function ReferralsSection({
             <div className="flex mt-2">
               <Input
                 id="referralLink"
-                value={`https://foxlawyer.vercel.app/register?ref=${referralCode}`}
+                value={`${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${referralCode}`}
                 readOnly
                 className="flex-1"
               />

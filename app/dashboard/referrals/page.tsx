@@ -49,7 +49,7 @@ export default function ReferralPage() {
   }
 
   const copyReferralLink = async () => {
-    const link = `https://foxlawyer.vercel.app/register?ref=${referralCode}`
+    const link = `${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${referralCode}`
     try {
       await navigator.clipboard.writeText(link)
       setCopySuccess(true)

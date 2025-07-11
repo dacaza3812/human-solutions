@@ -80,7 +80,7 @@ const plans = [
   },
 ]
 
-export default function SubscriptionsPage() {
+export default async function SubscriptionsPage() {
 const { session, profile } = useAuth()
   const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripeCheckout()
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
