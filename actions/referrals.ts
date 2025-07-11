@@ -27,7 +27,6 @@ export async function getReferralTransactions(advisorId: string) {
     .select(
       `*, referee:profiles!referral_transactions_referee_id_fkey(email, first_name, last_name)`
     )
-    .eq("referrer_id", advisorId)
     .order("created_at", { ascending: false })
 
   if (error) {
