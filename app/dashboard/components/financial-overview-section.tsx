@@ -5,8 +5,13 @@ import { BarChart, LineChart } from "@/components/ui/chart"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarDays, DollarSign, TrendingUp } from "lucide-react"
 import { useState } from "react"
+import { ReferralTransactionsTable } from "./referral-transactions-table" // Import the new component
 
-export function FinancialOverviewSection() {
+interface FinancialOverviewSectionProps {
+  advisorId: string // Add advisorId prop
+}
+
+export function FinancialOverviewSection({ advisorId }: FinancialOverviewSectionProps) {
   const [timeRange, setTimeRange] = useState("month")
 
   const revenueData = {
@@ -131,6 +136,16 @@ export function FinancialOverviewSection() {
           </CardContent>
         </Card>
       </div>
+
+      {/* New section for Referral Transactions */}
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardTitle>Transacciones de Referidos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReferralTransactionsTable advisorId={advisorId} />
+        </CardContent>
+      </Card>
     </div>
   )
 }
