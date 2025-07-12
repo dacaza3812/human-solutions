@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { Resend } from "resend"
+import PaymentSuccessEmail from "@/components/emails/PaymentSuccessEmail"
+import { sendPaymentSuccessEmail } from "@/actions/sendPaymentEmail"
 
 export default function PaymentProcess() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
@@ -13,7 +16,7 @@ export default function PaymentProcess() {
   const [countdown, setCountdown] = useState(5)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   const success = searchParams.get("success")
   const sessionId = searchParams.get("session_id")
@@ -56,6 +59,9 @@ export default function PaymentProcess() {
       const data = await response.json()
 
       if (response.ok && data.success) {
+       
+        await sendPaymentSuccessEmail(user?.email, profile?.first_name, data.planName)
+
         setStatus("success")
         setMessage("¡Pago exitoso! Tu suscripción ha sido activada correctamente.")
       } else {

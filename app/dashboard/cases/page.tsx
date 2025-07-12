@@ -188,6 +188,7 @@ export default function CasesPage() {
               <DialogHeader>
                 <DialogTitle>Crear Nuevo Caso</DialogTitle>
                 <DialogDescription>Completa los detalles para iniciar un nuevo caso o consulta.</DialogDescription>
+                <DialogDescription>Luego de enviar un caso, un especialista se pondrá en contacto con usted.</DialogDescription>
               </DialogHeader>
               <NewCaseForm />
             </DialogContent>

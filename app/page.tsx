@@ -439,7 +439,7 @@ export default function SolucionesHumanas() {
             </h1>
 
             <p className="text-xl text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
-              Fox Lawyer es la plataforma de asesoría personalizada donde se le enseña a usted a comprender la vida tal y como es, no como a usted le gustaría que fuera.
+              Fox Lawyer es una empresa de servicios educativos, con teorías científicas modernas y muy efectivas para la resolución de problemas individuales de seres humanos. 
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -464,7 +464,7 @@ export default function SolucionesHumanas() {
                 <Database className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
                 <Lock className="w-8 h-8 company-icon cursor-pointer text-gray-300" />
               </div>
-              <p className="text-sm text-gray-300">Confiado por empresas de rápido crecimiento en todo el mundo</p>
+              <p className="text-sm text-gray-300">Nuestro modelo de negocio se basa en la venta directa a través de representantes independientes de la compañía que reciben asesoramiento personalizado.</p>
             </div>
           </div>
         </div>
@@ -476,7 +476,7 @@ export default function SolucionesHumanas() {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">Nuestras Especialidades</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Descubre las áreas en las que podemos ayudarte a transformar tu vida.
+              Ayudamos a transformarte en cualquier área de tu vida
             </p>
           </div>
 
