@@ -62,7 +62,7 @@ export function ReferralsSection({
             <div className="flex mt-2">
               <Input
                 id="referralLink"
-                value={`https://foxlawyer.vercel.app/register?ref=${referralCode}`}
+                value={`https://foxlawyer.net/register?ref=${referralCode}`}
                 readOnly
                 className="flex-1"
               />
@@ -165,7 +165,7 @@ export function ReferralsSection({
               variant="outline"
               className="h-12 bg-transparent"
               onClick={() => {
-                const text = `¡Únete a Fox Lawyer y transforma tus problemas en oportunidades! Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                const text = `¡Únete a Fox Lawyer y transforma tus problemas en oportunidades! Usa mi enlace de referido: https://foxlawyer.net/register?ref=${referralCode}`
                 window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
               }}
             >
@@ -175,7 +175,7 @@ export function ReferralsSection({
               variant="outline"
               className="h-12 bg-transparent"
               onClick={() => {
-                const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                const text = `¡Únete a Fox Lawyer! https://foxlawyer.net/register?ref=${referralCode}`
                 window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank")
               }}
             >
@@ -185,7 +185,7 @@ export function ReferralsSection({
               variant="outline"
               className="h-12 bg-transparent"
               onClick={() => {
-                const text = `¡Únete a Fox Lawyer! https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                const text = `¡Únete a Fox Lawyer! https://foxlawyer.net/register?ref=${referralCode}`
                 window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(text)}`, "_blank")
               }}
             >
@@ -196,7 +196,7 @@ export function ReferralsSection({
               className="h-12 bg-transparent"
               onClick={() => {
                 const subject = "Únete a Fox Lawyer"
-                const body = `¡Hola! Te invito a unirte a Fox Lawyer, una plataforma increíble de asesoría personalizada. Usa mi enlace de referido: https://foxlawyer.vercel.app/register?ref=${referralCode}`
+                const body = `¡Hola! Te invito a unirte a Fox Lawyer, una plataforma increíble de asesoría personalizada. Usa mi enlace de referido: https://foxlawyer.net/register?ref=${referralCode}`
                 window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
               }}
             >
