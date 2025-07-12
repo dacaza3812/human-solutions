@@ -1006,7 +1006,7 @@ export default function SolucionesHumanas() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <a href="#" className="hover:text-foreground transition-colors">
-                    Agudizar tu pensamiento táctic para la resolución de problemas individuales del ser humano
+                    Agudizar tu pensamiento táctico para la resolución de problemas individuales del ser humano
                   </a>
                 </li>
                 {/* <li>
@@ -1031,7 +1031,7 @@ export default function SolucionesHumanas() {
               <h5 className="font-semibold mb-4 text-foreground">Contacto</h5>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>contacto@foxlawyer.net</li>
-                <li>+1 (786) 554-7415</li>
+                <li>+1 7868781312</li>
                 <li>24 horas</li>
                 {/* <li>Lun - Dom: 9:00 - 18:00</li> */}
                 {/* <li>Sáb: 9:00 - 14:00</li> */}
