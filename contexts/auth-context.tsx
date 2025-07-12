@@ -11,7 +11,8 @@ interface AuthContextType {
   user: User | null
   profile: UserProfile | null
   session: Session | null
-  loading: boolean
+  loading: boolean,
+  subscription_status?: string // Optional, if you want to track subscription status
   signUp: (
     email: string,
     password: string,
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [subscription_status, setSubscription_status] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setProfile(data)
+      console.log( "Profile fetched successfully:", data)
     } catch (error) {
       console.error("Error fetching profile:", error)
     }
