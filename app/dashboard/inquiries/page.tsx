@@ -1,20 +1,14 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Label } from "@/components/ui/label"
-
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { EyeIcon, DownloadIcon, FileText } from "lucide-react"
+import { EyeIcon, DownloadIcon, FileText, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { updateInquiryStatus } from "@/actions/inquiries" // We will create this action
-import { revalidatePath } from "next/cache"
 import Image from "next/image"
-
-import { handleStatusChange } from "@/actions/handleStatusChange"
-import { createClient } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 
 interface Inquiry {
@@ -29,20 +23,51 @@ interface Inquiry {
   created_at: string
 }
 
-export default async function InquiriesPage() {
-  
+export default function InquiriesPage() {
+  const [inquiries, setInquiries] = useState<Inquiry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const { data: inquiries, error } = await (await supabase)
-    .from("inquiries")
-    .select("*")
-    .order("created_at", { ascending: false })
+  useEffect(() => {
+    const fetchInquiries = async () => {
+      try {
+        setLoading(true)
+        const { data, error } = await supabase
+          .from("inquiries")
+          .select("*")
+          .order("created_at", { ascending: false })
 
-  if (error) {
-    console.error("Error fetching inquiries:", error)
-    return <div className="p-4">Error al cargar las consultas.</div>
+        if (error) {
+          throw new Error(error.message)
+        }
+
+        setInquiries(data || [])
+      } catch (err: any) {
+        console.error("Error fetching inquiries:", err)
+        setError(err.message || "Error al cargar las consultas.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInquiries()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="p-4">
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+      </div>
+    )
   }
 
-  
+  if (error) {
+    return (
+      <div className="p-4">
+        <p className="text-red-500">{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 md:p-6">
@@ -76,7 +101,7 @@ export default async function InquiriesPage() {
                     <TableCell>
                       <Select
                         defaultValue={inquiry.status}
-                        onValueChange={(newStatus) => handleStatusChange(inquiry.id, newStatus)}
+                        onValueChange={(newStatus) => console.log(`Change status to ${newStatus}`)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Cambiar estado" />
@@ -127,7 +152,7 @@ export default async function InquiriesPage() {
                               <Label className="text-right">Estado:</Label>
                               <Select
                                 defaultValue={inquiry.status}
-                                onValueChange={(newStatus) => handleStatusChange(inquiry.id, newStatus)}
+                                onValueChange={(newStatus) => console.log(`Change status to ${newStatus}`)}
                               >
                                 <SelectTrigger className="w-[180px] col-span-3">
                                   <SelectValue placeholder="Cambiar estado" />
