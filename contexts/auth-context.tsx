@@ -37,41 +37,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
+  const getInitialSession = async () => {
+    setLoading(true); // Asegúrate de que el estado de carga se active
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
+    const currentPath = window.location.pathname; // Obtén la ruta actual
+
+    if (!session || !session.user) {
+      // Si no hay sesión válida y no estamos en la página de registro, redirige al login
+      if (currentPath !== "/register") {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        router.push("/login");
+        return;
       }
-
-      setLoading(false)
     }
 
-    getInitialSession()
+    setSession(session);
+    setUser(session?.user ?? null);
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+    if (session?.user) {
+      await fetchUserProfile(session.user.id);
+    }
 
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
-      } else {
-        setProfile(null)
-      }
+    setLoading(false);
+  };
 
-      setLoading(false)
-    })
+  getInitialSession();
 
-    return () => subscription.unsubscribe()
-  }, [])
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (event, session) => {
+    setSession(session);
+    setUser(session?.user ?? null);
+
+    if (session?.user) {
+      await fetchUserProfile(session.user.id);
+    } else {
+      setProfile(null);
+    }
+
+    setLoading(false);
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -108,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: "https://foxlawyer.vercel.app/dashboard",
+          emailRedirectTo: "https://foxlawyer.net/dashboard",
           data: metadata,
         },
       })
@@ -187,34 +200,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    try {
-      console.log("Attempting to sign out...")
-      const { error } = await supabase.auth.signOut()
+  try {
+    console.log("Attempting to sign out...");
+    const { error } = await supabase.auth.signOut();
 
-      if (error) {
-        console.error("Error during sign out:", error)
-        // Optionally, you could show a toast notification to the user here
-        // toast({
-        //   title: "Error al cerrar sesión",
-        //   description: error.message,
-        //   variant: "destructive",
-        // });
-      } else {
-        console.log("Sign out successful. Redirecting to login page.")
-      }
-    } catch (err) {
-      console.error("Unexpected error during sign out:", err)
-      // toast({
-      //   title: "Error inesperado",
-      //   description: "Ocurrió un error al intentar cerrar sesión.",
-      //   variant: "destructive",
-      // });
-    } finally {
-      // Always attempt to redirect to login page, even if sign out failed on Supabase side,
-      // to ensure the user doesn't remain in a protected route with a potentially invalid session.
-      router.push("/login")
+    if (error) {
+      console.error("Error during sign out:", error);
     }
+
+    // Borra todas las cookies del sitio
+    document.cookie.split(";").forEach((cookie) => {
+      const eqPos = cookie.indexOf("=");
+      const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+    });
+
+    // Redirige al login
+    router.push("/login");
+  } catch (err) {
+    console.error("Unexpected error during sign out:", err);
+  } finally {
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    setLoading(false);
   }
+};
 
   const resetPassword = async (email: string) => {
     try {
