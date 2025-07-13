@@ -6,34 +6,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { Resend } from "resend"
-import PaymentSuccessEmail from "@/components/emails/PaymentSuccessEmail"
 import { sendPaymentSuccessEmail } from "@/actions/sendPaymentEmail"
 
 export default function PaymentProcess() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [message, setMessage] = useState("")
   const [countdown, setCountdown] = useState(5)
+  const [paymentVerified, setPaymentVerified] = useState(false) // Estado para evitar múltiples verificaciones
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, profile } = useAuth()
+  const { user, profile, loading } = useAuth() // Incluye el estado de carga del contexto de autenticación
 
   const success = searchParams.get("success")
   const sessionId = searchParams.get("session_id")
 
   useEffect(() => {
+    // Espera a que el estado de autenticación esté completamente cargado
+    if (loading) return
+
     if (!user) {
       router.push("/login")
       return
     }
 
-    if (success === "true" && sessionId) {
+    // Verifica el pago solo si no ha sido verificado previamente
+    if (success === "true" && sessionId && !paymentVerified) {
       verifyPayment(sessionId)
-    } else {
+    } else if (!sessionId || success !== "true") {
       setStatus("error")
       setMessage("No se encontraron parámetros de pago válidos.")
     }
-  }, [success, sessionId, user])
+  }, [success, sessionId, user, paymentVerified, loading]) // Agrega `loading` como dependencia
 
   useEffect(() => {
     if (status === "success" && countdown > 0) {
@@ -59,11 +62,12 @@ export default function PaymentProcess() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-       
+        // Envía el correo solo si el pago es exitoso
         await sendPaymentSuccessEmail(user?.email, profile?.first_name, data.planName)
 
         setStatus("success")
         setMessage("¡Pago exitoso! Tu suscripción ha sido activada correctamente.")
+        setPaymentVerified(true) // Marca el pago como verificado
       } else {
         setStatus("error")
         setMessage(data.error || "Error al verificar el pago.")
