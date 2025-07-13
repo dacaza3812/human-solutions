@@ -43,7 +43,7 @@ export default function PaymentSuccessEmail({ firstName, planName }: PaymentSucc
           </Button>
 
           <Text style={{ fontSize: "16px", marginBottom: "12px" }}>
-            Si tienes alguna duda o consulta, puedes ponerte en contacto con nosotros.
+            Para empezar YA tu proceso personalizado haz clic en este botón:
           </Text>
 
           <Button
