@@ -44,10 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = await supabase.auth.getSession();
 
     const currentPath = window.location.pathname; // Obtén la ruta actual
+    const publicRoutes = ["/", "/login", "/register", "/reset-password"]; // Define las rutas públicas
 
     if (!session || !session.user) {
-      // Si no hay sesión válida y no estamos en la página de registro, redirige al login
-      if (currentPath !== "/register") {
+      // Si no hay sesión válida y la ruta actual no es pública, redirige al login
+      if (!publicRoutes.includes(currentPath)) {
         setUser(null);
         setProfile(null);
         setLoading(false);
