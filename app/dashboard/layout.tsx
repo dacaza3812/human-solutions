@@ -72,10 +72,10 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         ...baseItems.slice(0, 1), // Keep overview
         { id: "subscriptions", name: "Suscripciones", icon: CreditCard, href: "/dashboard/subscriptions" },
         { id: "referrals", name: "Referidos", icon: UserPlus, href: "/dashboard/referrals" },
-        { id: "cases", name: "Mis Casos", icon: FileText, href: "/dashboard/cases" },
+        //{ id: "cases", name: "Mis Casos", icon: FileText, href: "/dashboard/cases" },
         // { id: "quotes", name: "Citas", icon: CalendarDays, href: "/dashboard/quotes" },
         // { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
-        { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
+        //{ id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
         ...baseItems.slice(1), // Keep test and settings
       ]
     }

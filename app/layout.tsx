@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { Suspense } from "react" // Corrected import: Suspense comes from 'react'
+//import { Suspense } from "react" // Corrected import: Suspense comes from 'react'
 import "./globals.css"
 
 export const metadata: Metadata = {
