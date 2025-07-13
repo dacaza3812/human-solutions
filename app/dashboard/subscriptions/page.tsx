@@ -110,64 +110,57 @@ const { session, profile } = useAuth()
   }, [loading])
 
   const fetchSubscriptionInfo = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  try {
+    setLoading(true); // Activa el estado de carga
+    setError(null);
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select(`
-          plan_id,
-          subscription_status,
-          subscription_start_date,
-          subscription_end_date,
-          stripe_customer_id,
-          stripe_subscription_id,
-          plans:plan_id (
-            id,
-            name,
-            price,
-            currency,
-            billing_interval
-          )
-        `)
-        .eq("id", profile!.id)
-        .single()
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select(`
+        plan_id,
+        subscription_status,
+        subscription_start_date,
+        subscription_end_date,
+        stripe_customer_id,
+        stripe_subscription_id,
+        plans:plan_id (
+          id,
+          name,
+          price,
+          currency,
+          billing_interval
+        )
+      `)
+      .eq("id", profile!.id)
+      .single();
 
-      if (profileError) throw profileError
+    if (profileError) throw profileError;
 
-      // Si está cancelada, limpiamos la info
-      if (profileData.subscription_status === "cancelled") {
-        setSubscriptionInfo(null)
-        return
-      }
-
-      // Si tiene plan activo
-      if (profileData.plans) {
-        setSubscriptionInfo({
-          plan_id: profileData.plan_id,
-          plan_name: profileData.plans.name,
-          plan_price: profileData.plans.price,
-          plan_currency: profileData.plans.currency,
-          plan_billing_interval: profileData.plans.billing_interval,
-          subscription_status: profileData.subscription_status,
-          subscription_start_date: profileData.subscription_start_date,
-          subscription_end_date: profileData.subscription_end_date,
-          stripe_customer_id: profileData.stripe_customer_id,
-          stripe_subscription_id: profileData.stripe_subscription_id,
-        })
-        return
-      }
-
-      // Sin suscripción
-      setSubscriptionInfo(null)
-    } catch (err: any) {
-      console.error("Error fetching subscription info:", err)
-      setError(err.message || "Error al cargar la información de suscripción")
-    } finally {
-      setLoading(false)
+    if (profileData.subscription_status === "cancelled") {
+      setSubscriptionInfo(null);
+    } else if (profileData.plans) {
+      setSubscriptionInfo({
+        plan_id: profileData.plan_id,
+        plan_name: profileData.plans.name,
+        plan_price: profileData.plans.price,
+        plan_currency: profileData.plans.currency,
+        plan_billing_interval: profileData.plans.billing_interval,
+        subscription_status: profileData.subscription_status,
+        subscription_start_date: profileData.subscription_start_date,
+        subscription_end_date: profileData.subscription_end_date,
+        stripe_customer_id: profileData.stripe_customer_id,
+        stripe_subscription_id: profileData.stripe_subscription_id,
+      });
+    } else {
+      setSubscriptionInfo(null);
     }
+  } catch (error) {
+    console.error("Error fetching subscription info:", error);
+    setError(error.message || "Error al cargar la información de suscripción.");
+  } finally {
+    setLoading(false); // Asegúrate de desactivar el estado de carga
   }
+};
   
 
 

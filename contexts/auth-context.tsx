@@ -38,33 +38,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
   const getInitialSession = async () => {
-    setLoading(true); // Asegúrate de que el estado de carga se active
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      setLoading(true); // Activa el estado de carga
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    const currentPath = window.location.pathname; // Obtén la ruta actual
-    const publicRoutes = ["/", "/login", "/register", "/reset-password"]; // Define las rutas públicas
+      const currentPath = window.location.pathname;
+      const publicRoutes = ["/", "/login", "/register", "/reset-password"];
 
-    if (!session || !session.user) {
-      // Si no hay sesión válida y la ruta actual no es pública, redirige al login
-      if (!publicRoutes.includes(currentPath)) {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        router.push("/login");
-        return;
+      if (!session || !session.user) {
+        if (!publicRoutes.includes(currentPath)) {
+          setUser(null);
+          setProfile(null);
+          router.push("/login");
+        }
+      } else {
+        setSession(session);
+        setUser(session.user);
+        await fetchUserProfile(session.user.id);
       }
+    } catch (error) {
+      console.error("Error fetching session:", error);
+    } finally {
+      setLoading(false); // Asegúrate de desactivar el estado de carga
     }
-
-    setSession(session);
-    setUser(session?.user ?? null);
-
-    if (session?.user) {
-      await fetchUserProfile(session.user.id);
-    }
-
-    setLoading(false);
   };
 
   getInitialSession();
@@ -72,16 +70,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange(async (event, session) => {
-    setSession(session);
-    setUser(session?.user ?? null);
+    try {
+      setSession(session);
+      setUser(session?.user ?? null);
 
-    if (session?.user) {
-      await fetchUserProfile(session.user.id);
-    } else {
-      setProfile(null);
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error("Error handling auth state change:", error);
+    } finally {
+      setLoading(false); // Asegúrate de desactivar el estado de carga
     }
-
-    setLoading(false);
   });
 
   return () => subscription.unsubscribe();
