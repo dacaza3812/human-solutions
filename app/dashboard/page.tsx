@@ -531,10 +531,10 @@ export default function DashboardPage() {
         <StatsGrid stats={displayStats} />
 
         {/* Recent Activity */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* <div className="grid lg:grid-cols-2 gap-6">
           <RecentActivityCard recentActivity={recentActivity} />
           <UpcomingAppointmentsCard upcomingAppointments={upcomingAppointmentsData} />
-        </div>
+        </div>*/}
       </div>
     </div>
   )
