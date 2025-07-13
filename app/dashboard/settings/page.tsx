@@ -5,7 +5,7 @@ import { useState } from "react";
 import { SettingsSection } from "../components/settings-section";
 import { useAuth } from "@/contexts/auth-context";
 
-export default async function SettingsPage() {
+export default  function SettingsPage() {
     const { user, profile, signOut, updateUserProfile, changePassword } = useAuth()
     const [currentPassword, setCurrentPassword] = useState("")
     const [newPassword, setNewPassword] = useState("")
