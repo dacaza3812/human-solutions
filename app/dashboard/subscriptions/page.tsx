@@ -91,82 +91,85 @@ const { session, profile } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-  if (profile && profile.id) {
-    fetchSubscriptionInfo();
-  } else {
-    setLoading(false); // Si no hay perfil, termina la carga
-  }
-}, [profile?.id]);
+    if (profile && profile.id) {
+      fetchSubscriptionInfo()
+    } else {
+      setLoading(false) // Si no hay perfil, termina la carga
+    }
+  }, [profile?.id])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) {
+        setError("La carga está tardando demasiado. Inténtalo nuevamente.")
+        setLoading(false)
+      }
+    }, 10000) // 10 segundos
+
+    return () => clearTimeout(timer)
+  }, [loading])
 
   const fetchSubscriptionInfo = async () => {
-  try {
-    setLoading(true)
-    setError(null)
+    try {
+      setLoading(true)
+      setError(null)
 
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select(`
-        plan_id,
-        subscription_status,
-        subscription_start_date,
-        subscription_end_date,
-        stripe_customer_id,
-        stripe_subscription_id,
-        plans:plan_id (
-          id,
-          name,
-          price,
-          currency,
-          billing_interval
-        )
-      `)
-      .eq("id", profile!.id)
-      .single()
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select(`
+          plan_id,
+          subscription_status,
+          subscription_start_date,
+          subscription_end_date,
+          stripe_customer_id,
+          stripe_subscription_id,
+          plans:plan_id (
+            id,
+            name,
+            price,
+            currency,
+            billing_interval
+          )
+        `)
+        .eq("id", profile!.id)
+        .single()
 
-    if (profileError) throw profileError
+      if (profileError) throw profileError
 
-    // Si está cancelada, limpiamos la info
-    if (profileData.subscription_status === "cancelled") {
+      // Si está cancelada, limpiamos la info
+      if (profileData.subscription_status === "cancelled") {
+        setSubscriptionInfo(null)
+        return
+      }
+
+      // Si tiene plan activo
+      if (profileData.plans) {
+        setSubscriptionInfo({
+          plan_id: profileData.plan_id,
+          plan_name: profileData.plans.name,
+          plan_price: profileData.plans.price,
+          plan_currency: profileData.plans.currency,
+          plan_billing_interval: profileData.plans.billing_interval,
+          subscription_status: profileData.subscription_status,
+          subscription_start_date: profileData.subscription_start_date,
+          subscription_end_date: profileData.subscription_end_date,
+          stripe_customer_id: profileData.stripe_customer_id,
+          stripe_subscription_id: profileData.stripe_subscription_id,
+        })
+        return
+      }
+
+      // Sin suscripción
       setSubscriptionInfo(null)
-      return
+    } catch (err: any) {
+      console.error("Error fetching subscription info:", err)
+      setError(err.message || "Error al cargar la información de suscripción")
+    } finally {
+      setLoading(false)
     }
-
-    // Si tiene plan activo
-    if (profileData.plans) {
-      setSubscriptionInfo({
-        plan_id: profileData.plan_id,
-        plan_name: profileData.plans.name,
-        plan_price: profileData.plans.price,
-        plan_currency: profileData.plans.currency,
-        plan_billing_interval: profileData.plans.billing_interval,
-        subscription_status: profileData.subscription_status,
-        subscription_start_date: profileData.subscription_start_date,
-        subscription_end_date: profileData.subscription_end_date,
-        stripe_customer_id: profileData.stripe_customer_id,
-        stripe_subscription_id: profileData.stripe_subscription_id,
-      })
-      return
-    }
-
-    // Sin suscripción
-    setSubscriptionInfo(null)
-  } catch (err: any) {
-    console.error("Error fetching subscription info:", err)
-    setError(err.message || "Error al cargar la información de suscripción")
-  } finally {
-    setLoading(false)
   }
-}
-useEffect(() => {
-  const timer = setTimeout(() => {
-    if (loading) {
-      setError("La carga está tardando demasiado. Inténtalo nuevamente.");
-      setLoading(false);
-    }
-  }, 5000); // 10 segundos
+  
 
-  return () => clearTimeout(timer);
-}, [loading]);
 
 
   const handlePlanSelection = async (planId: number) => {
@@ -174,36 +177,36 @@ useEffect(() => {
   }
 
   const handleCancelSubscription = async () => {
-  if (!subscriptionInfo?.stripe_subscription_id) return
+    if (!subscriptionInfo?.stripe_subscription_id) return
 
-  setCancelLoading(true)
-  try {
-    const response = await fetch("/api/stripe/cancel-subscription", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({
-        subscriptionId: subscriptionInfo.stripe_subscription_id,
-      }),
-    })
+    setCancelLoading(true)
+    try {
+      const response = await fetch("/api/stripe/cancel-subscription", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          subscriptionId: subscriptionInfo.stripe_subscription_id,
+        }),
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || "Error al cancelar la suscripción")
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Error al cancelar la suscripción")
+      }
+
+      // Sólo recargamos datos, no router.refresh()
+      await fetchSubscriptionInfo()
+    } catch (err: any) {
+      console.error("Error canceling subscription:", err)
+      setError(err.message || "Error al cancelar la suscripción")
+    } finally {
+      setCancelLoading(false)
     }
-
-    // Sólo recargamos datos, no router.refresh()
-    await fetchSubscriptionInfo()
-  } catch (err: any) {
-    console.error("Error canceling subscription:", err)
-    setError(err.message || "Error al cancelar la suscripción")
-  } finally {
-    setCancelLoading(false)
   }
-}
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
@@ -233,30 +236,30 @@ useEffect(() => {
     }
   }
 
-  if (loading) { // Poner loading
+  if (loading) {
     return (
-       <main className="flex-1 p-6">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
-            <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
-          </div>
-        </div>
-        <Card className="border-border/40">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-              <span className="ml-2 text-muted-foreground">Cargando información de suscripción...</span>
+      <main className="flex-1 p-6">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-foreground">Suscripciones</h2>
+              <p className="text-muted-foreground">Gestiona tu plan de suscripción</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <Card className="border-border/40">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                <span className="ml-2 text-muted-foreground">Cargando información de suscripción...</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </main>
     )
   }
 
-  if (error) { // Poner error
+  if (error) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
