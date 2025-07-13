@@ -59,6 +59,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         ...baseItems.slice(0, 1), // Keep overview
         { id: "clients", name: "Clientes", icon: Users, href: "/dashboard/clients" },
         { id: "cases", name: "Casos", icon: FileText, href: "/dashboard/cases" },
+        { id: "referrals", name: "Referidos", icon: UserPlus, href: "/dashboard/referrals" },
         { id: "financial", name: "Vista Financiera", icon: PieChart, href: "/dashboard/financial" },
         // { id: "analytics", name: "Análisis", icon: BarChart3, href: "/dashboard/analytics" },
         // { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
