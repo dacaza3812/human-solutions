@@ -1,140 +1,106 @@
 "use client"
 
-import { useState } from "react";
-import { AdvisorClientsSection } from "../components/advisor-clients-section";
-interface AdvisorClient {
-    id: number
-    name: string
-    email: string
-    phone: string
-    avatar: string
-    totalCases: number
-    activeCases: number
-    completedCases: number
-    joinDate: string
-    lastActivity: string
-}
+import { useEffect, useState } from "react"
+import { useAuth } from "@/contexts/auth-context"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
+import { AdvisorClientsSection } from "../components/advisor-clients-section"
+import { ClientCasesSection } from "../components/client-cases-section"
+import { ClientsStatsSkeleton, ClientsTableSkeleton } from "../components/clients-skeleton"
+import { getAdvisorClientsData, type ClientStats, type ClientData } from "@/actions/advisor-clients"
 
-interface AdvisorCase {
-    id: number
-    clientName: string
-    clientId: number
-    title: string
-    type: string
-    status: string
-    priority: string
-    createdDate: string
-    dueDate: string
-    description: string
-    progress: number
-}
+export default function ClientsPage() {
+  const { user, profile } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [stats, setStats] = useState<ClientStats | null>(null)
+  const [clients, setClients] = useState<ClientData[]>([])
 
-const advisorClients: AdvisorClient[] = [
-    {
-        id: 1,
-        name: "Juan Pérez",
-        email: "juan@email.com",
-        phone: "+52 123 456 7890",
-        avatar: "/placeholder-user.jpg",
-        totalCases: 3,
-        activeCases: 2,
-        completedCases: 1,
-        joinDate: "2024-01-10",
-        lastActivity: "2024-01-18",
-    },
-    {
-        id: 2,
-        name: "María López",
-        email: "maria@email.com",
-        phone: "+52 098 765 4321",
-        avatar: "/placeholder-user.jpg",
-        totalCases: 2,
-        activeCases: 1,
-        completedCases: 1,
-        joinDate: "2024-01-05",
-        lastActivity: "2024-01-17",
-    },
-    {
-        id: 3,
-        name: "Carlos Mendoza",
-        email: "carlos@email.com",
-        phone: "+52 555 123 4567",
-        avatar: "/placeholder-user.jpg",
-        totalCases: 4,
-        activeCases: 3,
-        completedCases: 1,
-        joinDate: "2023-12-15",
-        lastActivity: "2024-01-19",
-    },
-]
+  useEffect(() => {
+    async function loadClientsData() {
+      if (!user || !profile) return
 
-const advisorCases: AdvisorCase[] = [
-    {
-        id: 1,
-        clientName: "Juan Pérez",
-        clientId: 1,
-        title: "Asesoría Financiera Personal",
-        type: "Asesoría Financiera",
-        status: "En Progreso",
-        priority: "Alta",
-        createdDate: "2024-01-15",
-        dueDate: "2024-02-15",
-        description:
-            "Planificación presupuestaria y estrategias de ahorro para mejorar la situación financiera familiar.",
-        progress: 65,
-    },
-    {
-        id: 2,
-        clientName: "María López",
-        clientId: 2,
-        title: "Mediación Familiar",
-        type: "Relaciones Familiares",
-        status: "Programada",
-        priority: "Media",
-        createdDate: "2024-01-10",
-        dueDate: "2024-01-30",
-        description: "Resolución de conflictos familiares y mejora de la comunicación.",
-        progress: 25,
-    },
-    {
-        id: 3,
-        clientName: "Carlos Mendoza",
-        clientId: 3,
-        title: "Consulta Legal",
-        type: "Asesoría Legal",
-        status: "En Revisión",
-        priority: "Baja",
-        createdDate: "2024-01-08",
-        dueDate: "2024-01-25",
-        description: "Consulta sobre derechos laborales y procedimientos legales.",
-        progress: 80,
-    },
-]
+      try {
+        setLoading(true)
+        setError(null)
 
-
-export default async function ClientsPage() {
-    const [clientFilter, setClientFilter] = useState("")
-    const [selectedClient, setSelectedClient] = useState<AdvisorClient | null>(null)
-    const [activeChat, setActiveChat] = useState<number | null>(null)
-    const [activeView, setActiveView] = useState("overview")
-
-
-    const openChatForCase = (caseId: number) => {
-        setActiveChat(caseId)
-        setActiveView("messages")
+        if (profile.account_type === "advisor") {
+          const data = await getAdvisorClientsData()
+          setStats(data.stats)
+          setClients(data.clients)
+        }
+      } catch (err) {
+        console.error("Error loading clients data:", err)
+        setError("Error al cargar los datos de clientes. Por favor, intenta de nuevo.")
+      } finally {
+        setLoading(false)
+      }
     }
 
+    loadClientsData()
+  }, [user, profile])
+
+  if (!user || !profile) {
     return (
-        <div className="p-6">
-            <AdvisorClientsSection
-                advisorClients={advisorClients}
-                clientFilter={clientFilter}
-                setClientFilter={setClientFilter}
-                setSelectedClient={setSelectedClient}
-                selectedClient={selectedClient}
-                advisorCases={advisorCases}
-                openChatForCase={openChatForCase}
-            />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">Cargando información del usuario...</p>
         </div>
+      </div>
     )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
+          <p className="text-muted-foreground">
+            {profile.account_type === "advisor"
+              ? "Gestiona y supervisa a tus clientes"
+              : "Gestiona tus casos y comunicación"}
+          </p>
+        </div>
+
+        {profile.account_type === "advisor" ? (
+          <>
+            <ClientsStatsSkeleton />
+            <ClientsTableSkeleton />
+          </>
+        ) : (
+          <ClientsTableSkeleton />
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
+        <p className="text-muted-foreground">
+          {profile.account_type === "advisor"
+            ? "Gestiona y supervisa a tus clientes"
+            : "Gestiona tus casos y comunicación"}
+        </p>
+      </div>
+
+      {profile.account_type === "advisor" ? (
+        stats && <AdvisorClientsSection stats={stats} clients={clients} />
+      ) : (
+        <ClientCasesSection />
+      )}
+    </div>
+  )
 }
