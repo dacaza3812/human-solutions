@@ -20,7 +20,6 @@ import {
   X,
   RefreshCw,
 } from "lucide-react"
-import { revalidatePath } from "next/cache"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -44,7 +43,11 @@ const plans = [
     price: "$99.99",
     frequency: "mensual",
     description: "Ideal para necesidades básicas de asesoría.",
-    features: ["Contacto directo con el CEO una vez por semana", "Acceso a conocimiento esotérico", "Comisión de un 50% por la activación de cada plan de sus referidos directos"],
+    features: [
+      "Contacto directo con el CEO una vez por semana",
+      "Acceso a conocimiento esotérico",
+      "Comisión de un 50% por la activación de cada plan de sus referidos directos",
+    ],
     buttonText: "Elegir Plan Standard",
     highlight: false,
     icon: CheckCircle,
@@ -55,11 +58,7 @@ const plans = [
     price: "$999.99",
     frequency: "anual",
     description: "Para un soporte más completo y personalizado.",
-    features: [
-      "Pago único anual",
-      "Ahorra +200 USD en tu curso anual",
-      "Mayor compromiso con tu transformación",
-    ],
+    features: ["Pago único anual", "Ahorra +200 USD en tu curso anual", "Mayor compromiso con tu transformación"],
     buttonText: "Elegir Plan Premium",
     highlight: true,
     icon: Crown,
@@ -81,7 +80,7 @@ const plans = [
 ]
 
 export default function SubscriptionsPage() {
-const { session, profile } = useAuth()
+  const { session, profile } = useAuth()
   const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripeCheckout()
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -96,7 +95,7 @@ const { session, profile } = useAuth()
     } else {
       setLoading(false) // Si no hay perfil, termina la carga
     }
-  }, [profile?.id])
+  }, [profile])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -110,60 +109,57 @@ const { session, profile } = useAuth()
   }, [loading])
 
   const fetchSubscriptionInfo = async () => {
-  try {
-    setLoading(true); // Activa el estado de carga
-    setError(null);
+    try {
+      setLoading(true) // Activa el estado de carga
+      setError(null)
 
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select(`
-        plan_id,
-        subscription_status,
-        subscription_start_date,
-        subscription_end_date,
-        stripe_customer_id,
-        stripe_subscription_id,
-        plans:plan_id (
-          id,
-          name,
-          price,
-          currency,
-          billing_interval
-        )
-      `)
-      .eq("id", profile!.id)
-      .single();
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select(`
+          plan_id,
+          subscription_status,
+          subscription_start_date,
+          subscription_end_date,
+          stripe_customer_id,
+          stripe_subscription_id,
+          plans:plan_id (
+            id,
+            name,
+            price,
+            currency,
+            billing_interval
+          )
+        `)
+        .eq("id", profile!.id)
+        .single()
 
-    if (profileError) throw profileError;
+      if (profileError) throw profileError
 
-    if (profileData.subscription_status === "cancelled") {
-      setSubscriptionInfo(null);
-    } else if (profileData.plans) {
-      setSubscriptionInfo({
-        plan_id: profileData.plan_id,
-        plan_name: profileData.plans.name,
-        plan_price: profileData.plans.price,
-        plan_currency: profileData.plans.currency,
-        plan_billing_interval: profileData.plans.billing_interval,
-        subscription_status: profileData.subscription_status,
-        subscription_start_date: profileData.subscription_start_date,
-        subscription_end_date: profileData.subscription_end_date,
-        stripe_customer_id: profileData.stripe_customer_id,
-        stripe_subscription_id: profileData.stripe_subscription_id,
-      });
-    } else {
-      setSubscriptionInfo(null);
+      if (profileData.subscription_status === "cancelled") {
+        setSubscriptionInfo(null)
+      } else if (profileData.plans) {
+        setSubscriptionInfo({
+          plan_id: profileData.plan_id,
+          plan_name: profileData.plans.name,
+          plan_price: profileData.plans.price,
+          plan_currency: profileData.plans.currency,
+          plan_billing_interval: profileData.plans.billing_interval,
+          subscription_status: profileData.subscription_status,
+          subscription_start_date: profileData.subscription_start_date,
+          subscription_end_date: profileData.subscription_end_date,
+          stripe_customer_id: profileData.stripe_customer_id,
+          stripe_subscription_id: profileData.stripe_subscription_id,
+        })
+      } else {
+        setSubscriptionInfo(null)
+      }
+    } catch (error) {
+      console.error("Error fetching subscription info:", error)
+      setError(error.message || "Error al cargar la información de suscripción.")
+    } finally {
+      setLoading(false) // Asegúrate de desactivar el estado de carga
     }
-  } catch (error) {
-    console.error("Error fetching subscription info:", error);
-    setError(error.message || "Error al cargar la información de suscripción.");
-  } finally {
-    setLoading(false); // Asegúrate de desactivar el estado de carga
   }
-};
-  
-
-
 
   const handlePlanSelection = async (planId: number) => {
     await createCheckoutSession(planId.toString())
@@ -179,7 +175,7 @@ const { session, profile } = useAuth()
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscriptionInfo.stripe_subscription_id,
@@ -301,7 +297,7 @@ const { session, profile } = useAuth()
             </Button>
           )}
         </div>
-  
+
         {/* Error de checkout */}
         {checkoutError && (
           <Alert variant="destructive">
@@ -309,7 +305,7 @@ const { session, profile } = useAuth()
             <AlertDescription>{checkoutError}</AlertDescription>
           </Alert>
         )}
-  
+
         {/* Información de suscripción actual */}
         {subscriptionInfo ? (
           <Card className="border-border/40">
@@ -342,7 +338,7 @@ const { session, profile } = useAuth()
                     </p>
                   </div>
                 </div>
-  
+
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                     <Calendar className="w-5 h-5 text-blue-400" />
@@ -356,7 +352,7 @@ const { session, profile } = useAuth()
                     </p>
                   </div>
                 </div>
-  
+
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
                     <CreditCard className="w-5 h-5 text-purple-400" />
@@ -371,9 +367,9 @@ const { session, profile } = useAuth()
                   </div>
                 </div>
               </div>
-  
+
               <Separator />
-  
+
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   variant="outline"
@@ -424,17 +420,19 @@ const { session, profile } = useAuth()
             </CardContent>
           </Card>
         )}
-  
+
         {/* Planes disponibles */}
         {showPlans && (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-2xl font-bold text-foreground mb-2">Planes Disponibles</h3>
               <p className="text-muted-foreground">
-                {subscriptionInfo ? "Cambia a un plan diferente" : "Elige el plan que mejor se adapte a tus necesidades"}
+                {subscriptionInfo
+                  ? "Cambia a un plan diferente"
+                  : "Elige el plan que mejor se adapte a tus necesidades"}
               </p>
             </div>
-  
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {plans.map((plan) => (
                 <Card
@@ -498,6 +496,6 @@ const { session, profile } = useAuth()
           </div>
         )}
       </div>
-      </main>
-    )
+    </main>
+  )
 }

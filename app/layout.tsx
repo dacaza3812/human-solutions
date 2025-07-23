@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-//import { Suspense } from "react" // Corrected import: Suspense comes from 'react'
+import { Suspense } from "react" // Corrected import: Suspense comes from 'react'
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -23,12 +23,13 @@ export default function RootLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
           <AuthProvider>
-            {/* render directo, sin Suspense en el root */}
-            {children}
+            <Suspense fallback={null}>
+              {/* render directo, sin Suspense en el root */}
+              {children}
+            </Suspense>
             <SpeedInsights />
             <Analytics />
           </AuthProvider>
-
         </ThemeProvider>
       </body>
     </html>

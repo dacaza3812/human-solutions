@@ -61,5 +61,3 @@ $function$
 ;
 
 CREATE TRIGGER referral_on_insert AFTER INSERT ON public.payments FOR EACH ROW EXECUTE FUNCTION handle_referral_on_payment_insert();
-
-

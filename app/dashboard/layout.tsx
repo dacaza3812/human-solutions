@@ -11,8 +11,6 @@ import {
   Users,
   FileText,
   Settings,
-  BarChart3,
-  Calendar,
   MessageCircle,
   Bell,
   Search,
@@ -21,16 +19,15 @@ import {
   X,
   User,
   UserPlus,
-  CalendarDays,
   PieChart,
   CreditCard,
-  TestTube,
-  FileQuestionIcon,
-  Contact
+  Contact,
+  BookText,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
 interface DashboardLayoutProps {
@@ -43,8 +40,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
   const { user, profile, signOut } = useAuth() // Re-introduced useAuth hook
-
   const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   // Menu items based on user role
   const getMenuItems = () => {
@@ -65,6 +62,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         // { id: "calendar", name: "Calendario", icon: Calendar, href: "/dashboard/calendar" },
         { id: "messages", name: "Mensajes", icon: MessageCircle, href: "/dashboard/messages" },
         { id: "inquiries", name: "Contactos", icon: Contact, href: "/dashboard/inquiries" },
+        { id: "posts", name: "Posts", icon: BookText, href: "/dashboard/posts" }, // Added posts
         ...baseItems.slice(1), // Keep test and settings
       ]
     } else {
@@ -299,8 +297,10 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ProtectedRoute>
-      {/* ✅ render directo, sin Suspense */}
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      <Suspense fallback={null}>
+        {/* ✅ render directo, sin Suspense */}
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </Suspense>
     </ProtectedRoute>
   )
 }
