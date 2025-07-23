@@ -30,6 +30,7 @@ import {
   CalendarDays,
   PieChart,
   CreditCard,
+  BookText,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
@@ -284,10 +285,10 @@ function DashboardContent() {
 
   // Generate referral code on component mount
   useEffect(() => {
-  if (profile?.referral_code) {
-    setReferralCode(profile.referral_code)
-  }
-}, [profile])
+    if (profile?.referral_code) {
+      setReferralCode(profile.referral_code)
+    }
+  }, [profile])
 
   // Fetch referral stats for clients
   useEffect(() => {
@@ -300,8 +301,8 @@ function DashboardContent() {
     try {
       // Use the new SQL function to get referral stats
       const { data, error } = await supabase.rpc("get_referral_stats", {
-  user_referral_code: profile?.referral_code,
-})
+        user_referral_code: profile?.referral_code,
+      })
 
       if (error) {
         console.error("Error fetching referral stats:", error)
@@ -338,6 +339,7 @@ function DashboardContent() {
         { id: "analytics", name: "Análisis", icon: BarChart3 },
         { id: "calendar", name: "Calendario", icon: Calendar },
         { id: "messages", name: "Mensajes", icon: MessageCircle },
+        { id: "posts", name: "Posts", icon: BookText }, // Added posts item here
         ...baseItems.slice(1), // Keep settings
       ]
     } else {
@@ -913,6 +915,64 @@ function DashboardContent() {
             />
           )}
 
+          {/* Posts Section - Only for Advisors */}
+          {activeView === "posts" && profile?.account_type === "advisor" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground">Gestión de Posts</h2>
+                  <p className="text-muted-foreground">Crea, edita y elimina entradas de blog.</p>
+                </div>
+                <Button className="bg-emerald-500 hover:bg-emerald-600" onClick={() => setActiveView("new-post")}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nuevo Post
+                </Button>
+              </div>
+              {/* Placeholder for posts list */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="bg-card p-4 rounded-lg shadow-sm">
+                  <h3 className="font-semibold text-lg">Post de Ejemplo 1</h3>
+                  <p className="text-muted-foreground text-sm">Descripción corta del post 1.</p>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" size="sm">
+                      Editar
+                    </Button>
+                    <Button variant="destructive" size="sm">
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
+                <div className="bg-card p-4 rounded-lg shadow-sm">
+                  <h3 className="font-semibold text-lg">Post de Ejemplo 2</h3>
+                  <p className="text-muted-foreground text-sm">Descripción corta del post 2.</p>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" size="sm">
+                      Editar
+                    </Button>
+                    <Button variant="destructive" size="sm">
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New Post Form - Only for Advisors */}
+          {activeView === "new-post" && profile?.account_type === "advisor" && (
+            <div className="space-y-6">
+              <h2 className="text-3xl font-bold text-foreground">Crear Nuevo Post</h2>
+              <p className="text-muted-foreground">Completa los detalles para tu nueva entrada de blog.</p>
+              {/* This is where the PostForm component would be rendered */}
+              <div className="bg-card p-6 rounded-lg shadow-sm">
+                <p className="text-muted-foreground">Formulario de creación de post (próximamente)</p>
+                <Button onClick={() => setActiveView("posts")} className="mt-4">
+                  Volver a Posts
+                </Button>
+              </div>
+            </div>
+          )}
+
           {activeView !== "overview" &&
             activeView !== "subscriptions" &&
             activeView !== "referrals" &&
@@ -921,7 +981,9 @@ function DashboardContent() {
             activeView !== "cases" &&
             activeView !== "clients" &&
             activeView !== "messages" &&
-            activeView !== "settings" && (
+            activeView !== "settings" &&
+            activeView !== "posts" && // Exclude 'posts' from the "Vista en Desarrollo" message
+            activeView !== "new-post" && ( // Exclude 'new-post' from the "Vista en Desarrollo" message
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                   <FileText className="w-8 h-8 text-muted-foreground" />
