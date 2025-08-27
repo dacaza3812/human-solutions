@@ -1,138 +1,163 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/contexts/auth-context";
-import { supabase } from "@/lib/supabase";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import PostForm from './components/post-form';
-import { useToast } from "@/hooks/use-toast";
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import PostForm from "./components/post-form"
+import { useToast } from "@/hooks/use-toast"
+
+interface BlogPost {
+  id: string
+  title: string
+  description: string
+  content: string
+  image_url: string
+  published_at: string
+  created_at: string
+  author_id: string
+}
 
 export default function BlogPostsPage() {
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const { profile } = useAuth();
-  const { toast } = useToast();
+  const [posts, setPosts] = useState<BlogPost[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null)
+  const { profile } = useAuth()
+  const { toast } = useToast()
 
   const fetchPosts = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       const { data, error } = await supabase
-        .from('blog_posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("blog_posts")
+        .select("*")
+        .eq("author_id", profile?.id)
+        .order("created_at", { ascending: false })
 
       if (error) {
-        console.error("Error fetching posts:", error);
-      } else {
-        setPosts(data || []);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
-  const handleCreatePost = () => {
-    setSelectedPost(null);
-    setShowForm(true);
-  };
-
-  const handleEditPost = (post) => {
-    setSelectedPost(post);
-    setShowForm(true);
-  };
-
-  const handleDeletePost = async (postId) => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar este post?")) {
-      try {
-        setLoading(true);
-        const { error } = await supabase
-          .from('blog_posts')
-          .delete()
-          .eq('id', postId);
-
-        if (error) {
-          console.error("Error deleting post:", error);
-          toast({
-            title: "Error",
-            description: "Failed to delete post.",
-            variant: "destructive",
-          });
-        } else {
-          setPosts(posts.filter(post => post.id !== postId));
-          toast({
-            title: "Success",
-            description: "Post deleted successfully.",
-          });
-        }
-      } catch (error) {
-        console.error("Unexpected error deleting post:", error);
+        console.error("Error fetching posts:", error)
         toast({
           title: "Error",
-          description: "Unexpected error deleting post.",
+          description: "No se pudieron cargar los posts. Asegúrate de que la tabla blog_posts existe.",
           variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleFormSubmit = async (data) => {
-    try {
-      setLoading(true);
-      const { error } = selectedPost
-        ? await supabase
-          .from('blog_posts')
-          .update(data)
-          .eq('id', selectedPost.id)
-        : await supabase
-          .from('blog_posts')
-          .insert([{ ...data, id: uuidv4(), author_id: profile?.id }]);
-
-      if (error) {
-        console.error("Error saving post:", error);
-        toast({
-          title: "Error",
-          description: "Failed to save post.",
-          variant: "destructive",
-        });
+        })
       } else {
-        fetchPosts(); // Refresh posts after saving
-        setShowForm(false);
-        toast({
-          title: "Success",
-          description: "Post saved successfully.",
-        });
+        setPosts(data || [])
       }
     } catch (error) {
-      console.error("Unexpected error saving post:", error);
+      console.error("Unexpected error:", error)
       toast({
-          title: "Error",
-          description: "Unexpected error saving post.",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Error inesperado al cargar los posts.",
+        variant: "destructive",
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
+  useEffect(() => {
+    if (profile?.account_type === "advisor") {
+      fetchPosts()
+    } else {
+      setLoading(false)
+    }
+  }, [profile])
+
+  const handleCreatePost = () => {
+    setSelectedPost(null)
+    setShowForm(true)
+  }
+
+  const handleEditPost = (post: BlogPost) => {
+    setSelectedPost(post)
+    setShowForm(true)
+  }
+
+  const handleDeletePost = async (postId: string) => {
+    if (window.confirm("¿Estás seguro de que quieres eliminar este post?")) {
+      try {
+        setLoading(true)
+        const { error } = await supabase.from("blog_posts").delete().eq("id", postId)
+
+        if (error) {
+          console.error("Error deleting post:", error)
+          toast({
+            title: "Error",
+            description: "No se pudo eliminar el post.",
+            variant: "destructive",
+          })
+        } else {
+          setPosts(posts.filter((post) => post.id !== postId))
+          toast({
+            title: "Éxito",
+            description: "Post eliminado correctamente.",
+          })
+        }
+      } catch (error) {
+        console.error("Unexpected error deleting post:", error)
+        toast({
+          title: "Error",
+          description: "Error inesperado al eliminar el post.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  const handleFormSubmit = async (data: Omit<BlogPost, "id" | "created_at" | "author_id">) => {
+    try {
+      setLoading(true)
+      const { error } = selectedPost
+        ? await supabase.from("blog_posts").update(data).eq("id", selectedPost.id)
+        : await supabase.from("blog_posts").insert([{ ...data, author_id: profile?.id }])
+
+      if (error) {
+        console.error("Error saving post:", error)
+        toast({
+          title: "Error",
+          description: "No se pudo guardar el post.",
+          variant: "destructive",
+        })
+      } else {
+        fetchPosts()
+        setShowForm(false)
+        toast({
+          title: "Éxito",
+          description: "Post guardado correctamente.",
+        })
+      }
+    } catch (error) {
+      console.error("Unexpected error saving post:", error)
+      toast({
+        title: "Error",
+        description: "Error inesperado al guardar el post.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (profile?.account_type !== "advisor") {
+    return (
+      <div className="container mx-auto py-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Acceso Restringido</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Solo los asesores pueden administrar los posts del blog.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto py-10">
@@ -141,46 +166,47 @@ export default function BlogPostsPage() {
           <CardTitle>Administración de Posts</CardTitle>
         </CardHeader>
         <CardContent>
-          {profile?.account_type === "advisor" ? (
-            <div>
-              <Button onClick={handleCreatePost}>Crear Nuevo Post</Button>
-              {showForm && (
-                <PostForm
-                  onSubmit={handleFormSubmit}
-                  initialData={selectedPost}
-                />
-              )}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]">Título</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Fecha de Publicación</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {posts.map((post) => (
-                    <TableRow key={post.id}>
-                      <TableCell className="font-medium">{post.title}</TableCell>
-                      <TableCell>{post.description}</TableCell>
-                      <TableCell>{post.published_at}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="secondary" size="sm" onClick={() => handleEditPost(post)}>Editar</Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeletePost(post.id)}>Eliminar</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <div className="mb-6">
+            <Button onClick={handleCreatePost}>Crear Nuevo Post</Button>
+          </div>
+
+          {showForm && <PostForm onSubmit={handleFormSubmit} initialData={selectedPost} />}
+
+          {loading ? (
+            <div className="text-center py-8">Cargando posts...</div>
+          ) : posts.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No tienes posts creados aún.</div>
           ) : (
-            <div>
-              Solo los asesores pueden administrar los posts.
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Fecha de Publicación</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {posts.map((post) => (
+                  <TableRow key={post.id}>
+                    <TableCell className="font-medium">{post.title}</TableCell>
+                    <TableCell className="max-w-xs truncate">{post.description}</TableCell>
+                    <TableCell>{new Date(post.published_at).toLocaleDateString("es-ES")}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEditPost(post)}>
+                        Editar
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeletePost(post.id)}>
+                        Eliminar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

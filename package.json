@@ -38,6 +38,7 @@
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@react-email/components": "latest",
+    "@react-email/render": "latest",
     "@remix-run/react": "latest",
     "@stripe/stripe-js": "latest",
     "@supabase/auth-helpers-nextjs": "latest",
